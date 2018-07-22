@@ -9,7 +9,7 @@
 ページ上部の　Clone or download ▼ ＞ Open in Xcode
 
 ## こんな感じ
-GIF準備中
+![20180722_221846](https://user-images.githubusercontent.com/33353602/43046890-8c6b87d0-8e0a-11e8-80b2-122ad39c145d.GIF)
 - 楽曲/ゲームの投稿ができるのでプレイできる曲が増えていきます。（現状はPCからの投稿のみ）
 
 ## 作った経緯
