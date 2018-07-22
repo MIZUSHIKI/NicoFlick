@@ -10,8 +10,10 @@ import UIKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
-
     var window: UIWindow?
+    
+    static let PHPURL = "http://timetag.main.jp/nicoflick/nicoflick.php"
+    //static let PHPURL = "192.168.11.8/nicoflick.php"
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {

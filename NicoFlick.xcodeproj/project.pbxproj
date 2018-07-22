@@ -7,13 +7,49 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		100260F21EBE3A2400D9E7A8 /* AMReachability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100260F11EBE3A2400D9E7A8 /* AMReachability.swift */; };
+		1005EC181F9358A4003B9E5B /* circle.png in Resources */ = {isa = PBXBuildFile; fileRef = 1005EC171F9358A1003B9E5B /* circle.png */; };
+		1005EC1A1F965B81003B9E5B /* PostedDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1005EC191F965B81003B9E5B /* PostedDataClass.swift */; };
+		100BB4B81F4329FE00058AAD /* settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100BB4B71F4329FE00058AAD /* settings.swift */; };
+		100BB4BC1F45F8AE00058AAD /* RankingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100BB4BB1F45F8AE00058AAD /* RankingView.swift */; };
+		100BB4C01F5BE48D00058AAD /* CommentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100BB4BF1F5BE48D00058AAD /* CommentView.swift */; };
+		100BB4C31F6D451600058AAD /* menu.png in Resources */ = {isa = PBXBuildFile; fileRef = 100BB4C21F6D451600058AAD /* menu.png */; };
+		105B832D1EEE661700FC2244 /* UIViewExt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B832C1EEE661700FC2244 /* UIViewExt.swift */; };
+		105B832F1EEE91C000FC2244 /* SEAudioClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B832E1EEE91C000FC2244 /* SEAudioClass.swift */; };
+		105B83331EEEA55400FC2244 /* okJingle.wav in Resources */ = {isa = PBXBuildFile; fileRef = 105B83321EEEA55400FC2244 /* okJingle.wav */; };
+		105B83351EEEAE1500FC2244 /* safeJingle.wav in Resources */ = {isa = PBXBuildFile; fileRef = 105B83341EEEAE1500FC2244 /* safeJingle.wav */; };
+		105B833B1EEED95900FC2244 /* badJingle.wav in Resources */ = {isa = PBXBuildFile; fileRef = 105B833A1EEED95900FC2244 /* badJingle.wav */; };
+		105B833D1EEEE2A300FC2244 /* GameMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B833C1EEEE2A300FC2244 /* GameMenu.swift */; };
+		105B833F1EEFDA3000FC2244 /* ResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B833E1EEFDA3000FC2244 /* ResultView.swift */; };
+		1070F52320C3DA41008A5735 /* CryptoSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1070F52220C3DA41008A5735 /* CryptoSwift.framework */; };
+		1070F52520C412D0008A5735 /* CryptClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1070F52420C412D0008A5735 /* CryptClass.swift */; };
+		1070F52720C94E77008A5735 /* CachedMoviesClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1070F52620C94E77008A5735 /* CachedMoviesClass.swift */; };
+		10710D852102C09B00468C6B /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 10710D842102C09B00468C6B /* Settings.bundle */; };
 		10B49C8A1EB4B4EF000C79D3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49C891EB4B4EF000C79D3 /* AppDelegate.swift */; };
 		10B49C8C1EB4B4EF000C79D3 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49C8B1EB4B4EF000C79D3 /* ViewController.swift */; };
 		10B49C8F1EB4B4EF000C79D3 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 10B49C8D1EB4B4EF000C79D3 /* Main.storyboard */; };
 		10B49C911EB4B4EF000C79D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 10B49C901EB4B4EF000C79D3 /* Assets.xcassets */; };
-		10B49C941EB4B4EF000C79D3 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 10B49C921EB4B4EF000C79D3 /* LaunchScreen.storyboard */; };
 		10B49C9F1EB4B4EF000C79D3 /* NicoFlickTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49C9E1EB4B4EF000C79D3 /* NicoFlickTests.swift */; };
 		10B49CAA1EB4B4EF000C79D3 /* NicoFlickUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49CA91EB4B4EF000C79D3 /* NicoFlickUITests.swift */; };
+		10B49CBA1EB4B90D000C79D3 /* Selector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49CB91EB4B90D000C79D3 /* Selector.swift */; };
+		10B49CBC1EB55FF2000C79D3 /* AsyncImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49CBB1EB55FF2000C79D3 /* AsyncImageView.swift */; };
+		10B49CC31EB61192000C79D3 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49CC21EB61192000C79D3 /* GameView.swift */; };
+		10B49CC51EB614AC000C79D3 /* MovieAccessClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49CC41EB614AC000C79D3 /* MovieAccessClass.swift */; };
+		10B49CC71EB9FD6E000C79D3 /* StringExt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49CC61EB9FD6E000C79D3 /* StringExt.swift */; };
+		10B49CC91EBD73F5000C79D3 /* NoteDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49CC81EBD73F5000C79D3 /* NoteDataClass.swift */; };
+		10B7BE721F75E1A300EB7E0E /* UserDefaultsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B7BE711F75E1A300EB7E0E /* UserDefaultsData.swift */; };
+		10E1DBC21F86707C00C3BD33 /* comment.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC01F8669A100C3BD33 /* comment.png */; };
+		10E1DBC71F879D9300C3BD33 /* ranking.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC61F879D8B00C3BD33 /* ranking.png */; };
+		10E1DBC91F8A76F200C3BD33 /* flick.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC81F8A76EA00C3BD33 /* flick.png */; };
+		10EBF2861F79170900FAAAA5 /* SelectorMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF2851F79170900FAAAA5 /* SelectorMenu.swift */; };
+		10EBF2881F79675E00FAAAA5 /* SelectorMenuTableForTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF2871F79675E00FAAAA5 /* SelectorMenuTableForTag.swift */; };
+		10EBF28A1F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF2891F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift */; };
+		10EBF28D1F81172B00FAAAA5 /* IndicatorClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF28C1F81172B00FAAAA5 /* IndicatorClass.swift */; };
+		10ED448B1EEB8AD60072FB8B /* MusicDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10ED448A1EEB8AD60072FB8B /* MusicDataClass.swift */; };
+		10ED45141EEBECAF0072FB8B /* iCarousel.m in Sources */ = {isa = PBXBuildFile; fileRef = 10ED45121EEBECAF0072FB8B /* iCarousel.m */; };
+		1572D92DB5EBA5C788A5B2E5 /* Pods_NicoFlickTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84D287F0BE60DD947F2B8391 /* Pods_NicoFlickTests.framework */; };
+		3718C00F649D584F32027AFD /* Pods_NicoFlick.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0127DDC02C08ACEEE322A44F /* Pods_NicoFlick.framework */; };
+		E88D1C83E498B5BE42BAC6EC /* Pods_NicoFlickUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 227C54DEBC0DAFEF735E3C22 /* Pods_NicoFlickUITests.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,12 +70,32 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0127DDC02C08ACEEE322A44F /* Pods_NicoFlick.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_NicoFlick.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		093F7AEACE1C8F1CB54E7BB2 /* Pods-NicoFlickUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NicoFlickUITests.debug.xcconfig"; path = "Pods/Target Support Files/Pods-NicoFlickUITests/Pods-NicoFlickUITests.debug.xcconfig"; sourceTree = "<group>"; };
+		100260F11EBE3A2400D9E7A8 /* AMReachability.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AMReachability.swift; sourceTree = "<group>"; };
+		100260F41EBEA43B00D9E7A8 /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
+		1005EC171F9358A1003B9E5B /* circle.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = circle.png; sourceTree = "<group>"; };
+		1005EC191F965B81003B9E5B /* PostedDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostedDataClass.swift; sourceTree = "<group>"; };
+		100BB4B71F4329FE00058AAD /* settings.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = settings.swift; sourceTree = "<group>"; };
+		100BB4BB1F45F8AE00058AAD /* RankingView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RankingView.swift; sourceTree = "<group>"; };
+		100BB4BF1F5BE48D00058AAD /* CommentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommentView.swift; sourceTree = "<group>"; };
+		100BB4C21F6D451600058AAD /* menu.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = menu.png; sourceTree = "<group>"; };
+		105B832C1EEE661700FC2244 /* UIViewExt.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIViewExt.swift; sourceTree = "<group>"; };
+		105B832E1EEE91C000FC2244 /* SEAudioClass.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SEAudioClass.swift; sourceTree = "<group>"; };
+		105B83321EEEA55400FC2244 /* okJingle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = okJingle.wav; sourceTree = "<group>"; };
+		105B83341EEEAE1500FC2244 /* safeJingle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = safeJingle.wav; sourceTree = "<group>"; };
+		105B833A1EEED95900FC2244 /* badJingle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = badJingle.wav; sourceTree = "<group>"; };
+		105B833C1EEEE2A300FC2244 /* GameMenu.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GameMenu.swift; sourceTree = "<group>"; };
+		105B833E1EEFDA3000FC2244 /* ResultView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ResultView.swift; sourceTree = "<group>"; };
+		1070F52220C3DA41008A5735 /* CryptoSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CryptoSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		1070F52420C412D0008A5735 /* CryptClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptClass.swift; sourceTree = "<group>"; };
+		1070F52620C94E77008A5735 /* CachedMoviesClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedMoviesClass.swift; sourceTree = "<group>"; };
+		10710D842102C09B00468C6B /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
 		10B49C861EB4B4EF000C79D3 /* NicoFlick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NicoFlick.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		10B49C891EB4B4EF000C79D3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		10B49C8B1EB4B4EF000C79D3 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		10B49C8E1EB4B4EF000C79D3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		10B49C901EB4B4EF000C79D3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		10B49C931EB4B4EF000C79D3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		10B49C951EB4B4EF000C79D3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		10B49C9A1EB4B4EF000C79D3 /* NicoFlickTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NicoFlickTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		10B49C9E1EB4B4EF000C79D3 /* NicoFlickTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NicoFlickTests.swift; sourceTree = "<group>"; };
@@ -47,6 +103,31 @@
 		10B49CA51EB4B4EF000C79D3 /* NicoFlickUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NicoFlickUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		10B49CA91EB4B4EF000C79D3 /* NicoFlickUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NicoFlickUITests.swift; sourceTree = "<group>"; };
 		10B49CAB1EB4B4EF000C79D3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		10B49CB91EB4B90D000C79D3 /* Selector.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Selector.swift; path = ../Selector.swift; sourceTree = "<group>"; };
+		10B49CBB1EB55FF2000C79D3 /* AsyncImageView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AsyncImageView.swift; sourceTree = "<group>"; };
+		10B49CC21EB61192000C79D3 /* GameView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
+		10B49CC41EB614AC000C79D3 /* MovieAccessClass.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MovieAccessClass.swift; sourceTree = "<group>"; };
+		10B49CC61EB9FD6E000C79D3 /* StringExt.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StringExt.swift; sourceTree = "<group>"; };
+		10B49CC81EBD73F5000C79D3 /* NoteDataClass.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NoteDataClass.swift; sourceTree = "<group>"; };
+		10B7BE711F75E1A300EB7E0E /* UserDefaultsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultsData.swift; sourceTree = "<group>"; };
+		10E1DBC01F8669A100C3BD33 /* comment.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = comment.png; sourceTree = "<group>"; };
+		10E1DBC61F879D8B00C3BD33 /* ranking.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ranking.png; sourceTree = "<group>"; };
+		10E1DBC81F8A76EA00C3BD33 /* flick.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = flick.png; sourceTree = "<group>"; };
+		10EBF2851F79170900FAAAA5 /* SelectorMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectorMenu.swift; sourceTree = "<group>"; };
+		10EBF2871F79675E00FAAAA5 /* SelectorMenuTableForTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectorMenuTableForTag.swift; sourceTree = "<group>"; };
+		10EBF2891F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectorMenuTableForSort.swift; sourceTree = "<group>"; };
+		10EBF28C1F81172B00FAAAA5 /* IndicatorClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorClass.swift; sourceTree = "<group>"; };
+		10ED448A1EEB8AD60072FB8B /* MusicDataClass.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MusicDataClass.swift; sourceTree = "<group>"; };
+		10ED45111EEBECAF0072FB8B /* iCarousel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iCarousel.h; sourceTree = "<group>"; };
+		10ED45121EEBECAF0072FB8B /* iCarousel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = iCarousel.m; sourceTree = "<group>"; };
+		10ED45161EEBECE70072FB8B /* NicoFlick-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NicoFlick-Bridging-Header.h"; sourceTree = "<group>"; };
+		227C54DEBC0DAFEF735E3C22 /* Pods_NicoFlickUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_NicoFlickUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		2F75712948DF77A2AB7ED007 /* Pods-NicoFlickTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NicoFlickTests.release.xcconfig"; path = "Pods/Target Support Files/Pods-NicoFlickTests/Pods-NicoFlickTests.release.xcconfig"; sourceTree = "<group>"; };
+		84D287F0BE60DD947F2B8391 /* Pods_NicoFlickTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_NicoFlickTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		8E0F790619C556ACDE6EF173 /* Pods-NicoFlickUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NicoFlickUITests.release.xcconfig"; path = "Pods/Target Support Files/Pods-NicoFlickUITests/Pods-NicoFlickUITests.release.xcconfig"; sourceTree = "<group>"; };
+		C201050390E3FF9EFDB81101 /* Pods-NicoFlick.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NicoFlick.debug.xcconfig"; path = "Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick.debug.xcconfig"; sourceTree = "<group>"; };
+		DD9B574FCC333592F9762ED9 /* Pods-NicoFlick.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NicoFlick.release.xcconfig"; path = "Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick.release.xcconfig"; sourceTree = "<group>"; };
+		F865BE1B623B639BD4947D41 /* Pods-NicoFlickTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NicoFlickTests.debug.xcconfig"; path = "Pods/Target Support Files/Pods-NicoFlickTests/Pods-NicoFlickTests.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +135,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1070F52320C3DA41008A5735 /* CryptoSwift.framework in Frameworks */,
+				3718C00F649D584F32027AFD /* Pods_NicoFlick.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -61,6 +144,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1572D92DB5EBA5C788A5B2E5 /* Pods_NicoFlickTests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -68,12 +152,47 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E88D1C83E498B5BE42BAC6EC /* Pods_NicoFlickUITests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		100260F31EBEA43B00D9E7A8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1070F52220C3DA41008A5735 /* CryptoSwift.framework */,
+				100260F41EBEA43B00D9E7A8 /* MediaPlayer.framework */,
+				0127DDC02C08ACEEE322A44F /* Pods_NicoFlick.framework */,
+				84D287F0BE60DD947F2B8391 /* Pods_NicoFlickTests.framework */,
+				227C54DEBC0DAFEF735E3C22 /* Pods_NicoFlickUITests.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		100260FB1EBEEE2A00D9E7A8 /* se */ = {
+			isa = PBXGroup;
+			children = (
+				105B83321EEEA55400FC2244 /* okJingle.wav */,
+				105B83341EEEAE1500FC2244 /* safeJingle.wav */,
+				105B833A1EEED95900FC2244 /* badJingle.wav */,
+			);
+			name = se;
+			sourceTree = "<group>";
+		};
+		100BB4C11F6D44FB00058AAD /* image */ = {
+			isa = PBXGroup;
+			children = (
+				100BB4C21F6D451600058AAD /* menu.png */,
+				10E1DBC61F879D8B00C3BD33 /* ranking.png */,
+				10E1DBC01F8669A100C3BD33 /* comment.png */,
+				1005EC171F9358A1003B9E5B /* circle.png */,
+				10E1DBC81F8A76EA00C3BD33 /* flick.png */,
+			);
+			name = image;
+			sourceTree = "<group>";
+		};
 		10B49C7D1EB4B4EF000C79D3 = {
 			isa = PBXGroup;
 			children = (
@@ -81,6 +200,8 @@
 				10B49C9D1EB4B4EF000C79D3 /* NicoFlickTests */,
 				10B49CA81EB4B4EF000C79D3 /* NicoFlickUITests */,
 				10B49C871EB4B4EF000C79D3 /* Products */,
+				100260F31EBEA43B00D9E7A8 /* Frameworks */,
+				BF2E6918738F90A08174F24F /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -98,11 +219,24 @@
 			isa = PBXGroup;
 			children = (
 				10B49C891EB4B4EF000C79D3 /* AppDelegate.swift */,
-				10B49C8B1EB4B4EF000C79D3 /* ViewController.swift */,
 				10B49C8D1EB4B4EF000C79D3 /* Main.storyboard */,
+				10B49C8B1EB4B4EF000C79D3 /* ViewController.swift */,
+				100BB4B71F4329FE00058AAD /* settings.swift */,
+				10B49CB91EB4B90D000C79D3 /* Selector.swift */,
+				10EBF2851F79170900FAAAA5 /* SelectorMenu.swift */,
+				10EBF2871F79675E00FAAAA5 /* SelectorMenuTableForTag.swift */,
+				10EBF2891F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift */,
+				10B49CC21EB61192000C79D3 /* GameView.swift */,
+				105B833C1EEEE2A300FC2244 /* GameMenu.swift */,
+				105B833E1EEFDA3000FC2244 /* ResultView.swift */,
+				100BB4BB1F45F8AE00058AAD /* RankingView.swift */,
+				100BB4BF1F5BE48D00058AAD /* CommentView.swift */,
+				10710D842102C09B00468C6B /* Settings.bundle */,
 				10B49C901EB4B4EF000C79D3 /* Assets.xcassets */,
-				10B49C921EB4B4EF000C79D3 /* LaunchScreen.storyboard */,
 				10B49C951EB4B4EF000C79D3 /* Info.plist */,
+				10B49CBD1EB5601B000C79D3 /* Library */,
+				100260FB1EBEEE2A00D9E7A8 /* se */,
+				100BB4C11F6D44FB00058AAD /* image */,
 			);
 			path = NicoFlick;
 			sourceTree = "<group>";
@@ -125,6 +259,50 @@
 			path = NicoFlickUITests;
 			sourceTree = "<group>";
 		};
+		10B49CBD1EB5601B000C79D3 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				10ED45161EEBECE70072FB8B /* NicoFlick-Bridging-Header.h */,
+				10ED45101EEBECAF0072FB8B /* iCarousel */,
+				10B49CBB1EB55FF2000C79D3 /* AsyncImageView.swift */,
+				100260F11EBE3A2400D9E7A8 /* AMReachability.swift */,
+				10B49CC61EB9FD6E000C79D3 /* StringExt.swift */,
+				105B832C1EEE661700FC2244 /* UIViewExt.swift */,
+				10ED448A1EEB8AD60072FB8B /* MusicDataClass.swift */,
+				1005EC191F965B81003B9E5B /* PostedDataClass.swift */,
+				10B49CC81EBD73F5000C79D3 /* NoteDataClass.swift */,
+				10B7BE711F75E1A300EB7E0E /* UserDefaultsData.swift */,
+				10B49CC41EB614AC000C79D3 /* MovieAccessClass.swift */,
+				1070F52620C94E77008A5735 /* CachedMoviesClass.swift */,
+				105B832E1EEE91C000FC2244 /* SEAudioClass.swift */,
+				10EBF28C1F81172B00FAAAA5 /* IndicatorClass.swift */,
+				1070F52420C412D0008A5735 /* CryptClass.swift */,
+			);
+			name = Library;
+			sourceTree = "<group>";
+		};
+		10ED45101EEBECAF0072FB8B /* iCarousel */ = {
+			isa = PBXGroup;
+			children = (
+				10ED45111EEBECAF0072FB8B /* iCarousel.h */,
+				10ED45121EEBECAF0072FB8B /* iCarousel.m */,
+			);
+			path = iCarousel;
+			sourceTree = "<group>";
+		};
+		BF2E6918738F90A08174F24F /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				C201050390E3FF9EFDB81101 /* Pods-NicoFlick.debug.xcconfig */,
+				DD9B574FCC333592F9762ED9 /* Pods-NicoFlick.release.xcconfig */,
+				F865BE1B623B639BD4947D41 /* Pods-NicoFlickTests.debug.xcconfig */,
+				2F75712948DF77A2AB7ED007 /* Pods-NicoFlickTests.release.xcconfig */,
+				093F7AEACE1C8F1CB54E7BB2 /* Pods-NicoFlickUITests.debug.xcconfig */,
+				8E0F790619C556ACDE6EF173 /* Pods-NicoFlickUITests.release.xcconfig */,
+			);
+			name = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -132,9 +310,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 10B49CAE1EB4B4EF000C79D3 /* Build configuration list for PBXNativeTarget "NicoFlick" */;
 			buildPhases = (
+				EB0DC938656B7F04EE5BBCE6 /* [CP] Check Pods Manifest.lock */,
 				10B49C821EB4B4EF000C79D3 /* Sources */,
 				10B49C831EB4B4EF000C79D3 /* Frameworks */,
 				10B49C841EB4B4EF000C79D3 /* Resources */,
+				418A084ED3B5D8F81C37DD1F /* [CP] Embed Pods Frameworks */,
+				3CF98BB8461A318FDA292967 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -149,9 +330,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 10B49CB11EB4B4EF000C79D3 /* Build configuration list for PBXNativeTarget "NicoFlickTests" */;
 			buildPhases = (
+				56AF9EE88565321E8A732D4E /* [CP] Check Pods Manifest.lock */,
 				10B49C961EB4B4EF000C79D3 /* Sources */,
 				10B49C971EB4B4EF000C79D3 /* Frameworks */,
 				10B49C981EB4B4EF000C79D3 /* Resources */,
+				1E5791196497D873719301AF /* [CP] Embed Pods Frameworks */,
+				590B85BFD3216B2F370E6FC2 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -167,9 +351,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 10B49CB41EB4B4EF000C79D3 /* Build configuration list for PBXNativeTarget "NicoFlickUITests" */;
 			buildPhases = (
+				F1084DCE48A5DB773BBE9274 /* [CP] Check Pods Manifest.lock */,
 				10B49CA11EB4B4EF000C79D3 /* Sources */,
 				10B49CA21EB4B4EF000C79D3 /* Frameworks */,
 				10B49CA31EB4B4EF000C79D3 /* Resources */,
+				3F45EFE05138ADFED54A6EBA /* [CP] Embed Pods Frameworks */,
+				C6ABF583EE00EC205B8E3740 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -188,23 +375,26 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0830;
-				LastUpgradeCheck = 0830;
+				LastUpgradeCheck = 0940;
 				ORGANIZATIONNAME = i.MIZUSHIKI;
 				TargetAttributes = {
 					10B49C851EB4B4EF000C79D3 = {
 						CreatedOnToolsVersion = 8.3.2;
 						DevelopmentTeam = TD2CNVUXD8;
+						LastSwiftMigration = 0900;
 						ProvisioningStyle = Automatic;
 					};
 					10B49C991EB4B4EF000C79D3 = {
 						CreatedOnToolsVersion = 8.3.2;
 						DevelopmentTeam = TD2CNVUXD8;
+						LastSwiftMigration = 0900;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 10B49C851EB4B4EF000C79D3;
 					};
 					10B49CA41EB4B4EF000C79D3 = {
 						CreatedOnToolsVersion = 8.3.2;
 						DevelopmentTeam = TD2CNVUXD8;
+						LastSwiftMigration = 0900;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 10B49C851EB4B4EF000C79D3;
 					};
@@ -215,7 +405,6 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
 			);
 			mainGroup = 10B49C7D1EB4B4EF000C79D3;
@@ -235,9 +424,17 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				10B49C941EB4B4EF000C79D3 /* LaunchScreen.storyboard in Resources */,
+				10E1DBC91F8A76F200C3BD33 /* flick.png in Resources */,
+				10710D852102C09B00468C6B /* Settings.bundle in Resources */,
+				100BB4C31F6D451600058AAD /* menu.png in Resources */,
 				10B49C911EB4B4EF000C79D3 /* Assets.xcassets in Resources */,
+				105B833B1EEED95900FC2244 /* badJingle.wav in Resources */,
 				10B49C8F1EB4B4EF000C79D3 /* Main.storyboard in Resources */,
+				10E1DBC71F879D9300C3BD33 /* ranking.png in Resources */,
+				105B83351EEEAE1500FC2244 /* safeJingle.wav in Resources */,
+				1005EC181F9358A4003B9E5B /* circle.png in Resources */,
+				10E1DBC21F86707C00C3BD33 /* comment.png in Resources */,
+				105B83331EEEA55400FC2244 /* okJingle.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -257,13 +454,187 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		1E5791196497D873719301AF /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlickTests/Pods-NicoFlickTests-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		3CF98BB8461A318FDA292967 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[CP] Copy Pods Resources";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		3F45EFE05138ADFED54A6EBA /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlickUITests/Pods-NicoFlickUITests-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		418A084ED3B5D8F81C37DD1F /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-frameworks.sh",
+				"${BUILT_PRODUCTS_DIR}/CryptoSwift/CryptoSwift.framework",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CryptoSwift.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		56AF9EE88565321E8A732D4E /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-NicoFlickTests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		590B85BFD3216B2F370E6FC2 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[CP] Copy Pods Resources";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlickTests/Pods-NicoFlickTests-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		C6ABF583EE00EC205B8E3740 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[CP] Copy Pods Resources";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlickUITests/Pods-NicoFlickUITests-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		EB0DC938656B7F04EE5BBCE6 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-NicoFlick-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		F1084DCE48A5DB773BBE9274 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-NicoFlickUITests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		10B49C821EB4B4EF000C79D3 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1070F52520C412D0008A5735 /* CryptClass.swift in Sources */,
+				100BB4C01F5BE48D00058AAD /* CommentView.swift in Sources */,
+				10EBF2861F79170900FAAAA5 /* SelectorMenu.swift in Sources */,
+				105B833D1EEEE2A300FC2244 /* GameMenu.swift in Sources */,
+				100260F21EBE3A2400D9E7A8 /* AMReachability.swift in Sources */,
+				105B833F1EEFDA3000FC2244 /* ResultView.swift in Sources */,
 				10B49C8C1EB4B4EF000C79D3 /* ViewController.swift in Sources */,
+				10B49CC51EB614AC000C79D3 /* MovieAccessClass.swift in Sources */,
+				10ED448B1EEB8AD60072FB8B /* MusicDataClass.swift in Sources */,
+				1070F52720C94E77008A5735 /* CachedMoviesClass.swift in Sources */,
+				10EBF2881F79675E00FAAAA5 /* SelectorMenuTableForTag.swift in Sources */,
+				10B49CC71EB9FD6E000C79D3 /* StringExt.swift in Sources */,
 				10B49C8A1EB4B4EF000C79D3 /* AppDelegate.swift in Sources */,
+				10B49CC91EBD73F5000C79D3 /* NoteDataClass.swift in Sources */,
+				10B49CBA1EB4B90D000C79D3 /* Selector.swift in Sources */,
+				10B7BE721F75E1A300EB7E0E /* UserDefaultsData.swift in Sources */,
+				10EBF28A1F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift in Sources */,
+				100BB4B81F4329FE00058AAD /* settings.swift in Sources */,
+				10ED45141EEBECAF0072FB8B /* iCarousel.m in Sources */,
+				10EBF28D1F81172B00FAAAA5 /* IndicatorClass.swift in Sources */,
+				105B832F1EEE91C000FC2244 /* SEAudioClass.swift in Sources */,
+				1005EC1A1F965B81003B9E5B /* PostedDataClass.swift in Sources */,
+				10B49CC31EB61192000C79D3 /* GameView.swift in Sources */,
+				100BB4BC1F45F8AE00058AAD /* RankingView.swift in Sources */,
+				105B832D1EEE661700FC2244 /* UIViewExt.swift in Sources */,
+				10B49CBC1EB55FF2000C79D3 /* AsyncImageView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -307,14 +678,6 @@
 			name = Main.storyboard;
 			sourceTree = "<group>";
 		};
-		10B49C921EB4B4EF000C79D3 /* LaunchScreen.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				10B49C931EB4B4EF000C79D3 /* Base */,
-			);
-			name = LaunchScreen.storyboard;
-			sourceTree = "<group>";
-		};
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
@@ -322,21 +685,30 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -359,7 +731,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -372,21 +744,30 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -403,7 +784,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
@@ -413,32 +794,43 @@
 		};
 		10B49CAF1EB4B4EF000C79D3 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C201050390E3FF9EFDB81101 /* Pods-NicoFlick.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/NicoFlick-Bridging-Header.h";
+				SWIFT_SWIFT3_OBJC_INFERENCE = On;
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
 		10B49CB01EB4B4EF000C79D3 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = DD9B574FCC333592F9762ED9 /* Pods-NicoFlick.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/NicoFlick-Bridging-Header.h";
+				SWIFT_SWIFT3_OBJC_INFERENCE = On;
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
 		10B49CB21EB4B4EF000C79D3 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F865BE1B623B639BD4947D41 /* Pods-NicoFlickTests.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -447,13 +839,15 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlickTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_SWIFT3_OBJC_INFERENCE = On;
+				SWIFT_VERSION = 4.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NicoFlick.app/NicoFlick";
 			};
 			name = Debug;
 		};
 		10B49CB31EB4B4EF000C79D3 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2F75712948DF77A2AB7ED007 /* Pods-NicoFlickTests.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -462,13 +856,15 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlickTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_SWIFT3_OBJC_INFERENCE = On;
+				SWIFT_VERSION = 4.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NicoFlick.app/NicoFlick";
 			};
 			name = Release;
 		};
 		10B49CB51EB4B4EF000C79D3 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 093F7AEACE1C8F1CB54E7BB2 /* Pods-NicoFlickUITests.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
@@ -476,13 +872,15 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlickUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_SWIFT3_OBJC_INFERENCE = On;
+				SWIFT_VERSION = 4.0;
 				TEST_TARGET_NAME = NicoFlick;
 			};
 			name = Debug;
 		};
 		10B49CB61EB4B4EF000C79D3 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8E0F790619C556ACDE6EF173 /* Pods-NicoFlickUITests.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
@@ -490,7 +888,8 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlickUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_SWIFT3_OBJC_INFERENCE = On;
+				SWIFT_VERSION = 4.0;
 				TEST_TARGET_NAME = NicoFlick;
 			};
 			name = Release;
@@ -514,6 +913,7 @@
 				10B49CB01EB4B4EF000C79D3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		10B49CB11EB4B4EF000C79D3 /* Build configuration list for PBXNativeTarget "NicoFlickTests" */ = {
 			isa = XCConfigurationList;
@@ -522,6 +922,7 @@
 				10B49CB31EB4B4EF000C79D3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		10B49CB41EB4B4EF000C79D3 /* Build configuration list for PBXNativeTarget "NicoFlickUITests" */ = {
 			isa = XCConfigurationList;
@@ -530,6 +931,7 @@
 				10B49CB61EB4B4EF000C79D3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
