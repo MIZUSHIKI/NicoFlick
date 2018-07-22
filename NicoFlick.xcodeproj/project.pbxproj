@@ -118,8 +118,8 @@
 		10EBF2891F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectorMenuTableForSort.swift; path = Sources/SelectorMenuTableForSort.swift; sourceTree = "<group>"; };
 		10EBF28C1F81172B00FAAAA5 /* IndicatorClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IndicatorClass.swift; path = Sources/Classes/IndicatorClass.swift; sourceTree = "<group>"; };
 		10ED448A1EEB8AD60072FB8B /* MusicDataClass.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MusicDataClass.swift; path = Sources/Classes/MusicDataClass.swift; sourceTree = "<group>"; };
-		10ED45111EEBECAF0072FB8B /* iCarousel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = iCarousel.h; path = ../Sources/Classes/iCarousel/iCarousel.h; sourceTree = "<group>"; };
-		10ED45121EEBECAF0072FB8B /* iCarousel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = iCarousel.m; path = ../Sources/Classes/iCarousel/iCarousel.m; sourceTree = "<group>"; };
+		10ED45111EEBECAF0072FB8B /* iCarousel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = iCarousel.h; path = Sources/Classes/iCarousel.h; sourceTree = "<group>"; };
+		10ED45121EEBECAF0072FB8B /* iCarousel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = iCarousel.m; path = Sources/Classes/iCarousel.m; sourceTree = "<group>"; };
 		10ED45161EEBECE70072FB8B /* NicoFlick-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "NicoFlick-Bridging-Header.h"; path = "Sources/Classes/NicoFlick-Bridging-Header.h"; sourceTree = "<group>"; };
 		227C54DEBC0DAFEF735E3C22 /* Pods_NicoFlickUITests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_NicoFlickUITests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2F75712948DF77A2AB7ED007 /* Pods-NicoFlickTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NicoFlickTests.release.xcconfig"; path = "Pods/Target Support Files/Pods-NicoFlickTests/Pods-NicoFlickTests.release.xcconfig"; sourceTree = "<group>"; };
@@ -263,7 +263,8 @@
 			isa = PBXGroup;
 			children = (
 				10ED45161EEBECE70072FB8B /* NicoFlick-Bridging-Header.h */,
-				10ED45101EEBECAF0072FB8B /* iCarousel */,
+				10ED45111EEBECAF0072FB8B /* iCarousel.h */,
+				10ED45121EEBECAF0072FB8B /* iCarousel.m */,
 				10B49CBB1EB55FF2000C79D3 /* AsyncImageView.swift */,
 				100260F11EBE3A2400D9E7A8 /* AMReachability.swift */,
 				10B49CC61EB9FD6E000C79D3 /* StringExt.swift */,
@@ -279,15 +280,6 @@
 				1070F52420C412D0008A5735 /* CryptClass.swift */,
 			);
 			name = Classes;
-			sourceTree = "<group>";
-		};
-		10ED45101EEBECAF0072FB8B /* iCarousel */ = {
-			isa = PBXGroup;
-			children = (
-				10ED45111EEBECAF0072FB8B /* iCarousel.h */,
-				10ED45121EEBECAF0072FB8B /* iCarousel.m */,
-			);
-			path = iCarousel;
 			sourceTree = "<group>";
 		};
 		BF2E6918738F90A08174F24F /* Pods */ = {
