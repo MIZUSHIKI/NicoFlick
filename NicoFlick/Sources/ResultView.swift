@@ -70,6 +70,12 @@ class ResultView: UIViewController {
         
         self.rank.text = noteData.getJudgeRankStr()
         
+        //【編集中】データの場合、スコア等は保存・送信しないで終わる
+        if selectLevel.description.pregMatche(pattern: "【編集中:?\\w*】") {
+            self.HiScoreUpdate.text = "編集中データのため保存・送信は行われません。"
+            self.HiScoreUpdate.isHidden = false
+            return
+        }
         //
         //ユーザースコアの保存->送信、プレイ回数のカウント->送信
         //

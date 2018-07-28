@@ -1121,8 +1121,8 @@ Comment</string>
                                 <color key="textColor" red="0.0" green="0.47843137250000001" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
-                            <label hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="HiScore更新!!" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="3OY-c6-JBc">
-                                <rect key="frame" x="211" y="613" width="148" height="31"/>
+                            <label hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="HiScore更新!!" textAlignment="right" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" translatesAutoresizingMaskIntoConstraints="NO" id="3OY-c6-JBc">
+                                <rect key="frame" x="38" y="613" width="298" height="31"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" name="HiraMaruProN-W4" family="Hiragino Maru Gothic ProN" pointSize="18"/>
                                 <color key="textColor" red="1" green="0.17722810239167996" blue="0.44286136190759418" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
@@ -1157,7 +1157,7 @@ Comment</string>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="5Ly-Ev-6t0" userLabel="First Responder" sceneMemberID="firstResponder"/>
                 <exit id="h2z-rK-1ey" userLabel="Exit" sceneMemberID="exit"/>
             </objects>
-            <point key="canvasLocation" x="2348" y="1681.7091454272866"/>
+            <point key="canvasLocation" x="2348" y="1681.0344827586207"/>
         </scene>
         <!--Game Menu-->
         <scene sceneID="xum-8M-QcL">
@@ -1598,6 +1598,6 @@ Comment</string>
         <image name="ranking.png" width="32" height="32"/>
     </resources>
     <inferredMetricsTieBreakers>
-        <segue reference="Ph5-xf-06b"/>
+        <segue reference="B0R-EA-o7j"/>
     </inferredMetricsTieBreakers>
 </document>

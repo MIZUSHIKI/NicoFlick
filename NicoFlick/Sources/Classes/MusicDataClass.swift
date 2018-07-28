@@ -513,7 +513,12 @@ class MusicDataLists{
     }
     func getSelectMusicLevels_noSort(selectMovieURL:String) -> [levelData]{
         var selectLevels:[levelData] = []
-        for level in levels[selectMovieURL]! {
+        guard let levels = levels[selectMovieURL] else {
+            return selectLevels
+        }
+        for level in levels {
+            print("test")
+            print(level.sqlID)
             if level.description.pregMatche(pattern: "【編集中:?\\w*】"){
                 let id = level.description.pregMatche_firstString(pattern: "【編集中:?(\\w*)】")
                 if id != UserData.sharedInstance.UserID.prefix(8){

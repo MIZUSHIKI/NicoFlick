@@ -41,6 +41,7 @@
 		10E1DBC21F86707C00C3BD33 /* comment.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC01F8669A100C3BD33 /* comment.png */; };
 		10E1DBC71F879D9300C3BD33 /* ranking.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC61F879D8B00C3BD33 /* ranking.png */; };
 		10E1DBC91F8A76F200C3BD33 /* flick.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC81F8A76EA00C3BD33 /* flick.png */; };
+		10E6C5EB2104E2A6004457F8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 10E6C5E92104E2A5004457F8 /* LaunchScreen.storyboard */; };
 		10EBF2861F79170900FAAAA5 /* SelectorMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF2851F79170900FAAAA5 /* SelectorMenu.swift */; };
 		10EBF2881F79675E00FAAAA5 /* SelectorMenuTableForTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF2871F79675E00FAAAA5 /* SelectorMenuTableForTag.swift */; };
 		10EBF28A1F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF2891F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift */; };
@@ -113,6 +114,7 @@
 		10E1DBC01F8669A100C3BD33 /* comment.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = comment.png; path = image/comment.png; sourceTree = "<group>"; };
 		10E1DBC61F879D8B00C3BD33 /* ranking.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = ranking.png; path = image/ranking.png; sourceTree = "<group>"; };
 		10E1DBC81F8A76EA00C3BD33 /* flick.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = flick.png; path = image/flick.png; sourceTree = "<group>"; };
+		10E6C5EA2104E2A5004457F8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		10EBF2851F79170900FAAAA5 /* SelectorMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectorMenu.swift; path = Sources/SelectorMenu.swift; sourceTree = "<group>"; };
 		10EBF2871F79675E00FAAAA5 /* SelectorMenuTableForTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectorMenuTableForTag.swift; path = Sources/SelectorMenuTableForTag.swift; sourceTree = "<group>"; };
 		10EBF2891F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectorMenuTableForSort.swift; path = Sources/SelectorMenuTableForSort.swift; sourceTree = "<group>"; };
@@ -231,6 +233,7 @@
 				105B833E1EEFDA3000FC2244 /* ResultView.swift */,
 				100BB4BB1F45F8AE00058AAD /* RankingView.swift */,
 				100BB4BF1F5BE48D00058AAD /* CommentView.swift */,
+				10E6C5E92104E2A5004457F8 /* LaunchScreen.storyboard */,
 				10710D842102C09B00468C6B /* Settings.bundle */,
 				10B49C901EB4B4EF000C79D3 /* Assets.xcassets */,
 				10B49C951EB4B4EF000C79D3 /* Info.plist */,
@@ -425,6 +428,7 @@
 				10E1DBC71F879D9300C3BD33 /* ranking.png in Resources */,
 				105B83351EEEAE1500FC2244 /* safeJingle.wav in Resources */,
 				1005EC181F9358A4003B9E5B /* circle.png in Resources */,
+				10E6C5EB2104E2A6004457F8 /* LaunchScreen.storyboard in Resources */,
 				10E1DBC21F86707C00C3BD33 /* comment.png in Resources */,
 				105B83331EEEA55400FC2244 /* okJingle.wav in Resources */,
 			);
@@ -668,6 +672,14 @@
 				10B49C8E1EB4B4EF000C79D3 /* Base */,
 			);
 			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+		10E6C5E92104E2A5004457F8 /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				10E6C5EA2104E2A5004457F8 /* Base */,
+			);
+			name = LaunchScreen.storyboard;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
