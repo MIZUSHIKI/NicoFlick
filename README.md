@@ -11,6 +11,7 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
 ## こんな感じ
 ![20180805_103105](https://user-images.githubusercontent.com/33353602/43682202-084e5d12-98a8-11e8-975f-10bca5228906.GIF)
 - 楽曲/ゲームの投稿ができるのでプレイできる曲が増えていきます。（現状はPCからの投稿のみ）
+- NicoFlickデータベース(http://timetag.main.jp/nicoflick/index.php)
 
 ## 楽曲の著作権について
 ### NicoFlickは非営利（無料・無広告）で活動しています。
