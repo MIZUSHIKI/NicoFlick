@@ -50,11 +50,11 @@ class GameView: UIViewController, UITextFieldDelegate {
 
     //ゲーム  表示,判定 定数データ
     @IBOutlet var nodeLine: UIView!
+    var nodeLineFlameOriginY:CGFloat = 345.0
     static let GameViewWidth = 375.0 //
     static let FlickPointX = 50.0
     let gameviewWidth = GameViewWidth
     let flickPointX = FlickPointX
-    var flickPointY = 345.0
     let nodeSize = CGSize(width: 40, height: 40)
     let greatLine:[Double] = [-0.080, 0.080]
     let goodLine:[Double] = [-0.200, 0.200]
@@ -83,8 +83,21 @@ class GameView: UIViewController, UITextFieldDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+        //userData.lookedHelp = false
+        if userData.lookedHelp == false {
+            userData.lookedHelp = true
+            DispatchQueue.main.async {
+                //UI処理はメインスレッドの必要あり
+                print("HowToを表示")
+                self.performSegue(withIdentifier: "toHelpView", sender: self)
+            }
+        }else {
+            self.viewDidLoad2()
+        }
+    }
+    func viewDidLoad2() {
         //初期位置設定修正
-        flickPointY = Double(nodeLine.center.y - nodeSize.height/2)
+        nodeLineFlameOriginY = nodeLine.frame.origin.y
         comboFrameOriginY = comboView.frame.origin.y
         
         textField.delegate = self
@@ -93,6 +106,9 @@ class GameView: UIViewController, UITextFieldDelegate {
             borderView.isHidden = true
             borderMaxView.isHidden = true
         }
+        //ipad対策（対象じゃないけど）
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow(_:)), name: .UIKeyboardDidShow, object: nil)
+    
         //計算しておく
         xps = (gameviewWidth-flickPointX)*Double(selectLevel.speed)/300 //ノートが一秒間に進む距離
         
@@ -159,11 +175,11 @@ class GameView: UIViewController, UITextFieldDelegate {
                 //Label生成
                 let label = UILabel()
                 label.text = note.word
-                label.frame = CGRect(x: -200, y: flickPointY, width: 40, height: 40)
+                label.frame = CGRect(x: -200, y: 0, width: 40, height: 40)
                 label.textAlignment = NSTextAlignment.center
                 label.font = UIFont(name: "HiraKakuProN-W6", size: 30)//systemFont(ofSize: 40)
                 label.isHidden = true
-                self.view.addSubview(label)
+                self.nodeLine.addSubview(label)
                 //  labelを保持
                 note.label = label
                 //  文字の見た目を変える（フリックしない文字）
@@ -175,11 +191,11 @@ class GameView: UIViewController, UITextFieldDelegate {
                 //Label生成
                 let label = UILabel()
                 label.text = note.word
-                label.frame = CGRect(x: -200, y: flickPointY, width: 40, height: 40)
+                label.frame = CGRect(x: -200, y: 0, width: 40, height: 40)
                 label.textAlignment = NSTextAlignment.center
                 label.font = UIFont(name: "HiraKakuProN-W6", size: 30)//systemFont(ofSize: 40)
                 label.isHidden = true
-                self.view.addSubview(label)
+                self.nodeLine.addSubview(label)
                 //  labelを保持
                 note.label = label
                 //  文字の見た目を変える（フリックする文字）
@@ -206,17 +222,17 @@ class GameView: UIViewController, UITextFieldDelegate {
         // １つだけだと連続で判定されたとき複数表示されないので複製を作る(ImegeView化)
         for i in (0 ..< 5) {
             greatViews.append(self.greatView.GetImageView())
-            self.view.addSubview(greatViews[i])
+            self.nodeLine.addSubview(greatViews[i])
             goodViews.append(self.goodView.GetImageView())
-            self.view.addSubview(goodViews[i])
+            self.nodeLine.addSubview(goodViews[i])
             safeViews.append(self.safeView.GetImageView())
-            self.view.addSubview(safeViews[i])
+            self.nodeLine.addSubview(safeViews[i])
             badViews.append(self.badView.GetImageView())
-            self.view.addSubview(badViews[i])
+            self.nodeLine.addSubview(badViews[i])
             missViews.append(self.missView.GetImageView())
-            self.view.addSubview(missViews[i])
+            self.nodeLine.addSubview(missViews[i])
             flickViews.append(self.flickView.GetImageView())
-            self.view.addSubview(flickViews[i])
+            self.nodeLine.addSubview(flickViews[i])
         }
 
         //タイマー発動 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
@@ -228,14 +244,18 @@ class GameView: UIViewController, UITextFieldDelegate {
     }
     
     override func viewWillDisappear(_ animated: Bool) {
-        timer.invalidate()
+        if (timer != nil) {
+            timer.invalidate()
+        }
     }
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         //print("ViewController/viewDidDisappear/別の画面に遷移した直後")
-        moviePlayerViewController.player?.pause()
-        moviePlayerViewController.removeFromParentViewController()
+        if moviePlayerViewController != nil {
+            moviePlayerViewController.player?.pause()
+            moviePlayerViewController.removeFromParentViewController()
+        }
     }
     
     override func didReceiveMemoryWarning() {
@@ -604,6 +624,20 @@ class GameView: UIViewController, UITextFieldDelegate {
             })
         })
     }
+    //通知
+    //ipad対策（対象じゃないけど）
+    @objc private func keyboardDidShow(_ notification: Notification) {
+        guard let userInfo = notification.userInfo as? [String: Any] else {
+            return
+        }
+        guard let keyboardInfo = userInfo[UIKeyboardFrameEndUserInfoKey] as? NSValue else {
+            return
+        }
+        let keyboardSize = keyboardInfo.cgRectValue.size
+        if ( (UIApplication.shared.keyWindow?.bounds.height)! - keyboardSize.height ) < ( nodeLineFlameOriginY + nodeLine.bounds.size.height ){
+            nodeLine.frame.origin.y = (UIApplication.shared.keyWindow?.bounds.height)! - keyboardSize.height - nodeLine.bounds.size.height
+        }
+    }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){
@@ -655,10 +689,13 @@ class GameView: UIViewController, UITextFieldDelegate {
             }
             
         }else if segue.identifier == "fromResultView" {
-            
             //曲選択に戻る
             self.performSegue(withIdentifier: "fromGameView", sender: self)
 
+        }else if segue.identifier == "fromHowToView" {
+            //プレイ開始
+            self.viewDidLoad2()
+            
         }
     }
     

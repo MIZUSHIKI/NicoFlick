@@ -98,7 +98,7 @@ class UserData {
         get {
             let userScore = UserScore()
             if let us = userDefaults.object(forKey: "UserScore") as? NSData {
-                print("スコア 読み込み")
+                //print("スコア 読み込み")
                 userScore.scores = NSKeyedUnarchiver.unarchiveObject(with: us as Data) as! [Int:[Int]]
             }
             return userScore
@@ -107,7 +107,7 @@ class UserData {
             let data = NSKeyedArchiver.archivedData(withRootObject: userScore.scores)
             userDefaults.set(data, forKey: "UserScore")
             userDefaults.synchronize()
-            print("set")
+            //print("Score set")
         }
     }
     
@@ -116,7 +116,7 @@ class UserData {
         get {
             let playCounter = PlayCounter()
             if let pc = userDefaults.object(forKey: "PlayCount") as? NSData {
-                print("プレイ回数 読み込み")
+                //print("プレイ回数 読み込み")
                 playCounter.counter = NSKeyedUnarchiver.unarchiveObject(with: pc as Data) as! [Int:Int]
             }
             return playCounter
@@ -146,14 +146,14 @@ class UserData {
             userDefaults.set(selectCondition.tags, forKey: "SelectConditionsTags")
             userDefaults.set(selectCondition.sortItem, forKey: "SelectConditionsSortItem")
             userDefaults.synchronize()
-            print("保存したよ")
+            //print("保存したよ")
         }
     }
     
     var JudgeOffset:[Int:Float] {
         get{
             if let us = userDefaults.object(forKey: "JudgeOffset") as? NSData {
-                print("JudgeOffset 読み込み")
+                //print("JudgeOffset 読み込み")
                 return NSKeyedUnarchiver.unarchiveObject(with: us as Data) as! [Int:Float]
             }
             let judgeOffset:[Int:Float] = [:]
@@ -163,7 +163,7 @@ class UserData {
             let data = NSKeyedArchiver.archivedData(withRootObject: judgeOffset)
             userDefaults.set(data, forKey: "JudgeOffset")
             userDefaults.synchronize()
-            print("set")
+            //print("JudgeOffset set")
         }
     }
     
@@ -193,6 +193,18 @@ class UserData {
         }
     }
     
+    var lookedHelp:Bool {
+        get {
+            userDefaults.register(defaults: ["LookedHelp":false])
+            let lh = userDefaults.bool(forKey: "LookedHelp")
+            return lh
+        }
+        set(lh) {
+            userDefaults.set(lh, forKey: "LookedHelp")
+            userDefaults.synchronize()
+        }
+    }
+    
 }
 
 class UserScore {
@@ -207,6 +219,7 @@ class UserScore {
             //あった
             if us[SCORE] < score {
                 scores[levelID]?[SCORE] = score
+                //FalseはHighScoreを保存するけどデータベースには送信しない
                 if rank < Score.RankFalse {
                     scores[levelID]?[FLG] = 0 //スコア投稿済みかのフラグ
                 }else {
@@ -221,7 +234,12 @@ class UserScore {
             }
         }else {
             //なかった
-            scores[levelID] = [score, rank, 0]
+            //FalseはHighScoreを保存するけどデータベースには送信しない
+            if rank < Score.RankFalse {
+                scores[levelID] = [score, rank, 0]
+            }else {
+                scores[levelID] = [score, rank, 1]
+            }
             sup = true
         }
         //保存

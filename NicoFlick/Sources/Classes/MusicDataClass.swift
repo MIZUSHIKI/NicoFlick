@@ -143,16 +143,13 @@ class MusicDataLists{
             return
         }
         for music in musics {
-            print(music.movieURL)
-            print(movieURL)
+            //print(music.movieURL)
+            //print(movieURL)
             if music.movieURL == movieURL {
-                print("in")
+                //print("in")
                 music.levelIDs.insert(sqlID)
                 break
             }
-        }
-        for music in musics {
-            print(music.levelIDs)
         }
 
         if levels[movieURL] != nil {
@@ -517,8 +514,6 @@ class MusicDataLists{
             return selectLevels
         }
         for level in levels {
-            print("test")
-            print(level.sqlID)
             if level.description.pregMatche(pattern: "【編集中:?\\w*】"){
                 let id = level.description.pregMatche_firstString(pattern: "【編集中:?(\\w*)】")
                 if id != UserData.sharedInstance.UserID.prefix(8){

@@ -21,6 +21,8 @@
 		105B833B1EEED95900FC2244 /* badJingle.wav in Resources */ = {isa = PBXBuildFile; fileRef = 105B833A1EEED95900FC2244 /* badJingle.wav */; };
 		105B833D1EEEE2A300FC2244 /* GameMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B833C1EEEE2A300FC2244 /* GameMenu.swift */; };
 		105B833F1EEFDA3000FC2244 /* ResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B833E1EEFDA3000FC2244 /* ResultView.swift */; };
+		106C5FD12115DDAF00FF110B /* howto1.png in Resources */ = {isa = PBXBuildFile; fileRef = 106C5FD02115DDAF00FF110B /* howto1.png */; };
+		106C5FD32115E47A00FF110B /* howto2.png in Resources */ = {isa = PBXBuildFile; fileRef = 106C5FD22115E47900FF110B /* howto2.png */; };
 		1070F52320C3DA41008A5735 /* CryptoSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1070F52220C3DA41008A5735 /* CryptoSwift.framework */; };
 		1070F52520C412D0008A5735 /* CryptClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1070F52420C412D0008A5735 /* CryptClass.swift */; };
 		1070F52720C94E77008A5735 /* CachedMoviesClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1070F52620C94E77008A5735 /* CachedMoviesClass.swift */; };
@@ -88,6 +90,8 @@
 		105B833A1EEED95900FC2244 /* badJingle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = badJingle.wav; path = se/badJingle.wav; sourceTree = "<group>"; };
 		105B833C1EEEE2A300FC2244 /* GameMenu.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = GameMenu.swift; path = Sources/GameMenu.swift; sourceTree = "<group>"; };
 		105B833E1EEFDA3000FC2244 /* ResultView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ResultView.swift; path = Sources/ResultView.swift; sourceTree = "<group>"; };
+		106C5FD02115DDAF00FF110B /* howto1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = howto1.png; sourceTree = "<group>"; };
+		106C5FD22115E47900FF110B /* howto2.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = howto2.png; sourceTree = "<group>"; };
 		1070F52220C3DA41008A5735 /* CryptoSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CryptoSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1070F52420C412D0008A5735 /* CryptClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CryptClass.swift; path = Sources/Classes/CryptClass.swift; sourceTree = "<group>"; };
 		1070F52620C94E77008A5735 /* CachedMoviesClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CachedMoviesClass.swift; path = Sources/Classes/CachedMoviesClass.swift; sourceTree = "<group>"; };
@@ -191,6 +195,8 @@
 				10E1DBC01F8669A100C3BD33 /* comment.png */,
 				1005EC171F9358A1003B9E5B /* circle.png */,
 				10E1DBC81F8A76EA00C3BD33 /* flick.png */,
+				106C5FD02115DDAF00FF110B /* howto1.png */,
+				106C5FD22115E47900FF110B /* howto2.png */,
 			);
 			name = image;
 			sourceTree = "<group>";
@@ -425,8 +431,10 @@
 				10B49C911EB4B4EF000C79D3 /* Assets.xcassets in Resources */,
 				105B833B1EEED95900FC2244 /* badJingle.wav in Resources */,
 				10B49C8F1EB4B4EF000C79D3 /* Main.storyboard in Resources */,
+				106C5FD32115E47A00FF110B /* howto2.png in Resources */,
 				10E1DBC71F879D9300C3BD33 /* ranking.png in Resources */,
 				105B83351EEEAE1500FC2244 /* safeJingle.wav in Resources */,
+				106C5FD12115DDAF00FF110B /* howto1.png in Resources */,
 				1005EC181F9358A4003B9E5B /* circle.png in Resources */,
 				10E6C5EB2104E2A6004457F8 /* LaunchScreen.storyboard in Resources */,
 				10E1DBC21F86707C00C3BD33 /* comment.png in Resources */,

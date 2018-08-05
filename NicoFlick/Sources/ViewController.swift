@@ -43,7 +43,7 @@ class ViewController: UIViewController {
     
     @IBAction func infoButton(_ sender: UIButton) {
         let alert = UIAlertController(title:nil, message: "" +
-            "ニコFlickはフリック入力リズムゲーである 故「ミクフリック」の パクリ、オマージュ、リスペクト、難民先 作品です。\n" +
+            "NicoFlickはフリック入力リズムゲーである 故「ミクフリック」の パクリ、オマージュ、リスペクト、難民先 作品です。\n" +
             "\n\n" +
             "−2016年7月19日−\n　ミクフリック/02 サービス終了\n\n" +
             "−2017年9月29日−\n　ミクフリック(初代) サービス終了\n\n" +
