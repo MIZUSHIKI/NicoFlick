@@ -3,7 +3,7 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
 誰も作ってくれないから作りました。
 
 ## App Store
-申請中
+https://itunes.apple.com/jp/app/nicoflick/id1415478437?mt=8
 
 ## Xcodeで試す
 ページ上部の　Clone or download ▼ ＞ Open in Xcode
