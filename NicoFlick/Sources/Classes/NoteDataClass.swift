@@ -56,7 +56,7 @@ class Notes{
             //取得した分を削除する
             noteString = noteString.pregReplace(pattern: "^(\\[\\d\\d\\:\\d\\d[\\:|\\.]\\d\\d\\])(.*?)(\\[\\d\\d\\:\\d\\d[\\:|\\.]\\d\\d\\])", with: "$3")
             //もしタグ間で取得した文字が２文字以上なら補完
-            if ans[2].characters.count>1 {
+            if ans[2].count>1 {
                 var ans2:[String] = []
                 if ans[1].pregMatche(pattern: "\\[(\\d\\d)\\:(\\d\\d)[\\:|\\.](\\d\\d)\\]", matches: &ans2){}
                 let timeA = Double(ans2[1])!*60 + Double(ans2[2])! + Double(ans2[3])!/100
@@ -65,9 +65,9 @@ class Notes{
                 let timeB = Double(ans2[1])!*60 + Double(ans2[2])! + Double(ans2[3])!/100
 
                 var txtAns = ""
-                for (index,char) in ans[2].characters.enumerated() {
+                for (index,char) in ans[2].enumerated() {
                     if index>0 {
-                        let timeC = timeA+(timeB-timeA)/Double(ans[2].characters.count)*Double(index)
+                        let timeC = timeA+(timeB-timeA)/Double(ans[2].count)*Double(index)
                         txtAns += String.init(format: "[%02d:%02d:%02d]", Int(timeC/60), Int(timeC)%60, Int((timeC-Double(Int(timeC)))*100) )
                     }
                     txtAns += String(char)

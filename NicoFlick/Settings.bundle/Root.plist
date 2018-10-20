@@ -1,31 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-    <dict>
-        <key>PreferenceSpecifiers</key>
-        <array>
-            <dict>
-                <key>Type</key>
-                <string>PSGroupSpecifier</string>
-                <key>Title</key>
-                <string>License</string>
-            </dict>
-            <dict>
-                <key>Title</key>
-                <string>iCarousel</string>
-                <key>Type</key>
-                <string>PSChildPaneSpecifier</string>
-                <key>File</key>
-                <string>iCarousel</string>
-            </dict>
-            <dict>
-                <key>Title</key>
-                <string>CryptoSwift</string>
-                <key>Type</key>
-                <string>PSChildPaneSpecifier</string>
-                <key>File</key>
-                <string>CryptoSwift</string>
-            </dict>
-        </array>
-    </dict>
+<dict>
+	<key>PreferenceSpecifiers</key>
+	<array>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>License</string>
+		</dict>
+		<dict>
+			<key>Title</key>
+			<string>iCarousel</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+			<key>File</key>
+			<string>iCarousel</string>
+		</dict>
+		<dict>
+			<key>Title</key>
+			<string>CryptoSwift</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+			<key>File</key>
+			<string>CryptoSwift</string>
+		</dict>
+        <dict>
+            <key>Title</key>
+            <string>TwitterKit</string>
+            <key>Type</key>
+            <string>PSChildPaneSpecifier</string>
+            <key>File</key>
+            <string>TwitterKit</string>
+        </dict>
+	</array>
+</dict>
 </plist>

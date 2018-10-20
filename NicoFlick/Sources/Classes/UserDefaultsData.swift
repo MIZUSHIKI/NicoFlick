@@ -167,19 +167,6 @@ class UserData {
         }
     }
     
-    var createdNoteData:String {
-        get {
-            if let name = userDefaults.string(forKey: "UserName") {
-                return name
-            }
-            return ""
-        }
-        set(name) {
-            userDefaults.set(name, forKey: "UserName")
-            userDefaults.synchronize()
-        }
-    }
-    
     //cachedMoviesNum
     var cachedMovieNum:Int {
         get {
@@ -193,6 +180,7 @@ class UserData {
         }
     }
     
+    //プレイ方法、本体キーボード設定のヘルプを見たかどうか
     var lookedHelp:Bool {
         get {
             userDefaults.register(defaults: ["LookedHelp":false])
@@ -204,7 +192,19 @@ class UserData {
             userDefaults.synchronize()
         }
     }
-    
+    //５曲プレイ後に曲数拡張の仕方を見たかどうか
+    var lookedExtend:Bool {
+        get {
+            userDefaults.register(defaults: ["LookedExtend":false])
+            let le = userDefaults.bool(forKey: "LookedExtend")
+            return le
+        }
+        set(lh) {
+            userDefaults.set(lh, forKey: "LookedExtend")
+            userDefaults.synchronize()
+        }
+    }
+
 }
 
 class UserScore {

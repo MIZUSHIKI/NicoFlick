@@ -174,10 +174,10 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     
     //UITextView
     func textViewDidChange(_ textView: UITextView) {
-        if textView.text.characters.count > 64 {
+        if textView.text.count > 64 {
             textView.text = String(textView.text.prefix(64))
         }
-        commentCharCountLabel.text = "\(textView.text.characters.count)/64文字"
+        commentCharCountLabel.text = "\(textView.text.count)/64文字"
         
     }
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange,

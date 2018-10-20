@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import TwitterKit
 
 class ResultView: UIViewController {
     
@@ -111,10 +112,14 @@ class ResultView: UIViewController {
                 }
                 let str:String = String(data: data!, encoding: String.Encoding.utf8)!
                 print(str)
-                DispatchQueue.main.async {
-                    //メインスレッド
-                    //スコアデータを保存する(FLGを降ろして)
-                    userData.Score.setSendedFLG()
+                if str == "success score-add"{
+                    DispatchQueue.main.async {
+                        //メインスレッド
+                        //スコアデータを保存する(FLGを降ろして)
+                        userData.Score.setSendedFLG()
+                    }
+                }else {
+                    print("スコア送信失敗")
                 }
             }
             task.resume()
@@ -135,10 +140,14 @@ class ResultView: UIViewController {
                 }
                 let str:String = String(data: data!, encoding: String.Encoding.utf8)!
                 print(str)
-                DispatchQueue.main.async {
-                    //メインスレッド
-                    //プレイ回数データを保存する(初期化データになる)
-                    userData.PlayCount.setSended()
+                if str == "success playcount-add" {
+                    DispatchQueue.main.async {
+                        //メインスレッド
+                        //プレイ回数データを保存する(初期化データになる)
+                        userData.PlayCount.setSended()
+                    }
+                }else{
+                    print("playcount送信失敗")
                 }
             }
             task.resume()
@@ -151,6 +160,31 @@ class ResultView: UIViewController {
         // Dispose of any resources that can be recreated.
     }
     
+    @IBAction func TweetButton(_ sender: UIButton) {
+        print("tw")
+        //ツイート
+        let composer = TWTRComposer()
+        composer.setText("\n#NicoFlick") //初期テキスト
+        //composer.setURL(URL(string: "リンクのURL")) //リンク
+        composer.setImage(self.view.GetImage()) //画像
+        
+        composer.show(from: self) { (result) in
+            if result == TWTRComposerResult.done {
+                print("ツイートされた")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5){
+                    //UI処理はメインスレッドの必要あり
+                    print("al")
+                    let alert = UIAlertController(title:nil, message: "ツイートしました。", preferredStyle: UIAlertControllerStyle.alert)
+                    alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.cancel, handler: nil))
+                    self.present(alert, animated: true, completion: nil)
+                }
+            } else {
+                print("ツイートできんかった")
+            }
+        }
+        
+        return
+    }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){

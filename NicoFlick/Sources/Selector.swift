@@ -66,6 +66,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         carousel.reloadData()
 
         self.SetMusicToCarousel()
+        
+        self.showHowToExtendView()
     }
     func SetMusicToCarousel() {
         //Indicator くるくる開始
@@ -247,7 +249,29 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }
     }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
-
+    func showHowToExtendView(){
+        // ５曲以上プレイしたら初期楽曲以外のプレイ方法を表示する
+        if userData.lookedExtend == false {
+            var musicIDSet:Set<Int> = []
+            // スコアデータからプレイしたlevelIDを取得
+            for (sKey,_) in userData.Score.scores {
+                for ms in musicDatas.musics {
+                    // どの楽曲に含まれるか確認して記憶
+                    if ms.levelIDs.contains(sKey) {
+                        musicIDSet.insert(ms.sqlID)
+                    }
+                }
+            }
+            if  musicIDSet.count >= 5 {
+                userData.lookedExtend = true
+                DispatchQueue.main.async {
+                    //UI処理はメインスレッドの必要あり
+                    print("HowToを表示")
+                    self.performSegue(withIdentifier: "toHowToExtendView", sender: self)
+                }
+            }
+        }
+    }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){
@@ -266,6 +290,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             //ゲームスコアをピッカービューに反映するためCurrentLevelsを更新
             userScore = userData.Score //保存しているスコアデータの読み込み
             self.setCurrentLevels(index:self.carousel.currentItemIndex)
+            self.showHowToExtendView()
         }
         //print(segue.identifier)
     }

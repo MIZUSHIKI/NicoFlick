@@ -33,7 +33,6 @@ class ViewController: UIViewController {
         //Indicatorを作成
         activityIndicator = Indicator(center: self.view.center).view
         self.view.addSubview(activityIndicator)
-
     }
 
     override func didReceiveMemoryWarning() {
@@ -73,25 +72,6 @@ class ViewController: UIViewController {
         }
         
         if identifier == "toSelector" {
-            //初回設定メッセージ niconicoアカウント未登録なら促す
-            // ->アカウントなしでも再生できるようになった。
-            /*
-            let userData = UserData.sharedInstance
-            if userData.NicoMail == "" || userData.NicoPass == "" {
-                //settingsへ誘導
-                let alert = UIAlertController(title:nil, message: "ゲームを始める前にニコニコ動画のアカウントを入力してください", preferredStyle: UIAlertControllerStyle.alert)
-                let cancel = UIAlertAction(title: "OK", style: UIAlertActionStyle.cancel, handler: {
-                    (action: UIAlertAction!) in
-                    print("キャンセルをタップした時の処理")
-                    self.performSegue(withIdentifier: "toSetting", sender: self)
-                })
-                alert.addAction(cancel)
-                
-                self.present(alert, animated: true, completion: nil)
-                return false
-            }
-            */
-            
             //データをロードした後に遷移させるため、一度、遷移キャンセル。
             segueing = true //遷移中であることを記憶。しないと遷移中に連続タップで何回もデータロードされる。
             //Indicator くるくる開始

@@ -14,6 +14,10 @@
 		100BB4BC1F45F8AE00058AAD /* RankingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100BB4BB1F45F8AE00058AAD /* RankingView.swift */; };
 		100BB4C01F5BE48D00058AAD /* CommentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100BB4BF1F5BE48D00058AAD /* CommentView.swift */; };
 		100BB4C31F6D451600058AAD /* menu.png in Resources */ = {isa = PBXBuildFile; fileRef = 100BB4C21F6D451600058AAD /* menu.png */; };
+		101BD5672177782000259375 /* Twitter_Social_Icon_Rounded_Square_Color_x100.png in Resources */ = {isa = PBXBuildFile; fileRef = 101BD5662177781F00259375 /* Twitter_Social_Icon_Rounded_Square_Color_x100.png */; };
+		101BD56B217B2CEE00259375 /* howtoExtend2.png in Resources */ = {isa = PBXBuildFile; fileRef = 101BD568217B2CE900259375 /* howtoExtend2.png */; };
+		101BD56D217B2CEE00259375 /* howtoExtend3.png in Resources */ = {isa = PBXBuildFile; fileRef = 101BD56A217B2CED00259375 /* howtoExtend3.png */; };
+		101BD56F217B305A00259375 /* howtoExtend1.png in Resources */ = {isa = PBXBuildFile; fileRef = 101BD56E217B305900259375 /* howtoExtend1.png */; };
 		105B832D1EEE661700FC2244 /* UIViewExt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B832C1EEE661700FC2244 /* UIViewExt.swift */; };
 		105B832F1EEE91C000FC2244 /* SEAudioClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B832E1EEE91C000FC2244 /* SEAudioClass.swift */; };
 		105B83331EEEA55400FC2244 /* okJingle.wav in Resources */ = {isa = PBXBuildFile; fileRef = 105B83321EEEA55400FC2244 /* okJingle.wav */; };
@@ -83,6 +87,11 @@
 		100BB4BB1F45F8AE00058AAD /* RankingView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = RankingView.swift; path = Sources/RankingView.swift; sourceTree = "<group>"; };
 		100BB4BF1F5BE48D00058AAD /* CommentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = CommentView.swift; path = Sources/CommentView.swift; sourceTree = "<group>"; };
 		100BB4C21F6D451600058AAD /* menu.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = menu.png; path = image/menu.png; sourceTree = "<group>"; };
+		101BD564217350FE00259375 /* Twitter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Twitter.framework; path = System/Library/Frameworks/Twitter.framework; sourceTree = SDKROOT; };
+		101BD5662177781F00259375 /* Twitter_Social_Icon_Rounded_Square_Color_x100.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Twitter_Social_Icon_Rounded_Square_Color_x100.png; sourceTree = "<group>"; };
+		101BD568217B2CE900259375 /* howtoExtend2.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = howtoExtend2.png; sourceTree = "<group>"; };
+		101BD56A217B2CED00259375 /* howtoExtend3.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = howtoExtend3.png; sourceTree = "<group>"; };
+		101BD56E217B305900259375 /* howtoExtend1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = howtoExtend1.png; sourceTree = "<group>"; };
 		105B832C1EEE661700FC2244 /* UIViewExt.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = UIViewExt.swift; path = Sources/Classes/UIViewExt.swift; sourceTree = "<group>"; };
 		105B832E1EEE91C000FC2244 /* SEAudioClass.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SEAudioClass.swift; path = Sources/Classes/SEAudioClass.swift; sourceTree = "<group>"; };
 		105B83321EEEA55400FC2244 /* okJingle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = okJingle.wav; path = se/okJingle.wav; sourceTree = "<group>"; };
@@ -168,6 +177,7 @@
 		100260F31EBEA43B00D9E7A8 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				101BD564217350FE00259375 /* Twitter.framework */,
 				1070F52220C3DA41008A5735 /* CryptoSwift.framework */,
 				100260F41EBEA43B00D9E7A8 /* MediaPlayer.framework */,
 				0127DDC02C08ACEEE322A44F /* Pods_NicoFlick.framework */,
@@ -190,6 +200,7 @@
 		100BB4C11F6D44FB00058AAD /* image */ = {
 			isa = PBXGroup;
 			children = (
+				101BD5662177781F00259375 /* Twitter_Social_Icon_Rounded_Square_Color_x100.png */,
 				100BB4C21F6D451600058AAD /* menu.png */,
 				10E1DBC61F879D8B00C3BD33 /* ranking.png */,
 				10E1DBC01F8669A100C3BD33 /* comment.png */,
@@ -197,6 +208,9 @@
 				10E1DBC81F8A76EA00C3BD33 /* flick.png */,
 				106C5FD02115DDAF00FF110B /* howto1.png */,
 				106C5FD22115E47900FF110B /* howto2.png */,
+				101BD56E217B305900259375 /* howtoExtend1.png */,
+				101BD568217B2CE900259375 /* howtoExtend2.png */,
+				101BD56A217B2CED00259375 /* howtoExtend3.png */,
 			);
 			name = image;
 			sourceTree = "<group>";
@@ -426,10 +440,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				10E1DBC91F8A76F200C3BD33 /* flick.png in Resources */,
+				101BD56F217B305A00259375 /* howtoExtend1.png in Resources */,
+				101BD56D217B2CEE00259375 /* howtoExtend3.png in Resources */,
 				10710D852102C09B00468C6B /* Settings.bundle in Resources */,
 				100BB4C31F6D451600058AAD /* menu.png in Resources */,
 				10B49C911EB4B4EF000C79D3 /* Assets.xcassets in Resources */,
 				105B833B1EEED95900FC2244 /* badJingle.wav in Resources */,
+				101BD5672177782000259375 /* Twitter_Social_Icon_Rounded_Square_Color_x100.png in Resources */,
 				10B49C8F1EB4B4EF000C79D3 /* Main.storyboard in Resources */,
 				106C5FD32115E47A00FF110B /* howto2.png in Resources */,
 				10E1DBC71F879D9300C3BD33 /* ranking.png in Resources */,
@@ -438,6 +455,7 @@
 				1005EC181F9358A4003B9E5B /* circle.png in Resources */,
 				10E6C5EB2104E2A6004457F8 /* LaunchScreen.storyboard in Resources */,
 				10E1DBC21F86707C00C3BD33 /* comment.png in Resources */,
+				101BD56B217B2CEE00259375 /* howtoExtend2.png in Resources */,
 				105B83331EEEA55400FC2244 /* okJingle.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -480,9 +498,12 @@
 			files = (
 			);
 			inputPaths = (
+				"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh",
+				"${PODS_ROOT}/TwitterKit/iOS/TwitterKit.framework/TwitterKitResources.bundle",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputPaths = (
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/TwitterKitResources.bundle",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -512,10 +533,14 @@
 			inputPaths = (
 				"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-frameworks.sh",
 				"${BUILT_PRODUCTS_DIR}/CryptoSwift/CryptoSwift.framework",
+				"${PODS_ROOT}/TwitterCore/iOS/TwitterCore.framework",
+				"${PODS_ROOT}/TwitterKit/iOS/TwitterKit.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/CryptoSwift.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/TwitterCore.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/TwitterKit.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -811,7 +836,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -829,7 +854,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";

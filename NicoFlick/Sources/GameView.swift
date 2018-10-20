@@ -103,8 +103,11 @@ class GameView: UIViewController, UITextFieldDelegate {
         textField.delegate = self
         //textField.returnKeyType = .done
         if selectLevel.level>10 {
-            borderView.isHidden = true
             borderMaxView.isHidden = true
+        }
+        //se対策
+        if UIScreen.main.bounds.size.height <= 568 {
+            borderMaxView.frame.origin.y = nodeLineFlameOriginY + 42
         }
         //ipad対策（対象じゃないけど）
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow(_:)), name: .UIKeyboardDidShow, object: nil)
@@ -123,20 +126,6 @@ class GameView: UIViewController, UITextFieldDelegate {
             //session.dataTas後のサブスレッド内でviewを処理させると表示関連が後回しになるので、メインスレッドでaddSubviewする。
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
-                /*
-                //動画再生準備
-                let url = URL(string: nicodougaURL)
-                let playerItem = AVPlayerItem(url: url!)
-                let moviePlayer = AVPlayer(playerItem: playerItem)
-                self.moviePlayerViewController = AVPlayerViewController()
-                self.moviePlayerViewController.player = moviePlayer
-                //self.moviePlayerViewController.view.tag = 25
-                //self.moviePlayerViewController.view.frame = CGRect(x: 0, y: 20, width: 375, height: 200)
-                //  コントローラ非表示（？）
-                self.moviePlayerViewController.showsPlaybackControls = false
-                //  viewのタッチアクションを下に透過（スルー）させるようにして、ムービーViewには何も干渉出来ないようにする
-                self.moviePlayerViewController.view.isUserInteractionEnabled = false
- */
                 self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!)
                 //  add
                 self.view.addSubview(self.moviePlayerViewController.view)
