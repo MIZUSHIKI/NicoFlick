@@ -66,31 +66,19 @@ class Settings: UIViewController {
 
         //Indicator くるくる開始
         activityIndicator.startAnimating()
-        activityIndicator.isHidden = false
         
         //データベースに登録
-        let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
-        let body = "req=userName-add&id="+userData.UserID+"&name="+textfieldName.text!
-        req.httpMethod = "POST"
-        req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
-            if error != nil {
-                return
-            }
-            //let str:String = String(data: data!, encoding: String.Encoding.utf8)!
-            //print(str)
+        ServerDataHandler().postUserName(name: textfieldName.text!, userID: userData.UserID, callback: {
+            
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
                 //  Indicator隠す
                 self.activityIndicator.stopAnimating()
-                self.activityIndicator.isHidden=true
                 //  データ保存
                 self.userData.UserName = self.textfieldName.text!
             }
-        }
-        task.resume()
+        })
+        
 
     }
     @IBAction func cachedMovieNumSlider(_ sender: UISlider) {

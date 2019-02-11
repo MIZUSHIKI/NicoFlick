@@ -21,6 +21,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     @IBOutlet var levelSelectPicker: UIPickerView!
     @IBOutlet var buttonRankingComment: UIButton!
     @IBOutlet var labelRankingComment: UILabel!
+    @IBOutlet var EditButtonView: UIView!
     
     
     //保存データ
@@ -42,6 +43,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     
     //遷移時に受け取り
     var returnToMeData:Int = 0
+    var password = ""
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -71,8 +73,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     }
     func SetMusicToCarousel() {
         //Indicator くるくる開始
-        activityIndicator.startAnimating()
-        activityIndicator.isHidden = false
+        DispatchQueue.main.async {
+            self.activityIndicator.startAnimating()
+        }
         //現在設定されているタグ・ソートで選択された楽曲を保持。
         // ネット接続処理を挟む可能性があるからコールバック。（あとクルクルさせとく）
         musicDatas.getSelectMusics(callback: { (musics) in
@@ -82,7 +85,6 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 //UI処理はメインスレッドの必要あり
                 //Indicator隠す
                 self.activityIndicator.stopAnimating()
-                self.activityIndicator.isHidden=true
                 
                 //iCarousel再描画
                 self.carousel.reloadData()
@@ -214,12 +216,23 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         //ランク
         var rank=""
         var score=""
-        if let us = userScore.scores[currentLevels[row].sqlID] {
-            score = "HighScore: "+String(us[0])
-            rank = Score.RankStr[us[1]]
-            if rank == "False" {
-                rank = ""
+        if !currentLevels[row].isEditing/*isMyEditing()*/ {
+            if let us = userScore.scores[currentLevels[row].sqlID] {
+                score = "HighScore: "+String(us[0])
+                rank = Score.RankStr[us[1]]
+                if rank == "False" {
+                    rank = ""
+                }
             }
+        }else{
+            rank = "編集中"
+            score = "only you can see."
+        }
+        if currentLevels.count > levelSelectPicker.selectedRow(inComponent: 0)
+            && currentLevels[levelSelectPicker.selectedRow(inComponent: 0)].isEditing/*isMyEditing()*/ {
+                EditButtonView.isHidden = false
+        }else {
+            EditButtonView.isHidden = true
         }
         let labelView4 = UILabel()
         labelView4.text = rank
@@ -243,9 +256,15 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         return myView
     }
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
-        //スピード反映
         if currentLevels.count > row {
+            //スピード反映
             levelSpeed.text = "speed: "+String(currentLevels[row].speed)
+            
+            if !currentLevels[row].isEditing/*isMyEditing()*/ {
+                EditButtonView.isHidden = true
+            }else {
+                EditButtonView.isHidden = false
+            }
         }
     }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
@@ -275,6 +294,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){
+        print("returnToMe")
         if segue.identifier == "fromSelectorMenu" {
             print("back from menu")
             //現在設定されているタグで選択された楽曲を保持する
@@ -291,6 +311,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             userScore = userData.Score //保存しているスコアデータの読み込み
             self.setCurrentLevels(index:self.carousel.currentItemIndex)
             self.showHowToExtendView()
+        }else if segue.identifier == "fromEditView" {
+            print("back from editview")
+            self.SetMusicToCarousel()
         }
         //print(segue.identifier)
     }
@@ -339,6 +362,14 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             //let selectorMenuController:SelectorMenu = destinationNavigationController.topViewController as! SelectorMenu
             //let resultViewController:ResultView = segue.destination as! ResultView
             selectorMenuController.selectorController = self
+            
+        }else if segue.identifier == "toEditor" {
+            //現在選択中のデータをEditorViewに渡す
+            let editorViewController:EditorView = segue.destination as! EditorView
+            editorViewController.selectMusic = currentMusics[indexCarousel]
+            editorViewController.selectLevel = currentLevels[indexPicker]
+            editorViewController.password = password
+            
         }
     }
     //遷移の許可
@@ -369,37 +400,59 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 // データが入っていなかったので取得する //
                 //データをロードした後に遷移させるため、一度、遷移キャンセル。
                 segueing = true
-                //データベース接続、noteDataロード。
-                let session = URLSession(configuration: URLSessionConfiguration.default)
-                let url = URL( string:AppDelegate.PHPURL+"?req=timetag&id="+String(currentLevels[indexPicker].sqlID) )!
-                let task = session.dataTask(with: url){(data,responce,error) in
-                    if error != nil {
-                        print("notesLoad-error")
-                        self.segueing = false
-                        return
-                    }
-                    let jsonDic = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Dictionary<String,String>
-                    //musicDatasに保存（次回からロードしなくなる）
-                    self.musicDatas.levels[selectMovieURL]?.sorted{ $0.level < $1.level }[self.indexPicker].noteData = jsonDic["notes"]
-                    
+                
+                ServerDataHandler().DownloadTimetag(level: currentLevels[indexPicker]) { (error) in
+                    self.segueing = false
                     DispatchQueue.main.async {
                         //UI処理はメインスレッドの必要あり
                         //  Indicator隠す
                         self.activityIndicator.stopAnimating()
-                        self.activityIndicator.isHidden=true
+                        if let error = error {
+                            print(error) //なんか失敗した。
+                            return
+                        }
                         //  遷移指示。
                         self.performSegue(withIdentifier: "toGameView", sender: self)
-                        self.segueing = false
                     }
                 }
-                task.resume()
-                
                 //Indicator くるくる開始
                 activityIndicator.startAnimating()
-                activityIndicator.isHidden = false
                 
                 return false
             }
+            
+        }else if identifier == "toEditor" {
+            password = ""
+            let alert = UIAlertController(title:"パスワード", message: nil, preferredStyle: UIAlertControllerStyle.alert)
+            alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: {
+                (action: UIAlertAction!) in
+                //print("はいをタップした時の処理")
+                //Indicator くるくる開始
+                self.activityIndicator.startAnimating()
+                ServerDataHandler().checkLevelPassword(id: self.currentLevels[self.levelSelectPicker.selectedRow(inComponent: 0)].sqlID, pass: alert.textFields![0].text!, callback: { (bool) in
+                    //passCheck
+                    DispatchQueue.main.async {
+                        //  Indicator隠す
+                        self.activityIndicator.stopAnimating()
+                        if bool {
+                            self.password = alert.textFields![0].text!
+                            self.performSegue(withIdentifier: "toEditor", sender: self)
+                        }else {
+                            let alert = UIAlertController(title:nil, message: "パスワードが違います", preferredStyle: UIAlertControllerStyle.alert)
+                            alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: nil))
+                            self.present(alert, animated: true, completion: nil)
+                        }
+                    }
+                })
+                
+            }))
+            alert.addAction((UIAlertAction(title: "キャンセル", style: UIAlertActionStyle.cancel, handler: nil)))
+            //textfiledの追加
+            alert.addTextField(configurationHandler: {(textField: UITextField!) in
+                textField.isSecureTextEntry = true // for password input
+            })
+            self.present(alert, animated: true, completion: nil)
+            return false
         }
         return true
     }

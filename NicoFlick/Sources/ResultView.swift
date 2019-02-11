@@ -72,7 +72,7 @@ class ResultView: UIViewController {
         self.rank.text = noteData.getJudgeRankStr()
         
         //【編集中】データの場合、スコア等は保存・送信しないで終わる
-        if selectLevel.description.pregMatche(pattern: "【編集中:?\\w*】") {
+        if selectLevel.isEditing {
             self.HiScoreUpdate.text = "編集中データのため保存・送信は行われません。"
             self.HiScoreUpdate.isHidden = false
             return
@@ -96,61 +96,24 @@ class ResultView: UIViewController {
         //スコアをデータベースに送信する(送信済みでないもの)
         let scoreset = userData.Score.getSendScoresStr() //送信するデータ
         if scoreset != "" {
-            //  ユーザーID
-            let uuid = userData.UserID
-            //  登録
-            let session = URLSession(configuration: URLSessionConfiguration.default)
-            let url = URL(string:AppDelegate.PHPURL)!
-            var req = URLRequest(url: url)
-            let body = "req=score-add&userID=\(uuid)&scoreset=\(scoreset)&pass=\(Crypt.init().encriptx_urlsafe(plainText: "ニコFlick", pass: userData.UserID))"
-            req.httpMethod = "POST"
-            req.httpBody = body.data(using: String.Encoding.utf8)
-            print(body)
-            let task = session.dataTask(with: req){(data,responce,error) in
-                if (error != nil) {
-                    return
-                }
-                let str:String = String(data: data!, encoding: String.Encoding.utf8)!
-                print(str)
-                if str == "success score-add"{
-                    DispatchQueue.main.async {
-                        //メインスレッド
-                        //スコアデータを保存する(FLGを降ろして)
-                        userData.Score.setSendedFLG()
-                    }
-                }else {
-                    print("スコア送信失敗")
+            //Score 送信
+            ServerDataHandler().postScoreData(scoreset: scoreset, userID: userData.UserID) { (bool) in
+                if bool {
+                    //スコアデータを保存する(FLGを降ろして)
+                    userData.Score.setSendedFLG()
                 }
             }
-            task.resume()
         }
         //プレイ回数をデータベースに送信する(送信済みでないもの)
         let playcountset = userData.PlayCount.getSendPlayCountStr() //送信するデータ
         if playcountset != "" {
-            //  登録
-            let session = URLSession(configuration: URLSessionConfiguration.default)
-            let url = URL(string:AppDelegate.PHPURL)!
-            var req = URLRequest(url: url)
-            let body = "req=playcount-add&playcountset=\(playcountset)"
-            req.httpMethod = "POST"
-            req.httpBody = body.data(using: String.Encoding.utf8)
-            let task = session.dataTask(with: req){(data,responce,error) in
-                if (error != nil) {
-                    return
-                }
-                let str:String = String(data: data!, encoding: String.Encoding.utf8)!
-                print(str)
-                if str == "success playcount-add" {
-                    DispatchQueue.main.async {
-                        //メインスレッド
-                        //プレイ回数データを保存する(初期化データになる)
-                        userData.PlayCount.setSended()
-                    }
-                }else{
-                    print("playcount送信失敗")
+            // プレイ回数 送信
+            ServerDataHandler().postPlayCountData(playcountset: playcountset) { (bool) in
+                if bool {
+                    //プレイ回数データを保存する(初期化データになる)
+                    userData.PlayCount.setSended()
                 }
             }
-            task.resume()
         }
 
     }

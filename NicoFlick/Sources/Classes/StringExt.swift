@@ -7,7 +7,7 @@ extension String {
     }
     
     //正規表現の検索をします
-    func pregMatche(pattern: String, options: NSRegularExpression.Options = []) -> Bool {
+    func pregMatche(pattern: String, options: NSRegularExpression.Options = [NSRegularExpression.Options.dotMatchesLineSeparators,NSRegularExpression.Options.anchorsMatchLines]) -> Bool {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
             return false
         }
@@ -16,7 +16,7 @@ extension String {
     }
     
     //正規表現の検索結果を利用できます
-    func pregMatche(pattern: String, options: NSRegularExpression.Options = [], matches: inout [String]) -> Bool {
+    func pregMatche(pattern: String, options: NSRegularExpression.Options = [NSRegularExpression.Options.dotMatchesLineSeparators,NSRegularExpression.Options.anchorsMatchLines], matches: inout [String]) -> Bool {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
             return false
         }
@@ -31,7 +31,7 @@ extension String {
         return results.count > 0
     }
     //正規表現の検索結果を利用できます
-    func pregMatche_firstString(pattern: String, options: NSRegularExpression.Options = []) -> String {
+    func pregMatche_firstString(pattern: String, options: NSRegularExpression.Options = [NSRegularExpression.Options.dotMatchesLineSeparators,NSRegularExpression.Options.anchorsMatchLines]) -> String {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
             return ""
         }
@@ -53,12 +53,12 @@ extension String {
     }
     
     //正規表現の置換をします
-    func pregReplace(pattern: String, with: String, options: NSRegularExpression.Options = []) -> String {
+    func pregReplace(pattern: String, with: String, options: NSRegularExpression.Options = [NSRegularExpression.Options.dotMatchesLineSeparators,NSRegularExpression.Options.anchorsMatchLines]) -> String {
         let regex = try! NSRegularExpression(pattern: pattern, options: options)
         return regex.stringByReplacingMatches(in: self, options: [], range: NSMakeRange(0, self.count), withTemplate: with)
     }
     
-    func isHiragana() -> Bool {
+    var isHiragana: Bool {
         for c in unicodeScalars {
             if c.value >= 0x3041 && c.value <= 0x3096 {
                 //ひらがな
@@ -70,7 +70,7 @@ extension String {
         return true
     }
     
-    func isKatakana() -> Bool {
+    var isKatakana: Bool {
         for c in unicodeScalars {
             if (c.value >= 0x30A1 && c.value <= 0x30F6) || c.value == 0x30FC {
                 //カタカナ
@@ -80,6 +80,11 @@ extension String {
             }
         }
         return true
+    }
+    /// 「漢字」かどうか
+    var isKanji: Bool {
+        let range = "^[\u{3005}\u{3007}\u{303b}\u{3400}-\u{9fff}\u{f900}-\u{faff}\u{20000}-\u{2ffff}]+$"
+        return NSPredicate(format: "SELF MATCHES %@", range).evaluate(with: self)
     }
 
     mutating func htmlDecode() {
@@ -99,6 +104,50 @@ extension String {
             print("Error: \(error)")
             
         }
+    }
+    static func secondsToTimetag(seconds:Double, noBrackets:Bool = false) -> String {
+        let format = noBrackets ? "%02d:%02d:%02d" : "[%02d:%02d:%02d]"
+        let rmirisec = Int(round(seconds * 100)) * 10
+        return String.init(format: format, Int(rmirisec/60000), Int((rmirisec % 60000) / 1000), Int((rmirisec % 1000) / 10) )
+    }
+    static func secondsToDotTimetag(seconds:Double, noBrackets:Bool = false) -> String {
+        let format = noBrackets ? "%02d:%02d.%02d" : "[%02d:%02d.%02d]"
+        let rmirisec = Int(round(seconds * 100)) * 10
+        return String.init(format: format, Int(rmirisec/60000), Int((rmirisec % 60000) / 1000), Int((rmirisec % 1000) / 10) )
+    }
+    func timetagToSeconds() -> Double {
+        var ans:[String] = []
+        print(self)
+        if self.pregMatche(pattern: "\\[(\\d\\d)\\:(\\d\\d)[\\:|\\.](\\d\\d)\\]", matches: &ans){
+            return Double(ans[1])!*60 + Double(ans[2])! + Double(ans[3])!/100
+        }
+        return -0.001
+    }
+    var isDotTimetag : Bool {
+        return self.pregMatche(pattern: "\\[\\d\\d\\:\\d\\d\\.\\d\\d\\]")
+    }
+    
+    func kanjiToHiragana() -> String {
+        var text = ""
+        var tameoki = ""
+        let words = self.map { String($0) }
+        for word in words {
+            print(word)
+            if word.isKanji || word.isHiragana {
+                tameoki += word
+            }else{
+                if tameoki != "" {
+                    text += TextConverter.convert(tameoki, to: .hiragana)
+                    tameoki = ""
+                }
+                text += word
+            }
+        }
+        if tameoki != "" {
+            text += TextConverter.convert(tameoki, to: .hiragana)
+            tameoki = ""
+        }
+        return text
     }
 }
 
@@ -138,6 +187,46 @@ extension String {
     ///     "aa bb cc dd 00 11 22 33".hexData /// aabbccdd 00112233
     var hexData : Data {
         return Data(convertHex(self.unicodeScalars, i: self.unicodeScalars.startIndex, appendTo: []))
+    }
+}
+
+final class TextConverter {
+    private init() {}
+    enum JPCharacter {
+        case hiragana
+        case katakana
+        fileprivate var transform: CFString {
+            switch self {
+            case .hiragana:
+                return kCFStringTransformLatinHiragana
+            case .katakana:
+                return kCFStringTransformLatinKatakana
+            }
+        }
+    }
+    
+    static func convert(_ text: String, to jpCharacter: JPCharacter) -> String {
+        let input = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var output = ""
+        let locale = CFLocaleCreate(kCFAllocatorDefault, CFLocaleCreateCanonicalLanguageIdentifierFromString(kCFAllocatorDefault, "ja" as CFString))
+        let range = CFRangeMake(0, input.utf16.count)
+        let tokenizer = CFStringTokenizerCreate(
+            kCFAllocatorDefault,
+            input as CFString,
+            range,
+            kCFStringTokenizerUnitWordBoundary,
+            locale
+        )
+        
+        var tokenType = CFStringTokenizerGoToTokenAtIndex(tokenizer, 0)
+        while (tokenType.rawValue != 0) {
+            if let text = (CFStringTokenizerCopyCurrentTokenAttribute(tokenizer, kCFStringTokenizerAttributeLatinTranscription) as? NSString).map({ $0.mutableCopy() }) {
+                CFStringTransform((text as! CFMutableString), nil, jpCharacter.transform, false)
+                output.append(text as! String)
+            }
+            tokenType = CFStringTokenizerAdvanceToNextToken(tokenizer)
+        }
+        return output
     }
 }
 

@@ -65,7 +65,7 @@ class userNameDataLists {
         }
     }
     
-    func getLastUpdateTimeUserName() -> Int {
+    func getLastUpdateTime() -> Int {
         var time = 0
         for (_,userName) in userNames {
             if time < userName.sqlUpdateTime {
@@ -76,11 +76,9 @@ class userNameDataLists {
     }
 }
 
-class PostedDataLists {
-    
-    static let sharedInstance = PostedDataLists()
+class ScoreDataLists {
+    static let sharedInstance = ScoreDataLists()
     var scores:[scoreData] = []
-    var comments:[commentData] = []
     
     func setScore(sqlID:Int, levelID:Int, score:Int, userID:String, updateTime:Int) {
         for index in 0 ..< scores.count {
@@ -100,6 +98,20 @@ class PostedDataLists {
         scoredata.sqlUpdateTime = updateTime
         scores.append(scoredata)
     }
+    func getLastUpdateTime() -> Int {
+        var time = 0
+        for score in scores {
+            if time < score.sqlUpdateTime {
+                time = score.sqlUpdateTime
+            }
+        }
+        return time
+    }
+}
+class CommnetDataLists {
+    static let sharedInstance = CommnetDataLists()
+    var comments:[commentData] = []
+    
     func setComment(sqlID:Int, levelID:Int, comment:String, userID:String, updateTime:Int) {
         for index in 0 ..< comments.count {
             if comments[index].sqlID == sqlID {
@@ -118,17 +130,7 @@ class PostedDataLists {
         commentdata.sqlUpdateTime = updateTime
         comments.append(commentdata)
     }
-
-    func getLastUpdateTimeScore() -> Int {
-        var time = 0
-        for score in scores {
-            if time < score.sqlUpdateTime {
-                time = score.sqlUpdateTime
-            }
-        }
-        return time
-    }
-    func getLastUpdateTimeComment() -> Int {
+    func getLastUpdateTime() -> Int {
         var time = 0
         for comment in comments {
             if time < comment.sqlUpdateTime {

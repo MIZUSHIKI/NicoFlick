@@ -110,6 +110,9 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
     @IBAction func xButton(_ sender: UIButton) {
         textField.text = ""
     }
+    @IBAction func atSyokiGakkyoku(_ sender: UIButton) {
+        textField.text = "@初期楽曲"
+    }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {

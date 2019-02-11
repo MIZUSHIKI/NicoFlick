@@ -40,7 +40,16 @@ class Notes{
         noteString = noteString.pregReplace(pattern: "\r\n", with: "\r")
         noteString = noteString.pregReplace(pattern: "\n", with: "\r")
         noteString = noteString.pregReplace(pattern: "\r", with: "改")
-        //@タグは全消去
+        //@タグは全消去(NicoFlick=2(atTagExpMode.PreNicoFlickDB)のとき Offsetだけ反映)
+        var offset = 0
+        print(noteString)
+        if noteString.pregMatche(pattern: "@NicoFlick\\s*=\\s*2(改|$)") {
+            let offset_str = noteString.pregMatche_firstString(pattern: "@Offset\\s*=\\s*(.*?)(改|$)")
+            if offset_str != "" {
+                offset = Int(offset_str)!
+            }
+        }
+        print("offset= \(offset)")
         noteString = noteString.pregReplace(pattern: "@.*?(改|$)", with: "")
         //先頭にタイムタグが付いてなかったら付いてるところまで削る
         noteString = noteString.pregReplace(pattern: "^.*?(\\[\\d\\d\\:\\d\\d[\\:|\\.]\\d\\d\\])", with: "$1")
@@ -99,14 +108,12 @@ class Notes{
                 let oneWord = ans[i*3+2]
 
                 //もしoneWordに問題なければ格納していく
-                if oneWord != "改" && (oneWord.isHiragana() || oneWord.isKatakana()) {
-                    let note = Note()
-                    //文字
-                    note.word = oneWord
+                if oneWord != "改" && (oneWord.isHiragana || oneWord.isKatakana) {
+                    let note = Note(word: oneWord) //文字
                     //時間
                     var ans2:[String] = []
                     if timetag.pregMatche(pattern: "\\[(\\d\\d)\\:(\\d\\d)[\\:|\\.](\\d\\d)\\]", matches: &ans2){}
-                    note.time = Double(ans2[1])!*60 + Double(ans2[2])! + Double(ans2[3])!/100
+                    note.time = Double(ans2[1])!*60 + Double(ans2[2])! + Double(ans2[3])!/100 + Double(offset)/1000
                     //フリックNoteかどうか([00:00.00]かどうか)
                     note.isFlickable = timetag.contains(".")
                     if oneWord == "ー" {
@@ -248,6 +255,10 @@ class Note{
     var judge:Int! = Note.NORMAL
     
     var label:UILabel!
+    
+    init(word:String){
+        self.word = word
+    }
     
     func setFlickableFont(){
         label.textColor = UIColor.black

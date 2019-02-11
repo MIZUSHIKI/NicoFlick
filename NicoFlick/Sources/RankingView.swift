@@ -36,30 +36,20 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
         self.view.addSubview(activityIndicator)
         //Indicator くるくる開始
         activityIndicator.startAnimating()
-        activityIndicator.isHidden = false
         
-        //登録
-        //データベース接続、まずmusicデータロード。
-        let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL+"?req=score&levelID=\(selectLevel.sqlID!)")!
-        print(url)
-        let task = session.dataTask(with: url){(data,responce,error) in
-            
-            if (error == nil) {
-                //print(data)
-                //print(String(data: data!, encoding: .utf8))
-                self.rankingData = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
-                DispatchQueue.main.async {
-                    //UI処理はメインスレッドの必要あり
-                    //Indicator隠す
-                    self.activityIndicator.stopAnimating()
-                    self.activityIndicator.isHidden=true
+        //スコアデータの取得
+        ServerDataHandler().getScoreData(levelID: selectLevel.sqlID!, callback: { (data) in
+            DispatchQueue.main.async {
+                //UI処理はメインスレッドの必要あり
+                //Indicator隠す
+                self.activityIndicator.stopAnimating()
+                if let data = data {
+                    self.rankingData = data
                     //テーブル再描画
                     self.rankTable.reloadData()
                 }
             }
-        }
-        task.resume()
+        })
  
     }
     

@@ -41,7 +41,6 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         self.view.addSubview(activityIndicator)
         //Indicator くるくる開始
         activityIndicator.startAnimating()
-        activityIndicator.isHidden = false
         
         //テーブルビュー設定
         commentTable.estimatedRowHeight = 50
@@ -52,24 +51,18 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         commentTextView.returnKeyType = .done
         
         //データベース接続
-        let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL+"?req=comment&levelID=\(selectLevel.sqlID!)")!
-        print(url)
-        let task = session.dataTask(with: url){(data,responce,error) in
-            
-            if (error == nil) {
-                self.commentData = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
-                DispatchQueue.main.async {
-                    //UI処理はメインスレッドの必要あり
-                    //Indicator隠す
-                    self.activityIndicator.stopAnimating()
-                    self.activityIndicator.isHidden=true
+        ServerDataHandler().getCommentData(levelID: selectLevel.sqlID) { (data) in
+            DispatchQueue.main.async {
+                //UI処理はメインスレッドの必要あり
+                //Indicator隠す
+                self.activityIndicator.stopAnimating()
+                if let data = data {
+                    self.commentData = data
                     //テーブル再描画
                     self.commentTable.reloadData()
                 }
             }
         }
-        task.resume()
         
         commentTable.reloadData()
         
@@ -252,47 +245,24 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         
         //Indicator くるくる開始
         activityIndicator.startAnimating()
-        activityIndicator.isHidden = false
         
         //  ユーザーID
         let userData = UserData.sharedInstance
-        let uuid = userData.UserID
-        //  登録
-        let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
-        let urlEncodeComment:String = commentTextView.text.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)!
-        let body = "req=comment-add&userID=\(uuid)&levelID=\(selectLevel.sqlID!)&comment=\(urlEncodeComment)"
-        print(body)
-        req.httpMethod = "POST"
-        req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
-            if (error != nil) {
-                return
-            }
-            //データベース接続
-            let session = URLSession(configuration: URLSessionConfiguration.default)
-            let url = URL(string:AppDelegate.PHPURL+"?req=comment&levelID=\(self.selectLevel.sqlID!)")!
-            print(url)
-            let task = session.dataTask(with: url){(data,responce,error) in
-                if (error != nil) {
-                    return
-                }
-                self.commentData = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+        // コメント投稿
+        ServerDataHandler().postComment(comment: commentTextView.text, levelID: selectLevel.sqlID, userID: userData.UserID) {
+            // 再度データベースからコメントデータを取得してリストを更新
+            ServerDataHandler().getCommentData(levelID: self.selectLevel.sqlID) { (data) in
                 DispatchQueue.main.async {
                     //UI処理はメインスレッドの必要あり
                     //Indicator隠す
                     self.activityIndicator.stopAnimating()
-                    self.activityIndicator.isHidden=true
-                    //テーブル再描画
-                    self.commentTable.reloadData()
-                    //リザルトビューの変数に書き込み
-                    self.resultViewController.commentPostable = false
+                    if let data = data {
+                        self.commentData = data
+                        //テーブル再描画
+                        self.commentTable.reloadData()
+                    }
                 }
             }
-            task.resume()
         }
-        task.resume()
-
     }
 }

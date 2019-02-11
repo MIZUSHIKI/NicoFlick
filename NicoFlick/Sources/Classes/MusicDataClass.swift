@@ -68,6 +68,15 @@ class levelData {
         }
         return star
     }
+    var isEditing: Bool {
+        return description.pregMatche(pattern: "【編集中:?\\w*】")
+    }
+    var isMyEditing: Bool {
+        if isEditing{
+            return ( description.pregMatche_firstString(pattern: "【編集中:?(\\w*)】") == MusicDataLists.sharedInstance.userID.prefix(8) )
+        }
+        return false
+    }
 }
 
 
@@ -78,6 +87,8 @@ class MusicDataLists{
     var musics:[musicData] = []
     var levels: [String:[levelData]] = [:]
     var taglist: [String:Int] = [:] //musicのタグまとめ。[tag:count]
+    
+    var userID: String = ""
     
     //表示する楽曲を tagで抽出、ソートする
     //var selectCondition = SelectConditions() user
@@ -359,32 +370,14 @@ class MusicDataLists{
             break
         case "最近ハイスコアが更新された曲順":
             //スコアデータ更新取得
-            let postedDatas:PostedDataLists = PostedDataLists.sharedInstance
-            //データベース接続、まずscoreデータロード。
-            let session = URLSession(configuration: URLSessionConfiguration.default)
-            let url = URL(string:AppDelegate.PHPURL+"?req=score&levelID=ALL&time="+String(postedDatas.getLastUpdateTimeScore()))!
-            let task = session.dataTask(with: url){(data,responce,error) in
-                if (error != nil) {
-                    print("error") //エラー。
-                    return
+            ServerDataHandler().DownloadScoreData { (error) in
+                if let error = error {
+                    print(error)
                 }
-                //print(String(data: data!, encoding:.utf8)!)
-                //ロードしたmusicデータを処理
-                if String(data: data!, encoding:.utf8)! != "latest" {
-                    let jsonArray = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
-                    for dic in jsonArray {
-                        postedDatas.setScore(sqlID: Int(dic["id"]!)!,
-                                             levelID: Int(dic["levelID"]!)!,
-                                             score: Int(dic["score"]!)!,
-                                             userID: "",
-                                             updateTime: Int(dic["updateTime"]!)!
-                        )
-                    }
-                }
-                
-                //すべてのスコアを処理。レベルIDをkeyにして一番スコアの高いものを保持する。
+                let scoreDatas:ScoreDataLists = ScoreDataLists.sharedInstance
+                //すべてのスコアを処理。レベルIDをkeyにしてそのレベルで一番スコアの高いものを保持する。(でないと、スコアが低くてもUpdateTimeが新しいものを抽出してしまうことになる)
                 var highScores : [Int : scoreData] = [:]
-                for score in postedDatas.scores {
+                for score in scoreDatas.scores {
                     if let highScore = highScores[score.levelID] {
                         if highScore.score < score.score {
                             highScores[score.levelID] = score
@@ -393,9 +386,9 @@ class MusicDataLists{
                         highScores[score.levelID] = score
                     }
                 }
-                print(highScores)
+                //print(highScores)
                 //これでレベルがタイム順で並んだ
-                let sortedHighScores = highScores.sorted{ $0.value.sqlUpdateTime > $1.value.sqlUpdateTime }                
+                let sortedHighScores = highScores.sorted{ $0.value.sqlUpdateTime > $1.value.sqlUpdateTime }
                 //print(sortedHighScores)
                 
                 //レベルから曲を逆引き(曲が複数選ばれないようにしなくてはならない)
@@ -424,48 +417,18 @@ class MusicDataLists{
                 }
                 callback(sortedMusics)
             }
-            task.resume()
             break
         case "最近コメントされた曲順":
             //コメントデータ更新
-            let postedDatas:PostedDataLists = PostedDataLists.sharedInstance
-            //データベース接続、まずcommentデータロード。
-            let session = URLSession(configuration: URLSessionConfiguration.default)
-            let url = URL(string:AppDelegate.PHPURL+"?req=comment&levelID=ALL&time="+String(postedDatas.getLastUpdateTimeComment()))!
-            let task = session.dataTask(with: url){(data,responce,error) in
-                if (error != nil) {
-                    print("error") //エラー。
-                    return
+            ServerDataHandler().DownloadCommentData { (error) in
+                if let error = error {
+                    print(error)
                 }
-                //print(String(data: data!, encoding:.utf8)!)
-                //ロードしたmusicデータを処理
-                if String(data: data!, encoding:.utf8)! != "latest" {
-                    let jsonArray = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
-                    for dic in jsonArray {
-                        postedDatas.setComment(sqlID: Int(dic["id"]!)!,
-                                               levelID: Int(dic["levelID"]!)!,
-                                               comment: "",
-                                               userID: "",
-                                               updateTime: Int(dic["updateTime"]!)!
-                        )
-                    }
-                }
+                let commentDatas:CommnetDataLists = CommnetDataLists.sharedInstance
                 
-                //すべてのスコアを処理。レベルIDをkeyにして一番スコアの高いものを保持する。
-                var highScores : [Int : scoreData] = [:]
-                for score in postedDatas.scores {
-                    if let highScore = highScores[score.levelID] {
-                        if highScore.score < score.score {
-                            highScores[score.levelID] = score
-                        }
-                    }else {
-                        highScores[score.levelID] = score
-                    }
-                }
-                
-                //これでレベルがタイム順で並んだ
-                let sortedComments = postedDatas.comments.sorted{ $0.sqlUpdateTime > $1.sqlUpdateTime }
-                //print(sortedHighScores)
+                //これでコメントがタイム順で並んだ(ハイスコア順と違い純粋にUpdateTime順)
+                let sortedComments = commentDatas.comments.sorted{ $0.sqlUpdateTime > $1.sqlUpdateTime }
+                //print(sortedComments)
                 
                 //レベルから曲を逆引き(曲が複数選ばれないようにしなくてはならない)
                 for comment in sortedComments {
@@ -494,7 +457,6 @@ class MusicDataLists{
                 }
                 callback(sortedMusics)
             }
-            task.resume()
             break
         default:
             sortedMusics = musics
@@ -514,11 +476,8 @@ class MusicDataLists{
             return selectLevels
         }
         for level in levels {
-            if level.description.pregMatche(pattern: "【編集中:?\\w*】"){
-                let id = level.description.pregMatche_firstString(pattern: "【編集中:?(\\w*)】")
-                if id != UserData.sharedInstance.UserID.prefix(8){
-                    continue
-                }
+            if level.isEditing && !level.isMyEditing{
+                continue
             }
             selectLevels.append(level)
         }

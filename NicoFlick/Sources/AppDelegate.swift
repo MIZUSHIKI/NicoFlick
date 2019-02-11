@@ -14,7 +14,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     
     static let PHPURL = "http://timetag.main.jp/nicoflick/nicoflick.php"
-    //static let PHPURL = "192.168.11.8/nicoflick.php"
+    //static let PHPURL = "192.168.11.8/nicoflick.php" //windows xampp
+    //static let PHPURL = "http://127.0.0.1:8888/nicoflick.php" //mac mamp PC
+    //static let PHPURL = "http://MacBook.local:8000/nicoflick.php" //mac mamp スマホ
+    static let NicoApiURL_GetThumbInfo = "http://ext.nicovideo.jp/api/getthumbinfo/"
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {

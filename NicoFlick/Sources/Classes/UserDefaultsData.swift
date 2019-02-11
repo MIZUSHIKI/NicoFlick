@@ -204,6 +204,46 @@ class UserData {
             userDefaults.synchronize()
         }
     }
+    //Editorの使い方を見たかどうか
+    var lookedHowToEditor:Bool {
+        get {
+            userDefaults.register(defaults: ["LookedHowToEditor":false])
+            let le = userDefaults.bool(forKey: "LookedHowToEditor")
+            return le
+        }
+        set(lh) {
+            userDefaults.set(lh, forKey: "LookedHowToEditor")
+            userDefaults.synchronize()
+        }
+    }
+    //Notesの使い方を見たかどうか
+    var lookedHowToNotes:Bool {
+        get {
+            userDefaults.register(defaults: ["LookedHowToNotes":false])
+            let le = userDefaults.bool(forKey: "LookedHowToNotes")
+            return le
+        }
+        set(lh) {
+            userDefaults.set(lh, forKey: "LookedHowToNotes")
+            userDefaults.synchronize()
+        }
+    }
+    
+    var MySpoonSet:[Int:String] {
+        get {
+            if let us = userDefaults.object(forKey: "MySpoonSet") as? NSData {
+                //print("JudgeOffset 読み込み")
+                return NSKeyedUnarchiver.unarchiveObject(with: us as Data) as! [Int:String]
+            }
+            let mySpoonSet:[Int:String] = [:]
+            return mySpoonSet
+        }
+        set(mySpoonSet) {
+            let data = NSKeyedArchiver.archivedData(withRootObject: mySpoonSet)
+            userDefaults.set(data, forKey: "MySpoonSet")
+            userDefaults.synchronize()
+        }
+    }
 
 }
 
