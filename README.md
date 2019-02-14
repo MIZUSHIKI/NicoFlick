@@ -10,8 +10,8 @@ https://itunes.apple.com/jp/app/nicoflick/id1415478437?mt=8
 
 ## こんな感じ
 ![20180805_103105](https://user-images.githubusercontent.com/33353602/43682202-084e5d12-98a8-11e8-975f-10bca5228906.GIF)
-- 楽曲/ゲームの投稿ができるのでプレイできる曲が増えていきます。
-　（ぜひ投稿してみてください。投稿の仕方はアプリ内で解説があります。）
+- 楽曲/ゲームの投稿ができるのでプレイできる曲が増えていきます。  
+（ぜひ投稿してみてください。投稿の仕方はアプリ内で解説があります。）
 - NicoFlickデータベース(http://timetag.main.jp/nicoflick/index.php)
 
 ## 楽曲の著作権について
