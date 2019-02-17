@@ -74,10 +74,16 @@ class SelectorMenu: UIViewController {
                 name = "NO_NAME"
             }
             var noteData = level.noteData!
-            if noteData.pregMatche(pattern: "NicoFlick\\s*=\\s*\\d+") {
-                noteData = noteData.pregReplace(pattern: "NicoFlick\\s*=\\s*\\d+", with: "NicoFlick=2")
+            if noteData == "" {
+                //基としたカレントlevelはNotesデータをまだ取得していない（遅延させてる）。
+                //その場合、エディタ画面に行った一発目にダウンロードさせるようにする。
+                noteData = "@NicoFlick=2\n@BaseDataNo=\(level.sqlID!)"
             }else {
-                noteData += "\n@NicoFlick=2"
+                if noteData.pregMatche(pattern: "NicoFlick\\s*=\\s*\\d+") {
+                    noteData = noteData.pregReplace(pattern: "NicoFlick\\s*=\\s*\\d+", with: "NicoFlick=2")
+                }else {
+                    noteData += "\n@NicoFlick=2"
+                }
             }
             // ゲームデータの仮登録
             ServerDataHandler().postLevelInsert(
@@ -94,7 +100,7 @@ class SelectorMenu: UIViewController {
                     }
                     if retStr.pregMatche(pattern: "<!--EchoHtmlMes_OK-->"){
                         DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
-                            let alert = UIAlertController(title:nil, message: "『ゲームデータの仮登録』を行いました。\nミュージックセレクト画面の◁Editからゲームデータの作成/本登録をしてください。", preferredStyle: UIAlertControllerStyle.alert)
+                            let alert = UIAlertController(title:"NicoFlick データベース", message: "『ゲームデータの仮登録』を行いました。\nミュージックセレクト画面の ◁Edit からゲームデータの作成/本登録をしてください。", preferredStyle: UIAlertControllerStyle.alert)
                             
                             alert.addAction(UIAlertAction(title: "OK", style: .cancel, handler: { (alertAction) in
                                 

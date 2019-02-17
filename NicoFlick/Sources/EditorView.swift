@@ -182,17 +182,21 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                 }
                 //
                 ServerDataHandler().DownloadTimetag(level: self.selectLevel) { (error) in
-                    DispatchQueue.main.async {
-                        self.activityIndicator.stopAnimating()
-                        if let error = error {
+                    if let error = error {
+                        DispatchQueue.main.async {
+                            self.activityIndicator.stopAnimating()
                             print(error) //なんか失敗した。
                             self.dismiss(animated: true, completion: nil)
                             return
                         }
-                        //  データ取得成功
-                        self.mySpoon = Spoons(timetagText: "\(self.selectLevel.noteData!)")
+                    }
+                    //  データ取得成功
+                    let spoons = Spoons(timetagText: "\(self.selectLevel.noteData!)")
+                    if spoons.atTag["BaseDataNo"] == nil {
+                        // 「新しい難易度の追加」時に基とするレベルのNotesをまだ取得してなかった場合、@BaseDataNoのみ書かれて遅延取得するようにしている。
+                        self.mySpoon = spoons
                         if self.mySpoon.atTag["NicoFlick"] == nil {
-                           self.mySpoon.atTag["NicoFlick"] = "2"
+                            self.mySpoon.atTag["NicoFlick"] = "2"
                         }
                         if self.mySpoon.atTag["Description"] == nil {
                             self.mySpoon.atTag["Description"] = ""
@@ -214,7 +218,42 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                             self.mySpoon.atTag["Offset"] = "0"
                         }
                         // ラベル等の画面表示
-                        self.CreateScrollViewContents()
+                        DispatchQueue.main.async {
+                            self.activityIndicator.stopAnimating()
+                            self.CreateScrollViewContents()
+                        }
+                    }else {
+                        // @BaseDataNo: Notesの再取得。
+                        let baseLevel = levelData()
+                        baseLevel.sqlID = Int(spoons.atTag["BaseDataNo"]!)
+                        baseLevel.noteData = ""
+                        
+                        ServerDataHandler().DownloadTimetag(level: baseLevel) { (error) in
+                            if let error = error {
+                                DispatchQueue.main.async {
+                                    self.activityIndicator.stopAnimating()
+                                    print(error) //なんか失敗した。
+                                    self.dismiss(animated: true, completion: nil)
+                                    return
+                                }
+                            }
+                            //  データ取得成功
+                            self.mySpoon = Spoons(timetagText: "\(baseLevel.noteData!)")
+                            self.mySpoon.atTag["NicoFlick"] = "2"
+                            self.mySpoon.atTag["Description"] = ""
+                            if !self.selectLevel.isEditing {
+                                self.mySpoon.atTag["Description"] = self.selectLevel.description
+                            }
+                            self.mySpoon.atTag["Level"] = "\(self.selectLevel.level!)"
+                            self.mySpoon.atTag["Creator"] = "\(self.selectLevel.creator!)"
+                            self.mySpoon.atTag["Speed"] = "\(self.selectLevel.speed!)"
+                            self.mySpoon.atTag["Offset"] = "0"
+                            // ラベル等の画面表示
+                            DispatchQueue.main.async {
+                                self.activityIndicator.stopAnimating()
+                                self.CreateScrollViewContents()
+                            }
+                        }
                     }
                 }
             }
