@@ -11,8 +11,12 @@ https://itunes.apple.com/jp/app/nicoflick/id1415478437?mt=8
 ## こんな感じ
 ![20180805_103105](https://user-images.githubusercontent.com/33353602/43682202-084e5d12-98a8-11e8-975f-10bca5228906.GIF)
 - 楽曲/ゲームの投稿ができるのでプレイできる曲が増えていきます。  
-（ぜひ投稿してみてください。投稿の仕方はアプリ内で解説があります。）
+（ぜひ投稿してみてください。投稿の仕方はアプリ内の解説、または下記の動画を参照ください。）
 - NicoFlickデータベース(http://timetag.main.jp/nicoflick/index.php)
+
+### Youtube
+<a href="https://www.youtube.com/watch?v=0zaNGmhfliM"><img src="https://img.youtube.com/vi/0zaNGmhfliM/0.jpg" width="300px"></a>　
+<a href="https://www.youtube.com/watch?v=yXibZJeIL7g"><img src="https://img.youtube.com/vi/yXibZJeIL7g/0.jpg" width="300px"></a>
 
 ## 楽曲の著作権について
 ### NicoFlickは非営利（無料・無広告）で活動しています。
