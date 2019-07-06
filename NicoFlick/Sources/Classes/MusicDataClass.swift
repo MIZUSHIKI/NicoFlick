@@ -424,7 +424,7 @@ class MusicDataLists{
                 if let error = error {
                     print(error)
                 }
-                let commentDatas:CommnetDataLists = CommnetDataLists.sharedInstance
+                let commentDatas:CommentDataLists = CommentDataLists.sharedInstance
                 
                 //これでコメントがタイム順で並んだ(ハイスコア順と違い純粋にUpdateTime順)
                 let sortedComments = commentDatas.comments.sorted{ $0.sqlUpdateTime > $1.sqlUpdateTime }

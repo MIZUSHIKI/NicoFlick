@@ -8,6 +8,7 @@ target 'NicoFlick' do
   # Pods for NicoFlick
   pod 'CryptoSwift'
   pod 'TwitterKit'
+  pod "TouchVisualizer", '~>3.0.0'
 
   target 'NicoFlickTests' do
     inherit! :search_paths

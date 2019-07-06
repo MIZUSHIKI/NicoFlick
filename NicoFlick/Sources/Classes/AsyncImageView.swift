@@ -19,11 +19,18 @@ class AsyncImageView: UIImageView {
         var urlString_ = urlString
         var ans:[String]=[]
         var trimRect = CGRect(x: 0, y: 13, width: 130, height: 74)
-        if (urlString_.pregMatche(pattern: "\\?i=(\\d+)$", matches: &ans)){
+        var flg = false
+        if (urlString_.pregMatche(pattern: "/thumbnails/")){
+            flg = true
+        }else
+        if (urlString_.pregMatche(pattern: "\\?i=(\\d+)", matches: &ans)){
             if Int(ans[1])! >= 16371845 {
-                urlString_ = urlString + ".L"
-                trimRect = CGRect(x: 0, y: 35, width: 360, height: 200)
+                flg = true
             }
+        }
+        if flg {
+            urlString_ = urlString + ".L"
+            trimRect = CGRect(x: 0, y: 35, width: 360, height: 200)
         }
         let req = URLRequest(url: NSURL(string:urlString_)! as URL,
                              cachePolicy: .returnCacheDataElseLoad,

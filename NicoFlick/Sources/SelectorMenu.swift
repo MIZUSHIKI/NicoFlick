@@ -44,12 +44,6 @@ class SelectorMenu: UIViewController {
     }
     
     //オブジェクトアクション_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-    @IBAction func goDataBaseButton(_ sender: UIButton) {
-        let url = URL(string: "http://timetag.main.jp/nicoflick/index.php")
-        if UIApplication.shared.canOpenURL(url!) {
-            UIApplication.shared.open(url!, options: [:], completionHandler: nil)
-        }
-    }
     
     @IBAction func goMovieUrlButton(_ sender: UIButton) {
         let url = URL(string: selectorController.currentMusics[selectorController.indexCarousel].movieURL)
@@ -57,6 +51,27 @@ class SelectorMenu: UIViewController {
             UIApplication.shared.open(url!, options: [:], completionHandler: nil)
         }
     }
+    
+    @IBAction func goExtLink(_ sender: UIButton) {
+        
+        let alert = UIAlertController(title:nil, message: "Safariで開く", preferredStyle: UIAlertControllerStyle.alert)
+        
+        alert.addAction( UIAlertAction(title: "NicoFlickデータベース", style: .default, handler: {_ in
+            guard let url = URL(string: "http://timetag.main.jp/nicoflick/index.php") else { return }
+            UIApplication.shared.open(url)
+        }) )
+        alert.addAction( UIAlertAction(title: "NicoFlick紹介 動画", style: .default, handler: {_ in
+            guard let url = URL(string: "https://www.nicovideo.jp/watch/sm33685683") else { return }
+            UIApplication.shared.open(url)
+        }) )
+        alert.addAction( UIAlertAction(title: "ゲームデータ作成・投稿の仕方 動画", style: .default, handler: {_ in
+            guard let url = URL(string: "https://www.nicovideo.jp/watch/sm35113435") else { return }
+            UIApplication.shared.open(url)
+        }) )
+        alert.addAction( UIAlertAction(title: "キャンセル", style: .cancel, handler: nil) )
+        self.present(alert, animated: true, completion: nil)
+    }
+    
     
     @IBAction func postLevelDataButton(_ sender: UIButton) {
         //let music = selectorController.currentMusics[selectorController.indexCarousel]

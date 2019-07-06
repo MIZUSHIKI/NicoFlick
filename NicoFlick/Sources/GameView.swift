@@ -669,6 +669,34 @@ class GameView: UIViewController, UITextFieldDelegate {
                 
                 break
             case 2:
+                print("戻る")
+                
+                if moviePlayerViewController != nil {
+                    if moviePlayerViewController.player != nil {
+                        //ムービー状況
+                        let duration = CMTimeGetSeconds((moviePlayerViewController.player?.currentItem?.duration)!)
+                        let currentTime = CMTimeGetSeconds((moviePlayerViewController.player?.currentTime())!)
+                        if currentTime > (duration / 2) {
+                            //カウンタを回す
+                            print("PlayCount")
+                            //  プレイ回数データ
+                            userData.PlayCount.addPlayCount(levelID: selectLevel.sqlID)
+                            //プレイ回数をデータベースに送信する(送信済みでないもの)
+                            let playcountset = userData.PlayCount.getSendPlayCountStr() //送信するデータ
+                            if playcountset != "" {
+                                // プレイ回数 送信
+                                ServerDataHandler().postPlayCountData(playcountset: playcountset) { (bool) in
+                                    if bool {
+                                        //プレイ回数データを保存する(初期化データになる)
+                                        self.userData.PlayCount.setSended()
+                                    }
+                                }
+                            }
+                            
+                        }
+                    }
+                }
+                
                 //曲選択に戻る
                 self.performSegue(withIdentifier: "fromGameView", sender: self)
                 

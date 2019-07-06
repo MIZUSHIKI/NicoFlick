@@ -105,12 +105,37 @@ extension String {
             
         }
     }
-    static func secondsToTimetag(seconds:Double, noBrackets:Bool = false) -> String {
-        let format = noBrackets ? "%02d:%02d:%02d" : "[%02d:%02d:%02d]"
+    static func secondsToTimetag(seconds:Double, noBrackets:Bool = false, dot:Bool = false) -> String {
+        if seconds == -0.001 {
+            if noBrackets {
+                if dot {
+                    return "**:**.**"
+                }else {
+                    return "**:**:**"
+                }
+            }else {
+                if dot {
+                    return "[**:**.**]"
+                }else {
+                    return "[**:**:**]"
+                }
+            }
+        }
+        var format = dot ? "%02d:%02d.%02d" : "%02d:%02d:%02d"
+        if !noBrackets {
+            format = "[\(format)]"
+        }
         let rmirisec = Int(round(seconds * 100)) * 10
         return String.init(format: format, Int(rmirisec/60000), Int((rmirisec % 60000) / 1000), Int((rmirisec % 1000) / 10) )
     }
     static func secondsToDotTimetag(seconds:Double, noBrackets:Bool = false) -> String {
+        if seconds == -0.001 {
+            if noBrackets {
+                return "**:**.**"
+            }else {
+                return "[**:**.**]"
+            }
+        }
         let format = noBrackets ? "%02d:%02d.%02d" : "[%02d:%02d.%02d]"
         let rmirisec = Int(round(seconds * 100)) * 10
         return String.init(format: format, Int(rmirisec/60000), Int((rmirisec % 60000) / 1000), Int((rmirisec % 1000) / 10) )
@@ -124,7 +149,7 @@ extension String {
         return -0.001
     }
     var isDotTimetag : Bool {
-        return self.pregMatche(pattern: "\\[\\d\\d\\:\\d\\d\\.\\d\\d\\]")
+        return self.pregMatche(pattern: "\\[[\\d\\*][\\d\\*]\\:[\\d\\*][\\d\\*]\\.[\\d\\*][\\d\\*]\\]")
     }
     
     func kanjiToHiragana() -> String {

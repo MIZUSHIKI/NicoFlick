@@ -24,6 +24,14 @@ class Spoon {
         }
     }
     private(set) var check = false
+    func copy() -> Spoon {
+        let instance = Spoon()
+        instance.word  = self.word
+        instance.miriSec  = self.miriSec
+        instance.note = self.note
+        instance.check = self.check
+        return instance
+    }
     var label:UILabel? = nil
     var wakuBorder:UIView? = nil
     var bottomBorder:UIView? = nil
@@ -115,6 +123,8 @@ class Spoons {
             }
         }
     }
+    private(set) var rirekiSpoonSets:[RirekiSpoonSet] = []
+    private(set) var rirekiNowIndex = 0
     var gyotoIndex:[Int] = [0]
     class MinMaxIndex {
         var min = -1
@@ -128,6 +138,9 @@ class Spoons {
     
     var cursorView:UIView?
     private(set) var cursorIndex:Int = 0
+    
+    var rirekiUndoButton:UIButton?
+    var rirekiRedoButton:UIButton?
     
     var targetSelf:UIViewController?
     
@@ -157,7 +170,8 @@ class Spoons {
         }
         var maeTimetag = ""
         ans = []
-        if !str_.pregMatche(pattern: "\\[\\d\\d\\:\\d\\d[\\:\\.]\\d\\d\\]|.", matches: &ans){
+        if !str_.pregMatche(pattern: "\\[[\\d\\*][\\d\\*]\\:[\\d\\*][\\d\\*][\\:\\.][\\d\\*][\\d\\*]\\]|.", matches: &ans){
+            // [**:**.**]とかでnoteだけの記録にも対応しとく
             return
         }
         print(ans)
@@ -488,7 +502,7 @@ class Spoons {
         view.viewWithTag(2)?.isHidden = !(mode == CursorMode.line)
     }
     
-    func setNotes_NearTimePos(mirisec:Int) -> Int?{
+    func setNotes_NearTimePos(mirisec:Int) -> (Int?,Spoon?){
         var getIndex = -1
         var sitaGyo = -1
         var ueGyo = -1
@@ -515,18 +529,20 @@ class Spoons {
             
             if minestIndex != -1 {
                 if (spoons[minestIndex].miriSec - 1000) <= mirisec && mirisec <= spoons[minestIndex].miriSec {
+                    let maeSpoon = spoons[minestIndex].copy()
                     spoons[minestIndex].note = true
-                    return minestIndex
+                    return (minestIndex, maeSpoon)
                 }
             }
             if maxestIndex != -1 {
                 if spoons[maxestIndex].miriSec <= mirisec && mirisec <= (spoons[maxestIndex].miriSec + 1000) {
+                    let maeSpoon = spoons[maxestIndex].copy()
                     spoons[maxestIndex].note = true
-                    return maxestIndex
+                    return (maxestIndex, maeSpoon)
                 }
             }
             
-            return nil
+            return (nil,nil)
         }
         if sitaGyo > ueGyo {
             (sitaGyo,ueGyo) = (ueGyo,sitaGyo)
@@ -542,10 +558,11 @@ class Spoons {
             }
         }
         if getIndex == -1 {
-            return nil
+            return (nil,nil)
         }
+        let maeSpoon = spoons[getIndex].copy()
         spoons[getIndex].note = true
-        return getIndex
+        return (getIndex, maeSpoon)
     }
     
     func pushCurrentTime(mirisec:Int){
@@ -611,5 +628,208 @@ class Spoons {
         if hoshi < 1 { hoshi = 1 }
         if hoshi > 10 { hoshi = 10 }
         return hoshi
+    }
+    
+    //履歴
+    func setRireki(index:Int, changedID:RirekiSpoonSet.changed, maeSpoon:Spoon, newSpoon:Spoon?) {
+        let mae:[Spoon] = [maeSpoon]
+        var new:[Spoon] = []
+        if let spoon = newSpoon {
+            new += [spoon]
+        }
+        self._setRireki(index: index, changedID: changedID, maeSpoons: mae, newSpoons: new)
+    }
+    func setRireki(index:Int, changedID:RirekiSpoonSet.changed, maeSpoon:Spoon?, newSpoonS:Spoons) {
+        var mae:[Spoon] = []
+        var new:[Spoon] = []
+        if let spoon = maeSpoon {
+            mae += [spoon]
+        }
+        for spoon in newSpoonS.spoons {
+            new += [spoon]
+        }
+        self._setRireki(index: index, changedID: changedID, maeSpoons: mae, newSpoons: new)
+    }
+    private func _setRireki(index:Int, changedID:RirekiSpoonSet.changed, maeSpoons:[Spoon], newSpoons:[Spoon]) {
+        let rirekiSpoonSet = RirekiSpoonSet(index: index, changedID: changedID, maeSpoons: maeSpoons, newSpoons: newSpoons)
+        if rirekiSpoonSets.count == rirekiNowIndex {
+            //末尾に追加
+            rirekiSpoonSets.append(rirekiSpoonSet)
+            rirekiNowIndex += 1
+        }else {
+            //上書きして、以降を削除
+            rirekiSpoonSets[rirekiNowIndex] = rirekiSpoonSet
+            rirekiNowIndex += 1
+            for _ in rirekiNowIndex ..< rirekiSpoonSets.count {
+                rirekiSpoonSets.removeLast()
+            }
+        }
+        //
+        if let button = rirekiUndoButton {
+            button.alpha = 0.9
+        }
+        if let button = rirekiRedoButton {
+            button.alpha = 0.45
+        }
+    }
+    
+    var getNextUndoChangedID:RirekiSpoonSet.changed {
+        if !rirekiUndoAble {
+            return RirekiSpoonSet.changed.None
+        }
+        let rirekiSpoon = rirekiSpoonSets[rirekiNowIndex-1]
+        return rirekiSpoon.changedID
+    }
+    var rirekiUndoAble:Bool {
+        return !(rirekiNowIndex <= 0)
+    }
+    func rirekiUndo() -> Int {
+        if !rirekiUndoAble {
+            return -1
+        }
+        rirekiNowIndex -= 1
+        let rirekiSpoon = rirekiSpoonSets[rirekiNowIndex]
+        print("rireki \(rirekiSpoon.index-1)")
+        let ri = rirekiSpoon.index-1
+        var retIndex = rirekiSpoon.index
+        
+        switch rirekiSpoon.changedID {
+        case .MiriSec:
+            spoons[rirekiSpoon.index].setMirisec(mirisec: rirekiSpoon.mae[0].miriSec)
+        case .Note:
+            spoons[rirekiSpoon.index].note = rirekiSpoon.mae[0].note
+        case .Word:
+            if rirekiSpoon.new.count == 0 {
+                // BackDeleteをした（から追加）
+                var timetagText = ""
+                for rirekiSpoon in rirekiSpoon.mae {
+                    timetagText += String.secondsToTimetag(seconds: Double(rirekiSpoon.miriSec) / 1000, noBrackets: false, dot: rirekiSpoon.note) + rirekiSpoon.word
+                }
+                //Spoon追加
+                let tempSpoons = Spoons(timetagText: timetagText)
+                print("ri \(ri)")
+                print("ret \(retIndex)")
+                print("undo \(rirekiSpoon.index-1)")
+                self.insert(spoons: tempSpoons, index: rirekiSpoon.index-1)
+                retIndex -= 1
+            }else {
+                // 文字列追加をした（から削除）
+                for _ in 0 ..< rirekiSpoon.new.count {
+                    self.spoons.remove(at: rirekiSpoon.index)
+                }
+                GyoDataKosin()
+                retIndex -= 1
+            }
+            print("word")
+        default:
+            break
+        }
+        
+        if let button = rirekiUndoButton {
+            if rirekiNowIndex <= 0 {
+                button.alpha = 0.35
+            }else {
+                button.alpha = 0.7
+            }
+        }
+        if let button = rirekiRedoButton {
+            button.alpha = 0.7
+        }
+        return retIndex
+    }
+
+    var getNextRedoChangedID:RirekiSpoonSet.changed {
+        if !rirekiRedoAble {
+            return RirekiSpoonSet.changed.None
+        }
+        let rirekiSpoon = rirekiSpoonSets[rirekiNowIndex]
+        return rirekiSpoon.changedID
+    }
+    var rirekiRedoAble:Bool {
+        return !(rirekiNowIndex >= rirekiSpoonSets.count)
+    }
+    func rirekiRedo() -> Int {
+        if !rirekiRedoAble {
+            return -1
+        }
+        let rirekiSpoon = rirekiSpoonSets[rirekiNowIndex]
+        var retIndex = rirekiSpoon.index
+        rirekiNowIndex += 1
+        
+        switch rirekiSpoon.changedID {
+        case .MiriSec:
+            spoons[rirekiSpoon.index].setMirisec(mirisec: rirekiSpoon.new[0].miriSec)
+        case .Note:
+            spoons[rirekiSpoon.index].note = rirekiSpoon.new[0].note
+        case .Word:
+            print("word")
+            if rirekiSpoon.new.count == 0 {
+                // BackDeleteをした（から削除）
+                for _ in 0 ..< rirekiSpoon.mae.count {
+                    self.spoons.remove(at: rirekiSpoon.index-1)
+                }
+                GyoDataKosin()
+                retIndex -= 1
+            }else {
+                // 文字列追加をした（から追加）
+                var timetagText = ""
+                for rirekiSpoon in rirekiSpoon.new {
+                    timetagText += String.secondsToTimetag(seconds: Double(rirekiSpoon.miriSec) / 1000, noBrackets: false, dot: rirekiSpoon.note) + rirekiSpoon.word
+                }
+                //Spoon追加
+                let tempSpoons = Spoons(timetagText: timetagText)
+                self.insert(spoons: tempSpoons, index: retIndex)
+            }
+        default:
+            break
+        }
+        //
+        if let button = rirekiUndoButton {
+            button.alpha = 0.7
+        }
+        if let button = rirekiRedoButton {
+            if rirekiNowIndex >= rirekiSpoonSets.count {
+                button.alpha = 0.35
+            }else {
+                button.alpha = 0.7
+            }
+        }
+        return retIndex
+    }
+}
+
+class RirekiSpoon {
+    var word = ""
+    var miriSec = -1
+    var note = false
+    
+    init(spoon:Spoon) {
+        self.word = spoon.word
+        self.miriSec = spoon.miriSec
+        self.note = spoon.note
+    }
+}
+class RirekiSpoonSet {
+    
+    enum changed {
+        case None
+        case Word
+        case MiriSec
+        case Note
+    }
+    var index = -1
+    var changedID = changed.None
+    var mae:[RirekiSpoon] = []
+    var new:[RirekiSpoon] = []
+    
+    init(index:Int, changedID:RirekiSpoonSet.changed, maeSpoons:[Spoon], newSpoons:[Spoon]){
+        for spoon in maeSpoons {
+            self.mae += [RirekiSpoon(spoon: spoon)]
+        }
+        for spoon in newSpoons {
+            self.new += [RirekiSpoon(spoon: spoon)]
+        }
+        self.changedID = changedID
+        self.index = index
     }
 }

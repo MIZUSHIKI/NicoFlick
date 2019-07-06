@@ -1,6 +1,6 @@
 //  CryptoSwift
 //
-//  Copyright (C) 2014-__YEAR__ Marcin Krzyżanowski <marcin@krzyzanowskim.com>
+//  Copyright (C) 2014-2018 Marcin Krzyżanowski <marcin@krzyzanowskim.com>
 //  This software is provided 'as-is', without any express or implied warranty.
 //
 //  In no event will the authors be held liable for any damages arising from the use of this software.
@@ -46,17 +46,18 @@ public class BlockDecryptor: Cryptor, Updatable {
         // Processing in a block-size manner. It's good for block modes, but bad for stream modes.
         for var chunk in accumulatedWithoutSuffix.batched(by: blockSize) {
             if isLast || (accumulatedWithoutSuffix.count - processedBytesCount) >= blockSize {
-
-                if isLast, var finalizingWorker = worker as? BlockModeWorkerFinalizing {
-                    chunk = try finalizingWorker.willDecryptLast(block: chunk + accumulated.suffix(worker.additionalBufferSize)) // tag size
+                let isLastChunk = processedBytesCount + chunk.count == accumulatedWithoutSuffix.count
+                
+                if isLast, isLastChunk, var finalizingWorker = worker as? FinalizingDecryptModeWorker {
+                    chunk = try finalizingWorker.willDecryptLast(bytes: chunk + accumulated.suffix(worker.additionalBufferSize)) // tag size
                 }
 
                 if !chunk.isEmpty {
                     plaintext += worker.decrypt(block: chunk)
                 }
 
-                if var finalizingWorker = worker as? BlockModeWorkerFinalizing, isLast == true {
-                    plaintext = try finalizingWorker.didDecryptLast(block: plaintext.slice)
+                if isLast, isLastChunk, var finalizingWorker = worker as? FinalizingDecryptModeWorker {
+                    plaintext = Array(try finalizingWorker.didDecryptLast(bytes: plaintext.slice))
                 }
 
                 processedBytesCount += chunk.count
@@ -72,7 +73,7 @@ public class BlockDecryptor: Cryptor, Updatable {
     }
 
     public func seek(to position: Int) throws {
-        guard var worker = self.worker as? StreamModeWorker else {
+        guard var worker = self.worker as? SeekableModeWorker else {
             fatalError("Not supported")
         }
 

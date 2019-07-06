@@ -55,11 +55,18 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
 −2017年9月20日−
 　iOS11リリース（32bitアプリなので両方起動できなくなる）
 """, preferredStyle: UIAlertControllerStyle.alert)
-        let cancel = UIAlertAction(title: "OK", style: UIAlertActionStyle.cancel, handler: {
-            (action: UIAlertAction!) in
-            print("キャンセルをタップした時の処理")
-        })
-        alert.addAction(cancel)
+        
+        alert.addAction( UIAlertAction(title: "アプリレビューを見る", style: .default, handler: {_ in
+            
+            guard let url = URL(string: "https://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=1415478437&pageNumber=0&sortOrdering=2&type=Purple+Software&mt=8") else { return }
+            UIApplication.shared.open(url)
+        }) )
+        alert.addAction( UIAlertAction(title: "デザイン協力募集中(GitHub)", style: .default, handler: {_ in
+            
+            guard let url = URL(string: "https://github.com/MIZUSHIKI/NicoFlick/blob/master/README.md") else { return }
+            UIApplication.shared.open(url)
+        }) )
+        alert.addAction( UIAlertAction(title: "OK", style: .default, handler: nil) )
         self.present(alert, animated: true, completion: nil)
     }
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/

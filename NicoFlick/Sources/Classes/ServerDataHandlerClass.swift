@@ -33,7 +33,7 @@ class ServerDataHandler {
     var userNameDatas:userNameDataLists = userNameDataLists.sharedInstance
     //
     var scoreDatas:ScoreDataLists = ScoreDataLists.sharedInstance
-    var commentDatas:CommnetDataLists = CommnetDataLists.sharedInstance
+    var commentDatas:CommentDataLists = CommentDataLists.sharedInstance
     
     
     //サーバデータダウンロード 処理
@@ -94,37 +94,55 @@ class ServerDataHandler {
                     }
                 }
                 
-                //データベース接続 3：最後にusernameデータロード。
-                let session = URLSession(configuration: URLSessionConfiguration.default)
-                let url = URL(string:AppDelegate.PHPURL+"?req=username&time="+String(self.userNameDatas.getLastUpdateTime()))!
-                //print(url)
-                let task = session.dataTask(with: url){(data,responce,error) in
-                    //print(data)
+                //データベース接続 3：次にスコアデータロード
+                ServerDataHandler().DownloadScoreData { (error) in
                     if let error = error {
-                        print("usernameLoad-error") //エラー
+                        print(error)
                         callback(error)
                         return
                     }
-                    //ロードしたusernameデータを処理
-                    if String(data: data!, encoding:.utf8)! != "latest" {
-                        let jsonArray = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
-                        for dic in jsonArray {
-                            self.userNameDatas.setUserName(sqlID: Int(dic["id"]!)!,
-                                                           userID: dic["userID"]!,
-                                                           userName: dic["name"]!,
-                                                           updateTime: Int(dic["updateTime"]!)!
-                            )
+                    
+                    //データベース接続 5：次にコメントデータロード
+                    ServerDataHandler().DownloadCommentData { (error) in
+                        if let error = error {
+                            print(error)
+                            callback(error)
+                            return
                         }
+                        
+                        //データベース接続 4：最後にusernameデータロード。
+                        let session = URLSession(configuration: URLSessionConfiguration.default)
+                        let url = URL(string:AppDelegate.PHPURL+"?req=username&time="+String(self.userNameDatas.getLastUpdateTime()))!
+                        //print(url)
+                        let task = session.dataTask(with: url){(data,responce,error) in
+                            //print(data)
+                            if let error = error {
+                                print("usernameLoad-error") //エラー
+                                callback(error)
+                                return
+                            }
+                            //ロードしたusernameデータを処理
+                            if String(data: data!, encoding:.utf8)! != "latest" {
+                                let jsonArray = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+                                for dic in jsonArray {
+                                    self.userNameDatas.setUserName(sqlID: Int(dic["id"]!)!,
+                                                                   userID: dic["userID"]!,
+                                                                   userName: dic["name"]!,
+                                                                   updateTime: Int(dic["updateTime"]!)!
+                                    )
+                                }
+                            }
+                            
+                            print("ServerData Download")
+                            callback(nil)
+                            
+                        }//5.usernameデータロード
+                        task.resume()
                     }
-                    
-                    print("ServerData Download")
-                    callback(nil)
-                    
-                }
-                task.resume()
-            }
+                }// 3.スコアデータロード
+            }// 2.levelデータロード
             task.resume()
-        }
+        }// 1.musicデータロード
         task.resume()
     }
     

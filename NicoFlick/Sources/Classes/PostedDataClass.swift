@@ -108,8 +108,8 @@ class ScoreDataLists {
         return time
     }
 }
-class CommnetDataLists {
-    static let sharedInstance = CommnetDataLists()
+class CommentDataLists {
+    static let sharedInstance = CommentDataLists()
     var comments:[commentData] = []
     
     func setComment(sqlID:Int, levelID:Int, comment:String, userID:String, updateTime:Int) {

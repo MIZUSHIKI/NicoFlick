@@ -38,7 +38,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     
     @IBOutlet var notesSwitch: UISwitch!
     
-    
+    @IBOutlet var UndoButton: UIButton!
+    @IBOutlet var RedoButton: UIButton!
     //編集データ
     var mySpoon = Spoons()
     var autoSaveMaeDate = Date()
@@ -260,8 +261,11 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         }
         
         if userData.lookedHowToEditor == false {
-            self.performSegue(withIdentifier: "toHowToEditor", sender: nil)
+            print("lhte-false")
             userData.lookedHowToEditor = true
+            DispatchQueue.main.async { //？
+                self.performSegue(withIdentifier: "toHowToEditor", sender: nil)
+            }
         }
     }
     func CreateScrollViewContents() {
@@ -432,6 +436,9 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             mySpoon.cursorView = cursorView
         }
         print(Date())
+        //履歴ボタンの登録
+        mySpoon.rirekiUndoButton = UndoButton
+        mySpoon.rirekiRedoButton = RedoButton
     }
     
     
@@ -524,6 +531,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         
         setTimetagButton.isHidden = false
         minusTimetagButton.isHidden = false
+        UndoButton.isHidden = false
+        RedoButton.isHidden = false
         rewindButton.isHidden = false
         forwardButton.isHidden = false
     }
@@ -534,6 +543,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         
         setTimetagButton.isHidden = true && !notesSwitch.isOn
         minusTimetagButton.isHidden = true && !notesSwitch.isOn
+        UndoButton.isHidden = true && !notesSwitch.isOn
+        RedoButton.isHidden = true && !notesSwitch.isOn
         rewindButton.isHidden = true
         forwardButton.isHidden = true
     }
@@ -581,6 +592,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         //Spoon追加
         let tempSpoons = Spoons(timetagText: addWordsTextView.text)
         mySpoon.insert(spoons: tempSpoons, index: mySpoon.cursorIndex)
+        mySpoon.setRireki(index: mySpoon.cursorIndex, changedID: .Word, maeSpoon: nil, newSpoonS: tempSpoons)
         
         self.CreateScrollViewContents()
         maeSpoonLabelXY = [:] // maeSpoon削除
@@ -627,16 +639,22 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         }
     }
     func backDeleteLyrics(animated:Bool = true) {
+        if mySpoon.cursorIndex <= 0 {
+            return
+        }
         //作成済みLabel再配置用pos保存
         for (index,spoon) in mySpoon.spoons.enumerated() {
             guard let label = spoon.label else { continue }
             maeSpoonLabelXY[label.tag] = mySpoon.pos(index: index)
         }
         let indexCursor = mySpoon.cursorIndex
+        let maeSpoon = mySpoon.spoons[mySpoon.cursorIndex-1].copy()
+        print("bd \(mySpoon.cursorIndex-1), \(maeSpoon.word)")
         if mySpoon.backDelete(cursorIndex: mySpoon.cursorIndex) == false {
             maeSpoonLabelXY = [:]
             return
         }
+        mySpoon.setRireki(index: indexCursor, changedID: .Word, maeSpoon: maeSpoon, newSpoon: nil)
         self.CreateScrollViewContents()
         maeSpoonLabelXY = [:]
         mySpoon.setCursor(index: indexCursor - 1, scroll: true, scrollView: scrollView, animated: animated)
@@ -762,7 +780,13 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                 let rate = moviePlayerViewController.player?.rate {
                 var mirisec = Int(CMTimeGetSeconds(currentTime) * 1000 - 40.0 * Double(rate - 0.5) / 0.5)
                 if mirisec < 0 { mirisec = 0 }
+                let maeSpoon = mySpoon.spoons[mySpoon.cursorIndex].copy()
                 mySpoon.spoons[mySpoon.cursorIndex].setMirisec(mirisec: mirisec)
+                mySpoon.setRireki(index: mySpoon.cursorIndex,
+                                  changedID: .MiriSec,
+                                  maeSpoon: maeSpoon,
+                                  newSpoon: mySpoon.spoons[mySpoon.cursorIndex]
+                )
                 _ = mySpoon.setCursorNextCheck(scrollView: scrollView, animated: false)
                 
                 self.setText_CursorPosTimetagLabel()
@@ -774,12 +798,24 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             }
             if playing {
                 if let currentTime = moviePlayerViewController.player?.currentTime() {
-                    if let index = mySpoon.setNotes_NearTimePos(mirisec: Int(CMTimeGetSeconds(currentTime) * 1000 )) {
-                        mySpoon.setCursor(index: index, scroll: true, scrollView: scrollView, animated: false)
+                    let (retIndex, maeSpoon) = mySpoon.setNotes_NearTimePos(mirisec: Int(CMTimeGetSeconds(currentTime) * 1000 ))
+                    if retIndex != nil && maeSpoon != nil {
+                        mySpoon.setCursor(index: retIndex!, scroll: true, scrollView: scrollView, animated: false)
+                        mySpoon.setRireki(index: mySpoon.cursorIndex,
+                                          changedID: .Note,
+                                          maeSpoon: maeSpoon!,
+                                          newSpoon: mySpoon.spoons[mySpoon.cursorIndex]
+                        )
                     }
                 }
             }else {
+                let maeSpoon = mySpoon.spoons[mySpoon.cursorIndex].copy()
                 mySpoon.spoons[mySpoon.cursorIndex].note = true
+                mySpoon.setRireki(index: mySpoon.cursorIndex,
+                                  changedID: .Note,
+                                  maeSpoon: maeSpoon,
+                                  newSpoon: mySpoon.spoons[mySpoon.cursorIndex]
+                )
             }
         }
     }
@@ -801,14 +837,26 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                                                            toleranceAfter: kCMTimeZero
                     )
                 }
+                let maeSpoon = mySpoon.spoons[mySpoon.cursorIndex].copy()
                 mySpoon.spoons[mySpoon.cursorIndex].setMirisec(mirisec: -1)
+                mySpoon.setRireki(index: mySpoon.cursorIndex,
+                                  changedID: .MiriSec,
+                                  maeSpoon: maeSpoon,
+                                  newSpoon: mySpoon.spoons[mySpoon.cursorIndex]
+                )
                 self.setText_CursorPosTimetagLabel()
             }
         }else {
             print("note")
             if mySpoon.setCursorPrevNoted(scrollView: scrollView, animated: false) {
                 
+                let maeSpoon = mySpoon.spoons[mySpoon.cursorIndex].copy()
                 mySpoon.spoons[mySpoon.cursorIndex].note = false
+                mySpoon.setRireki(index: mySpoon.cursorIndex,
+                                  changedID: .Note,
+                                  maeSpoon: maeSpoon,
+                                  newSpoon: mySpoon.spoons[mySpoon.cursorIndex]
+                )
                 self.setText_CursorPosTimetagLabel()
             }
         }
@@ -852,15 +900,68 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         if playing {
             setTimetagButton.isHidden = false
             minusTimetagButton.isHidden = false
+            UndoButton.isHidden = false
+            RedoButton.isHidden = false
             rewindButton.isHidden = false
             forwardButton.isHidden = false
         }else {
             setTimetagButton.isHidden = true && !notesSwitch.isOn
             minusTimetagButton.isHidden = true && !notesSwitch.isOn
+            UndoButton.isHidden = true && !notesSwitch.isOn
+            RedoButton.isHidden = true && !notesSwitch.isOn
             rewindButton.isHidden = true
             forwardButton.isHidden = true
         }
         self.setText_CursorPosTimetagLabel()
+    }
+    
+    @IBAction func UndoButton(_ sender: Any) {
+        if !mySpoon.rirekiUndoAble {
+            return
+        }
+        //.Wordのときだけ前後処理が必要。。。ぶさいく
+        let changedID = mySpoon.getNextUndoChangedID
+        if changedID == .Word {
+            //作成済みLabel再配置用pos保存
+            for (index,spoon) in mySpoon.spoons.enumerated() {
+                guard let label = spoon.label else { continue }
+                maeSpoonLabelXY[label.tag] = mySpoon.pos(index: index)
+            }
+        }
+        // UNDO実行！
+        let retIndex = mySpoon.rirekiUndo()
+        
+        if changedID == .Word {
+            self.CreateScrollViewContents()
+            maeSpoonLabelXY = [:] // maeSpoon削除
+        }
+        mySpoon.setCursor(index: retIndex, scroll: true, scrollView: scrollView, animated: true)
+        self.setText_CursorPosTimetagLabel()
+        
+    }
+    @IBAction func RedoButton(_ sender: Any) {
+        if !mySpoon.rirekiRedoAble {
+            return
+        }
+        //.Wordのときだけ前後処理が必要。。。ぶさいく
+        let changedID = mySpoon.getNextRedoChangedID
+        if changedID == .Word {
+            //作成済みLabel再配置用pos保存
+            for (index,spoon) in mySpoon.spoons.enumerated() {
+                guard let label = spoon.label else { continue }
+                maeSpoonLabelXY[label.tag] = mySpoon.pos(index: index)
+            }
+        }
+        // REDO実行！
+        let retIndex = mySpoon.rirekiRedo()
+        
+        if changedID == .Word {
+            self.CreateScrollViewContents()
+            maeSpoonLabelXY = [:] // maeSpoon削除
+        }
+        mySpoon.setCursor(index: retIndex, scroll: true, scrollView: scrollView, animated: true)
+        self.setText_CursorPosTimetagLabel()
+        
     }
     
     
@@ -996,7 +1097,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         
         if notesSwitch.isOn {
             setTimetagButton.setTitle("フリック ノーツ" + addWord, for: .normal)
-            setTimetagButton.backgroundColor = UIColor(red: 0.0, green: 0.75, blue: 0.3, alpha: 1.0)
+            setTimetagButton.backgroundColor = UIColor(red: 1.0, green: 0.6, blue: 0.0, alpha: 1.0)
         }else {
             setTimetagButton.setTitle("Timetag", for: .normal)
             setTimetagButton.backgroundColor = UIColor(red: 0.0, green: 0.85, blue: 0.5, alpha: 1.0)

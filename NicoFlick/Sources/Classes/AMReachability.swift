@@ -92,8 +92,7 @@ public class AMReachability {
     
     fileprivate var previousFlags: SCNetworkReachabilityFlags?
     
-    fileprivate var isRunningOnDevice: Bool = {
-        #if (arch(i386) || arch(x86_64)) && os(iOS)
+    fileprivate var isRunningOnDevice: Bool = {        #if (arch(i386) || arch(x86_64)) && os(iOS)
             return false
         #else
             return true

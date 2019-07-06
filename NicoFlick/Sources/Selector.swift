@@ -29,6 +29,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     var userScore = UserScore() //読み取り用で保存データから取り出しておく
     //音楽データ(シングルトン)
     var musicDatas:MusicDataLists = MusicDataLists.sharedInstance
+    let scoreDatas:ScoreDataLists = ScoreDataLists.sharedInstance
+    let commentDatas:CommentDataLists = CommentDataLists.sharedInstance
     
     //表示する楽曲を tag で抽出する
     var currentMusics:[musicData] = [] //tagによって選択されている楽曲
@@ -250,7 +252,42 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         labelView5.font = UIFont.systemFont(ofSize:10)
         labelView5.textAlignment = NSTextAlignment.left
         myView.addSubview(labelView5)
-        
+        //スコアとコメの最新日時
+        let sqlID = currentLevels[row].sqlID
+        var newDate = 0
+        for scoreData in scoreDatas.scores {
+            if scoreData.levelID == sqlID && newDate < scoreData.sqlUpdateTime! {
+                newDate = scoreData.sqlUpdateTime!
+            }
+        }
+        for commentData in commentDatas.comments {
+            if commentData.levelID == sqlID && newDate < commentData.sqlUpdateTime! {
+                newDate = commentData.sqlUpdateTime!
+            }
+        }
+        if newDate != 0 {
+            let dateUnix: TimeInterval = Double(newDate)
+            let date = Date(timeIntervalSince1970: dateUnix)
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy.MM.dd"
+            
+            let labelView6 = UILabel()
+            labelView6.text = formatter.string(from: date)
+            labelView6.frame = CGRect(x: 5, y: 10+20+5  + 20, width: UIScreen.main.bounds.size.width-10, height: 20)
+            labelView6.textColor = UIColor.lightGray
+            labelView6.font = UIFont.systemFont(ofSize:8)
+            labelView6.textAlignment = NSTextAlignment.right
+            myView.addSubview(labelView6)
+        }
+        /*
+        let labelView7 = UILabel()
+        labelView7.text = "play: \(currentLevels[row].playCount!)"
+        labelView7.frame = CGRect(x: 5, y: 2, width: UIScreen.main.bounds.size.width-10, height: 20)
+        labelView7.textColor = UIColor.lightGray
+        labelView7.font = UIFont.systemFont(ofSize:8)
+        labelView7.textAlignment = NSTextAlignment.right
+        myView.addSubview(labelView7)
+        */
         //myView1.alpha = 0.3
         
         return myView
