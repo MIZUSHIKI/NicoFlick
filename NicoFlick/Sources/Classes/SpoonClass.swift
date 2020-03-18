@@ -666,10 +666,10 @@ class Spoons {
         }
         //
         if let button = rirekiUndoButton {
-            button.alpha = 0.9
+            button.alpha = 0.7
         }
         if let button = rirekiRedoButton {
-            button.alpha = 0.45
+            button.alpha = 0.35
         }
     }
     

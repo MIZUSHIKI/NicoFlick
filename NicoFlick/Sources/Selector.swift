@@ -62,6 +62,16 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         //保存しているスコアデータの読み込み
         userScore = userData.Score
         
+        //se対策
+        if UIScreen.main.bounds.size.height <= 568 {
+            musicTitle.frame.origin.y -= 12
+            musicArtist.frame.origin.y -= 12
+            musicLength.frame.origin.y -= 12
+            musicTags.frame.origin.y -= 12
+            levelSpeed.frame.origin.y -= 12
+            musicNum.frame.origin.y -= 12
+        }
+        
         //現在設定されているタグで選択された楽曲を保持する
         //currentMusics = musicDatas.getSelectMusics()
         //現在選択されている曲を保持する
@@ -153,7 +163,25 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         self.musicTitle.text = currentMusics[index].title
         self.musicArtist.text = currentMusics[index].artist
         self.musicLength.text = currentMusics[index].movieLength
-        self.musicTags.text = currentMusics[index].tags
+        let tags = currentMusics[index].tags
+        self.musicTags.text = tags
+        let attrText = NSMutableAttributedString(string: tags!)
+        for tagp in userData.SelectedMusicCondition.tag {
+            let tag = tagp.word
+            print(tag)
+            if let regex = try? NSRegularExpression(pattern: "(^|\\s)\(tag)(\\s|$)", options: []) {
+                let targetStringRange = NSRange(location: 0, length: tags!.count)
+                let result = regex.firstMatch(in: tags!, options: [], range: targetStringRange)
+                if result != nil {
+                    for j in 0 ..< result!.numberOfRanges {
+                        let range = result!.range(at: j)
+                        attrText.addAttribute(.foregroundColor, value: UIColor.black, range: range)
+                        print(range)
+                    }
+                }
+            }
+        }
+        self.musicTags.attributedText = attrText
         self.musicNum.text = "\(index+1) / \(currentMusics.count)"
         if (musicDatas.levels[currentMusics[index].movieURL]==nil){
             currentLevels = []
@@ -232,9 +260,11 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }
         if currentLevels.count > levelSelectPicker.selectedRow(inComponent: 0)
             && currentLevels[levelSelectPicker.selectedRow(inComponent: 0)].isEditing/*isMyEditing()*/ {
-                EditButtonView.isHidden = false
+            EditButtonView.isHidden = false
+            labelRankingComment.isHidden = true
         }else {
             EditButtonView.isHidden = true
+            labelRankingComment.isHidden = false
         }
         let labelView4 = UILabel()
         labelView4.text = rank
@@ -304,6 +334,10 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             }
         }
     }
+    
+    @IBAction func TapTagLabel(_ sender: UITapGestureRecognizer) {
+        self.performSegue(withIdentifier: "toTableViewForTagFromSelector", sender: self)
+    }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
     func showHowToExtendView(){
         // ５曲以上プレイしたら初期楽曲以外のプレイ方法を表示する
@@ -350,6 +384,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             self.showHowToExtendView()
         }else if segue.identifier == "fromEditView" {
             print("back from editview")
+            self.SetMusicToCarousel()
+        }else if segue.identifier == "fromTableViewForTag" {
+            print("back from tableView for tag")
             self.SetMusicToCarousel()
         }
         //print(segue.identifier)
@@ -407,6 +444,10 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             editorViewController.selectLevel = currentLevels[indexPicker]
             editorViewController.password = password
             
+        }else if segue.identifier == "toTableViewForTagFromSelector" {
+            //遷移先のTableViewにデータを渡す
+            let tableViewController:TableViewForTag = segue.destination as! TableViewForTag
+            tableViewController.list = currentMusics[indexCarousel].tag
         }
     }
     //遷移の許可

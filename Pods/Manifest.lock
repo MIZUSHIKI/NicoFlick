@@ -1,5 +1,5 @@
 PODS:
-  - CryptoSwift (1.0.0)
+  - CryptoSwift (1.3.0)
   - TouchVisualizer (3.0.2)
   - TwitterCore (3.2.0)
   - TwitterKit (3.4.2):
@@ -10,12 +10,19 @@ DEPENDENCIES:
   - TouchVisualizer (~> 3.0.0)
   - TwitterKit
 
+SPEC REPOS:
+  trunk:
+    - CryptoSwift
+    - TouchVisualizer
+    - TwitterCore
+    - TwitterKit
+
 SPEC CHECKSUMS:
-  CryptoSwift: d81eeaa59dc5a8d03720fe919a6fd07b51f7439f
+  CryptoSwift: 1283821600233bdbeb96d7b389c3288c3bf77211
   TouchVisualizer: dfdb77c26f1efc58d9980596742de6cf115ea37e
   TwitterCore: 8cbc9ad34d91c63a0035ea05bfbfc0d7ca72a28c
   TwitterKit: 5e4f41d70b9abdb41df5467f52d7aa2c0fd26ebb
 
-PODFILE CHECKSUM: 7929604ed344bb112b98d9c517aae15b46b8c632
+PODFILE CHECKSUM: affdc2bd3150f595166729547212f20d2e0449e3
 
-COCOAPODS: 1.4.0
+COCOAPODS: 1.8.4

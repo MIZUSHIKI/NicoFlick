@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "0930"
+   LastUpgradeVersion = "1100"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -14,10 +14,10 @@
             buildForArchiving = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "D7D4F70C16806F15E61C17E8EB5CEB7F"
+               BlueprintIdentifier = "F89A2D2E64741639216A7211115C72E2"
+               BuildableName = "TouchVisualizer.framework"
                BlueprintName = "TouchVisualizer"
-               ReferencedContainer = "container:Pods.xcodeproj"
-               BuildableName = "TouchVisualizer.framework">
+               ReferencedContainer = "container:Pods.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>

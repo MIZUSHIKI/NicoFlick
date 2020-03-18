@@ -50,3 +50,25 @@ extension UIView
         return imageView
     }
 }
+
+@IBDesignable
+class UIDecorationLabel: UILabel {
+    @IBInspectable var strokeSize: CGFloat = 0
+    @IBInspectable var strokeColor: UIColor = UIColor.clear
+    
+    override func drawText(in rect: CGRect) {
+        // stroke
+        let cr = UIGraphicsGetCurrentContext()
+        let textColor = self.textColor
+        
+        cr!.setLineWidth(self.strokeSize)
+        cr!.setLineJoin(.round)
+        cr!.setTextDrawingMode(.stroke)
+        self.textColor = self.strokeColor
+        super.drawText(in: rect)
+        
+        cr!.setTextDrawingMode(.fill)
+        self.textColor = textColor
+        super.drawText(in: rect)
+    }
+}

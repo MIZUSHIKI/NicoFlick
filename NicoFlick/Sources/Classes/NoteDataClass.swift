@@ -464,26 +464,26 @@ class Score {
         default:
             break
         }
-        if 5<=comboCounter && comboCounter<15 {
-            comboScore += 50
-        }else if 15<=comboCounter && comboCounter<25 {
-            comboScore += 100
-        }else if 25<=comboCounter && comboCounter<25 {
-            comboScore += 150
-        }else if 35<=comboCounter && comboCounter<25 {
-            comboScore += 200
-        }else if 45<=comboCounter && comboCounter<25 {
-            comboScore += 250
-        }else if 55<=comboCounter && comboCounter<25 {
-            comboScore += 300
-        }else if 65<=comboCounter && comboCounter<25 {
-            comboScore += 350
-        }else if 75<=comboCounter && comboCounter<25 {
-            comboScore += 400
-        }else if 85<=comboCounter && comboCounter<25 {
-            comboScore += 450
-        }else if 95<=comboCounter {
+        if 95 <= comboCounter {
             comboScore += 500
+        }else if 85 <= comboCounter {
+            comboScore += 450
+        }else if 75 <= comboCounter {
+            comboScore += 400
+        }else if 65 <= comboCounter {
+            comboScore += 350
+        }else if 55 <= comboCounter {
+            comboScore += 300
+        }else if 45 <= comboCounter {
+            comboScore += 250
+        }else if 35 <= comboCounter {
+            comboScore += 200
+        }else if 25 <= comboCounter {
+            comboScore += 150
+        }else if 15 <= comboCounter {
+            comboScore += 100
+        }else if 5 <= comboCounter {
+            comboScore += 50
         }
         if comboCounter >= 100{
             stageScore += 200

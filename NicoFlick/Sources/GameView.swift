@@ -22,7 +22,7 @@ class GameView: UIViewController, UITextFieldDelegate {
     @IBOutlet var flickView: UIView!
     @IBOutlet var scoreLabel: UILabel!
     @IBOutlet var comboView: UIView!
-    @IBOutlet var comboLabel: UILabel!
+    @IBOutlet var comboLabel: UIDecorationLabel!
     @IBOutlet var highScoreLabel: UILabel!
     @IBOutlet var judgeOffsetLabel: UILabel!
     
@@ -75,6 +75,9 @@ class GameView: UIViewController, UITextFieldDelegate {
     let userData = UserData.sharedInstance
     var userScore = UserScore()
     
+    var signSE:CGFloat = 1
+    var firstAttack = false
+    
     //遷移時に受け取り
     var selectMusic:musicData!
     var selectLevel:levelData!
@@ -107,7 +110,12 @@ class GameView: UIViewController, UITextFieldDelegate {
         }
         //se対策
         if UIScreen.main.bounds.size.height <= 568 {
-            borderMaxView.frame.origin.y = nodeLineFlameOriginY + 42
+            signSE = -1
+            borderMaxView.frame.origin.y = nodeLineFlameOriginY + 41
+            comboFrameOriginY = comboView.frame.origin.y - 50
+            comboLabel.textColor = UIColor.white
+            comboLabel.strokeSize = 3
+            comboLabel.strokeColor = UIColor.darkGray
         }
         //ipad対策（対象じゃないけど）
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow(_:)), name: .UIKeyboardDidShow, object: nil)
@@ -196,13 +204,13 @@ class GameView: UIViewController, UITextFieldDelegate {
         //  スコアデータの読み込み
         userScore = userData.Score
         if let us = userScore.scores[selectLevel.sqlID] {
-            highScoreLabel.text = "High Score: "+String(us[0])
+            highScoreLabel.text = "High Score: "+String(us[0])+" "
         }
         //  ジャッジオフセットの取得
         if let jo = userData.JudgeOffset[selectLevel.sqlID] {
             judgeOffset = Double(jo)
         }
-        judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset))"
+        judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset)) "
 
         //効果音準備 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         seAudio.loadGameSE()
@@ -227,6 +235,7 @@ class GameView: UIViewController, UITextFieldDelegate {
         //タイマー発動 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         timer = Timer.scheduledTimer(timeInterval: 0.001, target: self, selector: #selector(self.update), userInfo: nil, repeats: true)
         timer.fire()
+        firstAttack=true
         
         //キーボードを開く _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         textField.becomeFirstResponder()
@@ -385,7 +394,7 @@ class GameView: UIViewController, UITextFieldDelegate {
             }
             //print(String.init(format: "time(%f,%f) word(%@,%@) diff(%.3f)", (flickedNote?.time)!, flickTime,(flickedNote?.word)!,string, minDiffTime))
         }
-        self.scoreLabel.text = "Score: "+String(noteData.score.totalScore)
+        self.scoreLabel.text = "Score: "+String(noteData.score.totalScore)+" "
         //if (noteData.score.comboCounter % 10) == 0 && noteData.score.comboCounter > 0 {
             self.ComboAction()
         //}
@@ -394,6 +403,12 @@ class GameView: UIViewController, UITextFieldDelegate {
     
     //タイマー（ノート進行表示） _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @objc func update(tm: Timer) {
+        if firstAttack { //なんか前のが勝手に再利用される？ので苦肉の策
+            for note in noteData.notes {
+                note.label.frame.origin.x = -200
+                note.label.isHidden = true
+            }
+        }
         if selectLevel.level<=10 && noteData.score.borderScore <= 0 {
             //強制終了(ランク算出に難あり)
             performSegue(withIdentifier: "toResultView", sender: self)
@@ -420,6 +435,9 @@ class GameView: UIViewController, UITextFieldDelegate {
             currentTimeBarView.frame.size.width = loadedAndCurrentTimeBarView.frame.size.width * CGFloat(CMTimeGetSeconds(currentTime!)/CMTimeGetSeconds(duration!))
         }
         
+        if moviePlayerViewController.player?.isPlaying == false {
+            return
+        }
         
         let time = CMTimeGetSeconds((moviePlayerViewController.player?.currentTime())!)
         //xps = (gameviewWidth-flickPointX)*Double(selectLevel.speed)/300 //ノートが一秒間に進む距離（View作成時に計算済み）
@@ -604,10 +622,10 @@ class GameView: UIViewController, UITextFieldDelegate {
         view.frame.origin.y = comboFrameOriginY
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
-            view.frame.origin.y = self.comboFrameOriginY + 19.9
+            view.frame.origin.y = self.comboFrameOriginY + 19.9 * self.signSE
         }, completion: {finished in
             UIView.animate(withDuration: 1.0, animations: {
-                view.frame.origin.y = self.comboFrameOriginY + 20.0
+                view.frame.origin.y = self.comboFrameOriginY + 20.0 * self.signSE
             }, completion: {finished in
                 //view.isHidden = true
             })
@@ -653,7 +671,19 @@ class GameView: UIViewController, UITextFieldDelegate {
                 textField.becomeFirstResponder() //キーボードを開く
                 noteData.noteReset() //データをリセットする
                 self.comboView.isHidden = true //表示関係もリセット
-                scoreLabel.text = "Score: "+String(noteData.score.totalScore)
+                scoreLabel.text = "Score: "+String(noteData.score.totalScore)+" "
+                //  ジャッジオフセットの取得
+                if let jo = userData.JudgeOffset[selectLevel.sqlID] {
+                    judgeOffset = Double(jo)
+                }
+                judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset))"
+                
+                //Labelを非表示かつ見えない位置に移動
+                for note in noteData.notes { //なんか前のが勝手に再利用される？ので苦肉の策
+                    note.label.frame.origin.x = -200
+                    note.label.isHidden = true
+                }
+                
                 if moviePlayerViewController != nil {
                     if moviePlayerViewController.player != nil {
                         //再生
@@ -661,11 +691,6 @@ class GameView: UIViewController, UITextFieldDelegate {
                         moviePlayerViewController.player?.play()
                     }
                 }
-                //  ジャッジオフセットの取得
-                if let jo = userData.JudgeOffset[selectLevel.sqlID] {
-                    judgeOffset = Double(jo)
-                }
-                judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset))"
                 
                 break
             case 2:
@@ -727,6 +752,12 @@ class GameView: UIViewController, UITextFieldDelegate {
             }
             //キーボードを閉じる _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
             textField.resignFirstResponder()
+
+            //Labelを非表示かつ見えない位置に移動
+            for note in noteData.notes { //なんか前のが勝手に再利用される？ので苦肉の策
+                note.label.frame.origin.x = -200
+                note.label.isHidden = true
+            }
             
             let gameMenuController:GameMenu = segue.destination as! GameMenu
             gameMenuController.gameViewController = self
@@ -742,6 +773,12 @@ class GameView: UIViewController, UITextFieldDelegate {
             }
             //キーボードを閉じる _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
             textField.resignFirstResponder()
+            
+            //Labelを非表示かつ見えない位置に移動
+            for note in noteData.notes {
+                note.label.frame.origin.x = -200
+                note.label.isHidden = true
+            }
             
             let destinationNavigationController = segue.destination as! UINavigationController
             let resultViewController:ResultView = destinationNavigationController.topViewController as! ResultView

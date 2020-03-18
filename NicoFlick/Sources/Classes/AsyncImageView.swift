@@ -20,8 +20,10 @@ class AsyncImageView: UIImageView {
         var ans:[String]=[]
         var trimRect = CGRect(x: 0, y: 13, width: 130, height: 74)
         var flg = false
-        if (urlString_.pregMatche(pattern: "/thumbnails/")){
-            flg = true
+        if (urlString_.pregMatche(pattern: "/thumbnails/(\\d+)/", matches: &ans)){
+            if Int(ans[1])! >= 16371845 {
+                flg = true
+            }
         }else
         if (urlString_.pregMatche(pattern: "\\?i=(\\d+)", matches: &ans)){
             if Int(ans[1])! >= 16371845 {
@@ -32,6 +34,7 @@ class AsyncImageView: UIImageView {
             urlString_ = urlString + ".L"
             trimRect = CGRect(x: 0, y: 35, width: 360, height: 200)
         }
+        print(urlString_)
         let req = URLRequest(url: NSURL(string:urlString_)! as URL,
                              cachePolicy: .returnCacheDataElseLoad,
                              timeoutInterval: CACHE_SEC);
@@ -41,15 +44,13 @@ class AsyncImageView: UIImageView {
         session.dataTask(with: req, completionHandler:
             { (data, resp, err) in
                 if((err) == nil){ //Success
-                    let image = UIImage(data:data!)
-                    
-                    let imgRef = image?.cgImage?.cropping(to: trimRect)
-                    
-                    let trimImage = UIImage(cgImage: imgRef!, scale: (image?.scale)!, orientation: (image?.imageOrientation)!)
-
-                    // リサイズ
-                    self.image = trimImage.ResizeUIImage(width: CGFloat(self.frame.size.width), height: CGFloat(self.frame.size.height))
-                    
+                    let _image = UIImage(data:data!)
+                    if _image != nil {
+                       //まずリサイズ。横幅のみ見るだけでOK
+                        let resizeImage = _image?.ResizeUIImage(width: self.frame.size.width, height: self.frame.size.width)
+                        //次にトリミング
+                        self.image = resizeImage?.TrimUIImage(width: self.frame.size.width, height: self.frame.size.height)
+                    }
                     
                 }else{ //Error
                     //print("AsyncImageView:Error \(err?.localizedDescription)");
@@ -76,6 +77,19 @@ extension UIImage{
         _ = UIGraphicsGetCurrentContext()
         
         self.draw(in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        return image
+    }
+    
+    func TrimUIImage(width : CGFloat, height : CGFloat)-> UIImage!{
+
+        let trimPoint = CGPoint(x: -( self.size.width/2 - width/2 ),
+                                y: -( self.size.height/2 - height/2 ) )
+        UIGraphicsBeginImageContextWithOptions(CGSize(width: width, height: height), false, 0.0)
+        //_ = UIGraphicsGetCurrentContext()
+        self.draw(at: trimPoint)
         let image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
         

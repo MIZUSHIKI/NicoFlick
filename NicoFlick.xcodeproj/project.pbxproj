@@ -42,11 +42,11 @@
 		106CB25021C3EB9D00E3BD73 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 106CB24F21C3EB9D00E3BD73 /* EditorView.swift */; };
 		106CB25221C5272F00E3BD73 /* VerticalSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 106CB25121C5272F00E3BD73 /* VerticalSlider.swift */; };
 		106CB25421C5B97A00E3BD73 /* AVPlayerExt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 106CB25321C5B97A00E3BD73 /* AVPlayerExt.swift */; };
-		1070F52320C3DA41008A5735 /* CryptoSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1070F52220C3DA41008A5735 /* CryptoSwift.framework */; };
 		1070F52520C412D0008A5735 /* CryptClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1070F52420C412D0008A5735 /* CryptClass.swift */; };
 		1070F52720C94E77008A5735 /* CachedMoviesClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1070F52620C94E77008A5735 /* CachedMoviesClass.swift */; };
 		10710D852102C09B00468C6B /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 10710D842102C09B00468C6B /* Settings.bundle */; };
 		10710D892104477600468C6B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10710D882104477600468C6B /* AppDelegate.swift */; };
+		107993BB2417B6F700B032C6 /* dot_circle.png in Resources */ = {isa = PBXBuildFile; fileRef = 107993BA2417B6F700B032C6 /* dot_circle.png */; };
 		107BCC0921CFC11500F39290 /* SpoonClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107BCC0821CFC11500F39290 /* SpoonClass.swift */; };
 		109830D121B56ACF00E2FBDA /* ServerDataHandlerClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109830D021B56ACF00E2FBDA /* ServerDataHandlerClass.swift */; };
 		10A701F221BCAB220055E6F8 /* JasracSearchWebkitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10A701F121BCAB220055E6F8 /* JasracSearchWebkitView.swift */; };
@@ -140,6 +140,7 @@
 		1070F52620C94E77008A5735 /* CachedMoviesClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CachedMoviesClass.swift; path = Sources/Classes/CachedMoviesClass.swift; sourceTree = "<group>"; };
 		10710D842102C09B00468C6B /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
 		10710D882104477600468C6B /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Sources/AppDelegate.swift; sourceTree = "<group>"; };
+		107993BA2417B6F700B032C6 /* dot_circle.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = dot_circle.png; sourceTree = "<group>"; };
 		107BCC0821CFC11500F39290 /* SpoonClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpoonClass.swift; path = Sources/Classes/SpoonClass.swift; sourceTree = "<group>"; };
 		109830D021B56ACF00E2FBDA /* ServerDataHandlerClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ServerDataHandlerClass.swift; path = Sources/Classes/ServerDataHandlerClass.swift; sourceTree = "<group>"; };
 		10A701F121BCAB220055E6F8 /* JasracSearchWebkitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = JasracSearchWebkitView.swift; path = Sources/JasracSearchWebkitView.swift; sourceTree = "<group>"; };
@@ -188,7 +189,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1070F52320C3DA41008A5735 /* CryptoSwift.framework in Frameworks */,
 				3718C00F649D584F32027AFD /* Pods_NicoFlick.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -240,6 +240,7 @@
 			children = (
 				101BD5662177781F00259375 /* Twitter_Social_Icon_Rounded_Square_Color_x100.png */,
 				100BB4C21F6D451600058AAD /* menu.png */,
+				107993BA2417B6F700B032C6 /* dot_circle.png */,
 				10E1DBC61F879D8B00C3BD33 /* ranking.png */,
 				10E1DBC01F8669A100C3BD33 /* comment.png */,
 				1005EC171F9358A1003B9E5B /* circle.png */,
@@ -387,7 +388,7 @@
 				10B49C831EB4B4EF000C79D3 /* Frameworks */,
 				10B49C841EB4B4EF000C79D3 /* Resources */,
 				418A084ED3B5D8F81C37DD1F /* [CP] Embed Pods Frameworks */,
-				3CF98BB8461A318FDA292967 /* [CP] Copy Pods Resources */,
+				2A32F9023227C8D01982D139 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -406,8 +407,6 @@
 				10B49C961EB4B4EF000C79D3 /* Sources */,
 				10B49C971EB4B4EF000C79D3 /* Frameworks */,
 				10B49C981EB4B4EF000C79D3 /* Resources */,
-				1E5791196497D873719301AF /* [CP] Embed Pods Frameworks */,
-				590B85BFD3216B2F370E6FC2 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -427,8 +426,6 @@
 				10B49CA11EB4B4EF000C79D3 /* Sources */,
 				10B49CA21EB4B4EF000C79D3 /* Frameworks */,
 				10B49CA31EB4B4EF000C79D3 /* Resources */,
-				3F45EFE05138ADFED54A6EBA /* [CP] Embed Pods Frameworks */,
-				C6ABF583EE00EC205B8E3740 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -477,6 +474,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				Base,
 			);
 			mainGroup = 10B49C7D1EB4B4EF000C79D3;
@@ -522,6 +520,7 @@
 				102D534A22062DE5008A7843 /* howtoNotes0.png in Resources */,
 				10E6C5EB2104E2A6004457F8 /* LaunchScreen.storyboard in Resources */,
 				10E1DBC21F86707C00C3BD33 /* comment.png in Resources */,
+				107993BB2417B6F700B032C6 /* dot_circle.png in Resources */,
 				101BD56B217B2CEE00259375 /* howtoExtend2.png in Resources */,
 				105B83331EEEA55400FC2244 /* okJingle.wav in Resources */,
 			);
@@ -544,28 +543,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		1E5791196497D873719301AF /* [CP] Embed Pods Frameworks */ = {
+		2A32F9023227C8D01982D139 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlickTests/Pods-NicoFlickTests-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		3CF98BB8461A318FDA292967 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh",
 				"${PODS_ROOT}/TwitterKit/iOS/TwitterKit.framework/TwitterKitResources.bundle",
 			);
 			name = "[CP] Copy Pods Resources";
@@ -574,22 +558,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		3F45EFE05138ADFED54A6EBA /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlickUITests/Pods-NicoFlickUITests-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		418A084ED3B5D8F81C37DD1F /* [CP] Embed Pods Frameworks */ = {
@@ -598,7 +567,7 @@
 			files = (
 			);
 			inputPaths = (
-				"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-frameworks.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-frameworks.sh",
 				"${BUILT_PRODUCTS_DIR}/CryptoSwift/CryptoSwift.framework",
 				"${BUILT_PRODUCTS_DIR}/TouchVisualizer/TouchVisualizer.framework",
 				"${PODS_ROOT}/TwitterCore/iOS/TwitterCore.framework",
@@ -613,7 +582,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		56AF9EE88565321E8A732D4E /* [CP] Check Pods Manifest.lock */ = {
@@ -632,36 +601,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		590B85BFD3216B2F370E6FC2 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlickTests/Pods-NicoFlickTests-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		C6ABF583EE00EC205B8E3740 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-NicoFlickUITests/Pods-NicoFlickUITests-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		EB0DC938656B7F04EE5BBCE6 /* [CP] Check Pods Manifest.lock */ = {
@@ -912,10 +851,12 @@
 			baseConfigurationReference = C201050390E3FF9EFDB81101 /* Pods-NicoFlick.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1.2.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";
@@ -930,10 +871,12 @@
 			baseConfigurationReference = DD9B574FCC333592F9762ED9 /* Pods-NicoFlick.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1.2.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";
