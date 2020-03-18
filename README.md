@@ -11,8 +11,12 @@ https://itunes.apple.com/jp/app/nicoflick/id1415478437?mt=8
 ## こんな感じ
 ![20180805_103105](https://user-images.githubusercontent.com/33353602/43682202-084e5d12-98a8-11e8-975f-10bca5228906.GIF)
 - 楽曲/ゲームの投稿ができるのでプレイできる曲が増えていきます。  
-（ぜひ投稿してみてください。投稿の仕方はアプリ内で解説があります。）
+（ぜひ投稿してみてください。投稿の仕方はアプリ内の解説、または下記の動画を参照ください。）
 - NicoFlickデータベース(http://timetag.main.jp/nicoflick/index.php)
+
+### Youtube
+<a href="https://www.youtube.com/watch?v=0zaNGmhfliM"><img src="https://img.youtube.com/vi/0zaNGmhfliM/0.jpg" width="300px"></a>　
+<a href="https://www.youtube.com/watch?v=yXibZJeIL7g"><img src="https://img.youtube.com/vi/yXibZJeIL7g/0.jpg" width="300px"></a>
 
 ## 楽曲の著作権について
 ### NicoFlickは非営利（無料・無広告）で活動しています。
@@ -33,13 +37,13 @@ http://www2.jasrac.or.jp/eJwid/main.jsp?trxID=F00100
 ##### ・部分信託
 楽曲の著作権の一部をJASRACが管理し、委託していない部分を作者様が管理する。
 
-例えば、『インターネット上での使用は今までどおり作者の判断で自由にやらせてもらい、カラオケ配信するときや放送・有線放送等で使用するとき演奏で使用される時などの、個人での管理が難しいときはJASRACさんにお願いする』といったことが部分信託で可能になっています。
+>部分信託では例えば、「インターネット上での使用は今までどおり作者の判断で自由にやらせてもらって、カラオケ配信するときとか放送・有線放送等で使用するときや演奏で使用される時などの、個人での管理が難しいときはJASRACさんお願いします」ってなことが可能になります。
+>>*参考： 「JASRAC部分信託について（40mP/40メートル走）」　http://40meter.blog125.fc2.com/blog-entry-130.html*
 
 NicoFlickでは、上記のJASRAC委託状況の検索サービスから「インタラクティブ配信(※1)」「ゲーム」がJASRACの管理になっていないかを確認して楽曲の投稿をしてもらう必要があります。
 
 >※1・・・主にインターネット上での使用に関する権利。（二次創作等）
 
-参考： 「JASRAC部分信託について（40mP/40メートル走）」　http://40meter.blog125.fc2.com/blog-entry-130.html
 
 ##### 例）
 ＜全信託＞  
@@ -105,7 +109,7 @@ xcodeが使える人は、GitHubにブランチを投稿してください。（
 ## Licence
 ### GPL(GNU General Public License)
 "何代にも渡っても「フリーソフトウェアであり続ける事」を可能にするという利点" があるみたいなので採用。  
-参考：http://smkn.xsrv.jp/blog/2009/03/summary_for_gpl_mit_cc_etc/
+>*参考：http://smkn.xsrv.jp/blog/2009/03/summary_for_gpl_mit_cc_etc/*
 
 ## どうでもいい言い訳
 >私のプログラム歴
