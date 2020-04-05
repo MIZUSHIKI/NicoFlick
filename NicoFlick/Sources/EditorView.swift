@@ -46,7 +46,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     
     //動画
     var cachedMovies:CachedMovies = CachedMovies.sharedInstance
-    var moviePlayerViewController:AVPlayerViewController!
+    var moviePlayerViewController:AVPlayerViewController?
     var timer:Timer!
     //Indicator（ネット処理中 画面中央でくるくるさせる）
     private var activityIndicator:UIActivityIndicatorView!
@@ -130,16 +130,18 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
                 self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!)
-                self.moviePlayerViewController.player?.currentItem!.audioTimePitchAlgorithm = .spectral
-                //  add
-                self.movieView.addSubview(self.moviePlayerViewController.view)
-                self.movieView.sendSubview(toBack: self.moviePlayerViewController.view)
-                //  動画再生
-                self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                //self.moviePlayerViewController.player?.play()
-                //  動画Viewの位置
-                self.moviePlayerViewController.view.frame.origin = CGPoint(x: 0, y: 0)
-                self.moviePlayerViewController.view.frame.size = self.movieView.frame.size
+                if let moviePlayerViewController = self.moviePlayerViewController {
+                    moviePlayerViewController.player?.currentItem!.audioTimePitchAlgorithm = .spectral
+                    //  add
+                    self.movieView.addSubview(moviePlayerViewController.view)
+                    self.movieView.sendSubview(toBack: moviePlayerViewController.view)
+                    //  動画再生
+                    moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
+                    //self.moviePlayerViewController.player?.play()
+                    //  動画Viewの位置
+                    moviePlayerViewController.view.frame.origin = CGPoint(x: 0, y: 0)
+                    moviePlayerViewController.view.frame.size = self.movieView.frame.size
+                }
                 
                 // 動画が終了した時に呼ばれるnotificationを登録
                 NotificationCenter.default.addObserver(forName: NSNotification.Name.AVPlayerItemDidPlayToEndTime, object: nil, queue: nil){ notification in
@@ -453,7 +455,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         self.removeObserver() // Notificationを画面が消えるときに削除
-        if let player = moviePlayerViewController.player {
+        if let player = moviePlayerViewController?.player {
             player.pause()
         }
     }
@@ -483,7 +485,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         
         let mirisec = mySpoon.spoons[mySpoon.cursorIndex].miriSec
         if mirisec != -1 {
-            moviePlayerViewController.player?.seek(to:
+            moviePlayerViewController?.player?.seek(to:
                 CMTime(seconds: Double(mirisec)/1000, preferredTimescale: Int32(NSEC_PER_SEC)),
                                                    toleranceBefore: kCMTimeZero,
                                                    toleranceAfter: kCMTimeZero
@@ -512,7 +514,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         if moviePlayerViewController == nil {
             return
         }
-        guard let playing = moviePlayerViewController.player?.isPlaying else {
+        guard let playing = moviePlayerViewController?.player?.isPlaying else {
             return
         }
         if playing {
@@ -524,8 +526,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         self.autoSave()
     }
     func playerPlay() {
-        self.moviePlayerViewController.player?.play()
-        self.moviePlayerViewController.player?.rate = movieRateSlider.value
+        moviePlayerViewController?.player?.play()
+        moviePlayerViewController?.player?.rate = movieRateSlider.value
         moviePlayButton.alpha = 0.02
         moviePlayButton.setTitle("", for: .normal)
         
@@ -537,7 +539,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         forwardButton.isHidden = false
     }
     func playerStop() {
-        self.moviePlayerViewController.player?.pause()
+        moviePlayerViewController?.player?.pause()
         moviePlayButton.alpha = 0.5
         moviePlayButton.setTitle("▶", for: .normal)
         
@@ -555,8 +557,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     
     @IBAction func movieTimeSlider_TouchUp(_ sender: UISlider) {
         movieTimeSliding = false
-        if let duration = moviePlayerViewController.player?.currentItem?.duration {
-            moviePlayerViewController.player?.seek(to:
+        if let duration = moviePlayerViewController?.player?.currentItem?.duration {
+            moviePlayerViewController?.player?.seek(to:
                 CMTime(seconds: CMTimeGetSeconds(duration) * Double(sender.value), preferredTimescale: Int32(NSEC_PER_SEC)),
                                                    toleranceBefore: kCMTimeZero,
                                                    toleranceAfter: kCMTimeZero
@@ -565,16 +567,16 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         self.autoSave()
     }
     @IBAction func movieTimeSlider_ValueChanged(_ sender: UISlider) {
-        if let duration = moviePlayerViewController.player?.currentItem?.duration {
+        if let duration = moviePlayerViewController?.player?.currentItem?.duration {
             movieCurrentTimeLabel.text = String.secondsToTimetag(seconds: (CMTimeGetSeconds(duration) * Double(sender.value)), noBrackets: true)
         }
     }
     @IBAction func movieRateSlider(_ sender: UISlider) {
         let rate = Float(Int(round(sender.value * 10))) / 10
         sender.value = rate
-        if let playing =  moviePlayerViewController.player?.isPlaying {
+        if let playing =  moviePlayerViewController?.player?.isPlaying {
             if playing {
-                moviePlayerViewController.player?.rate = rate
+                moviePlayerViewController?.player?.rate = rate
             }
         }
         movieRateLabel.text = "再生速度：×" + String(format:"%.1f",rate)
@@ -776,8 +778,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         }
         if notesSwitch.isOn == false {
             print("timetag")
-            if let currentTime = moviePlayerViewController.player?.currentTime(),
-                let rate = moviePlayerViewController.player?.rate {
+            if let currentTime = moviePlayerViewController?.player?.currentTime(),
+                let rate = moviePlayerViewController?.player?.rate {
                 var mirisec = Int(CMTimeGetSeconds(currentTime) * 1000 - 40.0 * Double(rate - 0.5) / 0.5)
                 if mirisec < 0 { mirisec = 0 }
                 let maeSpoon = mySpoon.spoons[mySpoon.cursorIndex].copy()
@@ -793,11 +795,11 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             }
         }else {
             print("note")
-            guard let playing = moviePlayerViewController.player?.isPlaying else {
+            guard let playing = moviePlayerViewController?.player?.isPlaying else {
                 return
             }
             if playing {
-                if let currentTime = moviePlayerViewController.player?.currentTime() {
+                if let currentTime = moviePlayerViewController?.player?.currentTime() {
                     let (retIndex, maeSpoon) = mySpoon.setNotes_NearTimePos(mirisec: Int(CMTimeGetSeconds(currentTime) * 1000 ))
                     if retIndex != nil && maeSpoon != nil {
                         mySpoon.setCursor(index: retIndex!, scroll: true, scrollView: scrollView, animated: false)
@@ -826,12 +828,12 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             print("timetag")
             if mySpoon.setCursorPrevTimetaged(scrollView: scrollView, animated: false) {
                 
-                if let rate = moviePlayerViewController.player?.rate {
+                if let rate = moviePlayerViewController?.player?.rate {
                     var seconds = Double(mySpoon.spoons[mySpoon.cursorIndex].miriSec)/1000 - Double(3 * rate)
                     if seconds < 0 {
                         seconds = 0.0
                     }
-                    moviePlayerViewController.player?.seek(to:
+                    moviePlayerViewController?.player?.seek(to:
                         CMTime(seconds: seconds, preferredTimescale: Int32(NSEC_PER_SEC)),
                                                            toleranceBefore: kCMTimeZero,
                                                            toleranceAfter: kCMTimeZero
@@ -863,14 +865,14 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         self.autoSave()
     }
     @IBAction func rewindButton(_ sender: UIButton) {
-        if let currentTime = moviePlayerViewController.player?.currentTime(),
-           let rate = moviePlayerViewController.player?.rate {
+        if let currentTime = moviePlayerViewController?.player?.currentTime(),
+           let rate = moviePlayerViewController?.player?.rate {
             
             var seconds = CMTimeGetSeconds(currentTime) - Double(3 * rate)
             if seconds < 0 {
                 seconds = 0.0
             }
-            moviePlayerViewController.player?.seek(to:
+            moviePlayerViewController?.player?.seek(to:
                 CMTime(seconds: seconds, preferredTimescale: Int32(NSEC_PER_SEC)),
                 toleranceBefore: kCMTimeZero,
                 toleranceAfter: kCMTimeZero
@@ -879,9 +881,9 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         self.autoSave()
     }
     @IBAction func forwardButton_TouchDown(_ sender: UIButton) {
-        if let currentTime = moviePlayerViewController.player?.currentTime(),
-            let rate = moviePlayerViewController.player?.rate {
-            moviePlayerViewController.player?.seek(to:
+        if let currentTime = moviePlayerViewController?.player?.currentTime(),
+            let rate = moviePlayerViewController?.player?.rate {
+            moviePlayerViewController?.player?.seek(to:
                 CMTime(seconds: CMTimeGetSeconds(currentTime) + Double(3 * rate), preferredTimescale: Int32(NSEC_PER_SEC)),
                                                    toleranceBefore: kCMTimeZero,
                                                    toleranceAfter: kCMTimeZero
@@ -894,7 +896,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         if moviePlayerViewController == nil {
             return
         }
-        guard let playing = moviePlayerViewController.player?.isPlaying else {
+        guard let playing = moviePlayerViewController?.player?.isPlaying else {
             return
         }
         if playing {
@@ -970,7 +972,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         guard let controller = moviePlayerViewController else {
             return
         }
-        guard let player = moviePlayerViewController.player else {
+        guard let player = moviePlayerViewController?.player else {
             return
         }
         
@@ -1367,7 +1369,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             if moviePlayerViewController == nil {
                 return
             }
-            guard let playing = moviePlayerViewController.player?.isPlaying else {
+            guard let playing = moviePlayerViewController?.player?.isPlaying else {
                 return
             }
             if playing == false {

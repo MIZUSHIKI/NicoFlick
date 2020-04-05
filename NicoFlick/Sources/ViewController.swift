@@ -34,6 +34,8 @@ class ViewController: UIViewController {
         //Indicatorを作成
         activityIndicator = Indicator(center: self.view.center).view
         self.view.addSubview(activityIndicator)
+        
+        //
     }
 
     override func didReceiveMemoryWarning() {

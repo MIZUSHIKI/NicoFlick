@@ -86,6 +86,26 @@ class Settings: UIViewController {
         sender.value = Float(userData.cachedMovieNum)
         cachedMovieNum.text = String(userData.cachedMovieNum)+" 件"
     }
+    @IBAction func buttonDeleteLoadData(_ sender: UIButton) {
+
+        //削除
+        let alert = UIAlertController(title:"データベースからロードしたデータを全て削除", message: "何か不具合があった場合の初期化用です。", preferredStyle: UIAlertControllerStyle.alert)
+        alert.addAction( UIAlertAction(title: "OK", style: .default, handler: {_ in
+            MusicDataLists.sharedInstance.reset()
+            self.userData.MusicsJson = ""
+            self.userData.LevelsJson = ""
+            userNameDataLists.sharedInstance.reset()
+            self.userData.UserNamesJson = ""
+            self.userData.UserNamesServerJsonNumCount = 0
+            self.userData.UserNamesServerJsonCreateTime = 0
+            ScoreDataLists.sharedInstance.reset()
+            self.userData.ScoresJson = ""
+            CommentDataLists.sharedInstance.reset()
+            self.userData.CommentsJson = ""
+        }) )
+        alert.addAction( UIAlertAction(title: "キャンセル", style: .cancel, handler: nil) )
+        self.present(alert, animated: true, completion: nil)
+    }
     
 
     //画面遷移処理 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/

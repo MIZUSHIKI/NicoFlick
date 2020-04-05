@@ -104,7 +104,7 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
         let timeLengthText = self.timeLengthTextField.text!
         let tagsText = self.tagsTextField.text!
         let passwordText = self.passwordTextField.text!
-        let alert = UIAlertController(title:"誓約", message: "私は「NicoFlickの楽曲著作権への対応」について理解し、楽曲の登録をします。\nまた、登録しようとしている楽曲は「著作権管理をJASRACに\"全信託\"されている楽曲ではない」ことを確認済みです。", preferredStyle: UIAlertControllerStyle.alert)
+        let alert = UIAlertController(title:"誓約", message: "私は「NicoFlickの楽曲著作権への対応」について理解し、楽曲の登録をします。\n\n・登録しようとしている楽曲は「著作権管理をJASRACに\"全信託\"されている楽曲ではない」ことを確認済みです。\n・無断アップロードされた楽曲ではありません。\n・二次三次創作がある程度許容されうるジャンル(環境)の楽曲です。", preferredStyle: UIAlertControllerStyle.alert)
         alert.addAction(UIAlertAction(title: "はい", style: UIAlertActionStyle.default, handler: {
             (action: UIAlertAction!) in
             //print("はいをタップした時の処理")

@@ -13,6 +13,8 @@ class SelectorMenu: UIViewController {
 
     @IBOutlet var tagLabel: UILabel!
     @IBOutlet var sortLabel: UILabel!
+    @IBOutlet weak var reportButton: UIButton!
+    
     
     //音楽データ(シングルトン)
     var musicDatas:MusicDataLists = MusicDataLists.sharedInstance
@@ -31,6 +33,11 @@ class SelectorMenu: UIViewController {
         //Indicatorを作成
         activityIndicator = Indicator(center: self.view.center).view
         self.view.addSubview(activityIndicator)
+        
+       if userData.ReportedMusicID.contains("\(selectorController.currentMusics[selectorController.indexCarousel].sqlID!)"){
+            reportButton.backgroundColor = UIColor.gray
+            reportButton.isEnabled = false
+        }
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(true)
@@ -50,6 +57,45 @@ class SelectorMenu: UIViewController {
         if UIApplication.shared.canOpenURL(url!) {
             UIApplication.shared.open(url!, options: [:], completionHandler: nil)
         }
+    }
+    @IBAction func ReportButton(_ sender: UIButton) {
+        let ac = UIAlertController(title: "違反報告", message: "この動画の使用が著作者の権利を侵害していることを報告します。\n\n・無断でアップロードされた楽曲\n・二次三次創作がある程度許容されうるジャンル(環境)ではない 等", preferredStyle: .alert)
+               let ok = UIAlertAction(title: "報告", style: .default, handler: {[weak ac] (action) -> Void in
+                   guard let textFields = ac?.textFields else {
+                       return
+                   }
+
+                   guard !textFields.isEmpty else {
+                       return
+                   }
+
+                   for text in textFields {
+                       if text.tag == 1 {
+                        let musicID = self.selectorController.currentMusics[self.selectorController.indexCarousel].sqlID!
+                        ServerDataHandler().postReport(musicID: musicID, comment: text.text!, userID: self.userData.UserID) { (bool) in
+                            if bool {
+                                DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
+                                    self.userData.ReportedMusicID.append("\(musicID)")
+                                    self.reportButton.backgroundColor = UIColor.gray
+                                    self.reportButton.isEnabled = false
+                                }
+                            }
+                        }
+                       }
+                   }
+               })
+               let cancel = UIAlertAction(title: "キャンセル", style: .cancel, handler: nil)
+
+               //textfiled1の追加
+               ac.addTextField(configurationHandler: {(text:UITextField!) -> Void in
+                   text.tag  = 1
+                text.placeholder = "具体的な違反内容を記入"
+               })
+
+               ac.addAction(ok)
+               ac.addAction(cancel)
+
+               present(ac, animated: true, completion: nil)
     }
     
     @IBAction func goExtLink(_ sender: UIButton) {

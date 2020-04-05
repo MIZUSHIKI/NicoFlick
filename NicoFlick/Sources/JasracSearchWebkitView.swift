@@ -17,9 +17,10 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
     
     var backButton: UIButton!
     var forwadButton: UIButton!
-    var targetUrl = "http://www2.jasrac.or.jp/eJwid/main.jsp?trxID=F00100"
+    var targetUrl = "http://www2.jasrac.or.jp/eJwid/main?trxID=F00100"
     var titleText = ""
     var artistText = ""
+    var firstAttack = true
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -37,11 +38,12 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
         view.addSubview(wkWebView)
         
         createWebControlParts()
-        
         if titleText != "" {
-            let alert = UIAlertController(title:nil, message: "タイトルにアーティスト名など余計な文字が含まれていたら除去してください。\n\n「検索」ボタンから再度確認できます。", preferredStyle: UIAlertControllerStyle.alert)
-            alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.cancel, handler: nil))
-            self.present(alert, animated: true, completion: nil)
+            DispatchQueue.main.async {
+                let alert = UIAlertController(title:nil, message: "タイトルにアーティスト名など余計な文字が含まれていたら除去して「再検索」して下さい", preferredStyle: UIAlertControllerStyle.alert)
+                alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.cancel, handler: nil))
+                self.present(alert, animated: true, completion: nil)
+            }
         }
     }
     
@@ -56,16 +58,18 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
         backButton.isHidden = (webView.canGoBack) ? false : true
         forwadButton.isHidden = (webView.canGoForward) ? false : true
         
+        if !firstAttack { return }
+        firstAttack = false
         let titleText_ = titleText.pregReplace(pattern: "【.*?】", with: "")
         webView.evaluateJavaScript(
-            "document.getElementsByName('frame2')[0].contentDocument.getElementsByName('IN_WORKS_TITLE_NAME1')[0].value = '\(titleText_)'",
+            "document.getElementsByName('IN_WORKS_TITLE_NAME1')[0].value = '\(titleText_)'",
             completionHandler: { (value: Any?, error: Error?) in
                 webView.evaluateJavaScript(
-                    "document.getElementsByName('frame2')[0].contentDocument.getElementsByName('IN_WORKS_TITLE_OPTION1')[0].value = '2'",
+                    "document.getElementsByName('IN_WORKS_TITLE_OPTION1')[0].value = '2'",
                     completionHandler: { (value: Any?, error: Error?) in
                         
                         webView.evaluateJavaScript(
-                            "document.getElementsByName('frame2')[0].contentDocument.forms[1].submit()",
+                            "document.forms[1].submit()",
                             completionHandler: nil)
                         /*
                         webView.evaluateJavaScript(

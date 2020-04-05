@@ -30,11 +30,14 @@ class ResultView: UIViewController {
     @IBOutlet var rank: UILabel!
     @IBOutlet var HiScoreUpdate: UILabel!
     
+    @IBOutlet weak var usumaku: UIView!
     
     //遷移時に受け取り
     var gameViewController:GameView!
     //commentViewのため保持
     var commentPostable = true
+    //Indicator（ネット処理中 画面中央でくるくるさせる）
+    private var activityIndicator:UIActivityIndicatorView!
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -172,6 +175,33 @@ class ResultView: UIViewController {
 
         }
     }
+    //遷移の許可
+    override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {
+        print("should")
+        print(identifier)
 
+        if identifier == "toRankingTabBar" {
+            return true
+        }
+        usumaku.isHidden = false
+        //Indicator くるくる開始
+        activityIndicator.startAnimating()
+
+        //サーバから music,level,userName データを順次取得。
+        ServerDataHandler().Chanse_DownloadUserNameData_FirstData { (error) in
+            if let error = error {
+                print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
+            }
+            DispatchQueue.main.async {
+                //UI処理はメインスレッドの必要あり
+                //Indicator隠す
+                self.activityIndicator.stopAnimating()
+                //遷移指示
+                self.navigationController?.popViewController(animated: true)
+            }
+        }
+        return false
+    }
+    //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
 
 }

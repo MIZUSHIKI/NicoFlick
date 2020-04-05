@@ -87,23 +87,45 @@ class MusicDataLists{
     var musics:[musicData] = []
     var levels: [String:[levelData]] = [:]
     var taglist: [String:Int] = [:] //musicのタグまとめ。[tag:count]
+    var musicsSqlIDtoIndex:[Int:Int] = [:] //最初から musics:[Int:musics] にしとけば良かった
+    var musicsMovieURLtoIndex:[String:Int] = [:] //最初から もう少し考えとけば良かった
+    var flg_levelsFistrLoad = false //なんか処理に時間がかかる場所がある・・・。最初のloadのときは必要ない処理なのでflgで回避する。
     
     var userID: String = ""
     
     //表示する楽曲を tagで抽出、ソートする
     //var selectCondition = SelectConditions() user
+    
+    func reset(){
+        musics = []
+        levels = [:]
+        taglist = [:]
+        musicsSqlIDtoIndex = [:]
+        musicsMovieURLtoIndex = [:]
+        flg_levelsFistrLoad = false
+    }
 
     func setMusic(sqlID:Int, movieURL:String, thumbnailURL:String, title:String, artist:String, movieLength:String, tags:String, updateTime:Int, createTime:Int){
         if movieURL == "delete" {
             //削除
-            for index in 0 ..< musics.count {
-                if musics[index].sqlID == sqlID {
-                    musics.remove(at: index)
+            if let index = musicsSqlIDtoIndex[sqlID] {
+                musics.remove(at: index)
+                musicsSqlIDtoIndex[sqlID] = nil
+                for (key,value) in musicsSqlIDtoIndex {
+                    if value > index {
+                        musicsSqlIDtoIndex[key]! -= 1
+                    }
+                }
+                musicsMovieURLtoIndex[movieURL] = nil
+                for (key,value) in musicsMovieURLtoIndex {
+                    if value > index {
+                        musicsMovieURLtoIndex[key]! -= 1
+                    }
                 }
             }
             return
         }
-        for index in 0 ..< musics.count {
+        if let index = musicsSqlIDtoIndex[sqlID] {
             if musics[index].sqlID == sqlID {
                 musics[index].movieURL = movieURL
                 musics[index].thumbnailURL = thumbnailURL
@@ -117,6 +139,8 @@ class MusicDataLists{
                 return
             }
         }
+        musicsSqlIDtoIndex[sqlID] = musics.count
+        musicsMovieURLtoIndex[movieURL] = musics.count
         let musicdata = musicData()
         musicdata.sqlID = sqlID
         musicdata.movieURL = movieURL
@@ -130,7 +154,6 @@ class MusicDataLists{
         musicdata.sqlCreateTime = createTime
         //print(String(format: "musicsCount=%d", musics.count))
         musics.append(musicdata)
-        //print(musicdata.tag)
     }
     
     func setLevel(sqlID:Int, movieURL:String, level:Int, creator:String, description:String, speed:Int, noteData:String, updateTime:Int, createTime:Int, playCount:Int){
@@ -153,27 +176,24 @@ class MusicDataLists{
             }
             return
         }
-        for music in musics {
-            //print(music.movieURL)
-            //print(movieURL)
-            if music.movieURL == movieURL {
-                //print("in")
-                music.levelIDs.insert(sqlID)
-                break
-            }
+        if let index = musicsMovieURLtoIndex[movieURL] {
+            musics[index].levelIDs.insert(sqlID)
         }
-
-        if levels[movieURL] != nil {
-            for index in 0 ..< (levels[movieURL]?.count)! {
-                if levels[movieURL]?[index].sqlID == sqlID {
-                    levels[movieURL]?[index].level = level
-                    levels[movieURL]?[index].creator = creator
-                    levels[movieURL]?[index].description = description
-                    levels[movieURL]?[index].speed = speed
-                    levels[movieURL]?[index].noteData = noteData
-                    levels[movieURL]?[index].sqlUpdateTime = updateTime
-                    levels[movieURL]?[index].sqlCreateTime = createTime
-                    levels[movieURL]?[index].playCount = playCount
+        // なんか処理に時間がかかるようなのでフラグで回避（初回Load時には不要：上書き処理）
+        if !flg_levelsFistrLoad {
+            if let levelm = levels[movieURL] {
+                let f = levelm.filter { (leveldata) -> Bool in
+                    return leveldata.sqlID == sqlID
+                }
+                if f.count > 0 { // 実は１個しかない(ハズだ)からfirstで処理
+                    f.first!.level = level
+                    f.first!.creator = creator
+                    f.first!.description = description
+                    f.first!.speed = speed
+                    f.first!.noteData = noteData
+                    f.first!.sqlUpdateTime = updateTime
+                    f.first!.sqlCreateTime = createTime
+                    f.first!.playCount = playCount
                     return
                 }
             }
@@ -321,7 +341,7 @@ class MusicDataLists{
         case "ゲームの投稿が新しい曲順":
             var levelp:[String:Int] = [:] //[URL:sqlInt]
             for (key,lvInURL) in levels {
-                print("\(key), \(lvInURL)")
+                //print("\(key), \(lvInURL)")
                 for level in lvInURL {
                     if let sqlID = levelp[key] {
                         if sqlID < level.sqlID {
@@ -338,7 +358,7 @@ class MusicDataLists{
         case "ゲームの投稿が古い曲順":
             var levelp:[String:Int] = [:] //[URL:sqlInt]
             for (key,lvInURL) in levels {
-                print("\(key), \(lvInURL)")
+                //print("\(key), \(lvInURL)")
                 for level in lvInURL {
                     if let sqlID = levelp[key] {
                         if sqlID > level.sqlID {
@@ -368,6 +388,7 @@ class MusicDataLists{
             sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
             sortedMusics.sort(by: {levelp[$0.movieURL]! <= levelp[$1.movieURL]!})
             break
+            /*
         case "最近ハイスコアが更新された曲順":
             //スコアデータ更新取得
             ServerDataHandler().DownloadScoreData { (error) in
@@ -458,6 +479,7 @@ class MusicDataLists{
                 callback(sortedMusics)
             }
             break
+ */
         default:
             sortedMusics = musics
             break
@@ -482,6 +504,115 @@ class MusicDataLists{
             selectLevels.append(level)
         }
         return selectLevels
+    }
+    
+    // music Json化。UserData保存用
+    func toMusicsJsonString() -> String {
+        var jArray:[[String:String]] = []
+        for musicdata in musics {
+            var jObject:[String:String] = [:]
+            jObject["id"] = String(musicdata.sqlID)
+            jObject["movieURL"] = musicdata.movieURL
+            jObject["thumbnailURL"] = musicdata.thumbnailURL
+            jObject["title"] = musicdata.title
+            jObject["artist"] = musicdata.artist
+            jObject["movieLength"] = musicdata.movieLength
+            jObject["tags"] = musicdata.tags
+            jObject["updateTime"] = String(musicdata.sqlUpdateTime)
+            jObject["createTime"] = String(musicdata.sqlCreateTime)
+            
+            jArray.append(jObject)
+        }
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: jArray, options: [])
+            let jsonStr = String(bytes: jsonData, encoding: .utf8)!
+            return jsonStr
+        } catch (let e) {
+            print(e)
+            return ""
+        }
+    }
+    //保存データから読み込み
+    func loadMusicsJsonString(jsonStr:String){
+        if( jsonStr=="" ){ return }
+        let jsonData: Data =  jsonStr.data(using: String.Encoding.utf8)!
+        do {
+            let jsonArray = (try JSONSerialization.jsonObject(with: jsonData, options: [])) as! Array<Dictionary<String,String>>
+            for dic in jsonArray {
+                self.setMusic(
+                    sqlID: Int(dic["id"]!)!,
+                    movieURL: dic["movieURL"]!,
+                    thumbnailURL: dic["thumbnailURL"]!,
+                    title: dic["title"]!,
+                    artist: dic["artist"]!,
+                    movieLength: dic["movieLength"]!,
+                    tags: dic["tags"]!,
+                    updateTime: Int(dic["updateTime"]!)!,
+                    createTime: Int(dic["createTime"]!)!
+                )
+            }
+            self.createTaglist() //タグリストを更新
+        } catch {
+            print(error)
+        }
+    }
+    
+    // levels Json化。UserData保存用
+    func toLecelsJsonString() -> String {
+        
+        var jArray:[[String:String]] = []
+        for (movieURL,leveldatas) in levels {
+            for leveldata in leveldatas {
+                var jObject:[String:String] = [:]
+                jObject["id"] = String(leveldata.sqlID)
+                jObject["movieURL"] = movieURL
+                jObject["level"] = String(leveldata.level)
+                jObject["creator"] = leveldata.creator
+                jObject["description"] = leveldata.description
+                jObject["speed"] = String(leveldata.speed)
+                jObject["notes"] = leveldata.noteData
+                jObject["updateTime"] = String(leveldata.sqlUpdateTime)
+                jObject["createTime"] = String(leveldata.sqlCreateTime)
+                jObject["playCount"] = String(leveldata.playCount)
+                
+                jArray.append(jObject)
+            }
+        }
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: jArray, options: [])
+            let jsonStr = String(bytes: jsonData, encoding: .utf8)!
+            return jsonStr
+        } catch (let e) {
+            print(e)
+            return ""
+        }
+    }
+    //保存データから読み込み
+    func loadLevelsJsonString(jsonStr:String){
+        if( jsonStr=="" ){ return }
+        flg_levelsFistrLoad = true
+        let jsonData: Data =  jsonStr.data(using: String.Encoding.utf8)!
+        do {
+            let jsonArray = (try JSONSerialization.jsonObject(with: jsonData, options: [])) as! Array<Dictionary<String,String>>
+            for dic in jsonArray {
+                self.setLevel(
+                    sqlID: Int(dic["id"]!)!,
+                    movieURL: dic["movieURL"]!,
+                    level: Int(dic["level"]!)!,
+                    creator: dic["creator"]!,
+                    description: dic["description"]!,
+                    speed: Int(dic["speed"]!)!,
+                    noteData: dic["notes"]!,
+                    updateTime: Int(dic["updateTime"]!)!,
+                    createTime: Int(dic["createTime"]!)!,
+                    playCount: Int(dic["playCount"]!)!
+                )
+            }
+            self.createTaglist() //タグリストを更新
+        } catch {
+            print(error)
+        }
+        flg_levelsFistrLoad = false
     }
 }
 

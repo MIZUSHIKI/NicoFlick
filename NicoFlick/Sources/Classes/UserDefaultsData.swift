@@ -129,22 +129,26 @@ class UserData {
     }
     
     //tagやソートの設定
+    var _SelectedMusicCondition:SelectConditions?
     var SelectedMusicCondition:SelectConditions {
         get {
-            var tags = "@初期楽曲"
-            var sortItem = "曲の投稿が古い順"
-            if let tags_ = userDefaults.string(forKey: "SelectConditionsTags") {
-                tags = tags_
+            if _SelectedMusicCondition == nil {
+                var tags = "@初期楽曲"
+                var sortItem = "曲の投稿が古い順"
+                if let tags_ = userDefaults.string(forKey: "SelectConditionsTags") {
+                    tags = tags_
+                }
+                if let sortItem_ = userDefaults.string(forKey: "SelectConditionsSortItem") {
+                    sortItem = sortItem_
+                }
+                _SelectedMusicCondition = SelectConditions(tags: tags, sortItem: sortItem)
             }
-            if let sortItem_ = userDefaults.string(forKey: "SelectConditionsSortItem") {
-                sortItem = sortItem_
-            }
-            let selectCondition = SelectConditions(tags: tags, sortItem: sortItem)
-            return selectCondition
+            return _SelectedMusicCondition!
         }
-        set(selectCondition) {
-            userDefaults.set(selectCondition.tags, forKey: "SelectConditionsTags")
-            userDefaults.set(selectCondition.sortItem, forKey: "SelectConditionsSortItem")
+        set {
+            _SelectedMusicCondition = newValue
+            userDefaults.set(newValue.tags, forKey: "SelectConditionsTags")
+            userDefaults.set(newValue.sortItem, forKey: "SelectConditionsSortItem")
             userDefaults.synchronize()
             //print("保存したよ")
         }
@@ -245,6 +249,105 @@ class UserData {
         }
     }
 
+    //
+    var MusicsJson:String {
+        get {
+            if let str = userDefaults.string(forKey: "MusicsJson") {
+                return str
+            }
+            return ""
+        }
+        set(value) {
+            userDefaults.set(value, forKey: "MusicsJson")
+            userDefaults.synchronize()
+        }
+    }
+    var LevelsJson:String {
+        get {
+            if let str = userDefaults.string(forKey: "LevelsJson") {
+                return str
+            }
+            return ""
+        }
+        set(value) {
+            userDefaults.set(value, forKey: "LevelsJson")
+            userDefaults.synchronize()
+        }
+    }
+    
+    var UserNamesJson:String {
+        get {
+            if let str = userDefaults.string(forKey: "UserNamesJson") {
+                return str
+            }
+            return ""
+        }
+        set(value) {
+            userDefaults.set(value, forKey: "UserNamesJson")
+            userDefaults.synchronize()
+        }
+    }
+    var UserNamesServerJsonNumCount:Int {
+        get {
+            userDefaults.register(defaults: ["UserNamesServerJsonNumCount":0])
+            let num = userDefaults.integer(forKey: "UserNamesServerJsonNumCount")
+            return num
+        }
+        set(num) {
+            userDefaults.set(num, forKey: "UserNamesServerJsonNumCount")
+            userDefaults.synchronize()
+        }
+    }
+    var UserNamesServerJsonCreateTime:Int {
+        get {
+            userDefaults.register(defaults: ["UserNamesServerJsonCreateTime":0])
+            let num = userDefaults.integer(forKey: "UserNamesServerJsonCreateTime")
+            return num
+        }
+        set(num) {
+            userDefaults.set(num, forKey: "UserNamesServerJsonCreateTime")
+            userDefaults.synchronize()
+        }
+    }
+    
+    var ScoresJson:String {
+        get {
+            if let str = userDefaults.string(forKey: "ScoresJson") {
+                return str
+            }
+            return ""
+        }
+        set(value) {
+            userDefaults.set(value, forKey: "ScoresJson")
+            userDefaults.synchronize()
+        }
+    }
+    var CommentsJson:String {
+        get {
+            if let str = userDefaults.string(forKey: "CommentsJson") {
+                return str
+            }
+            return ""
+        }
+        set(value) {
+            userDefaults.set(value, forKey: "CommentsJson")
+            userDefaults.synchronize()
+        }
+    }
+    
+    var ReportedMusicID:[String] {
+        get {
+            if let ids = userDefaults.string(forKey: "ReportedMusicID") {
+                return ids.components(separatedBy: ",")
+            }
+            return []
+        }
+        set(value) {
+            print("report set")
+            userDefaults.set(value.joined(separator: ","), forKey: "ReportedMusicID")
+            userDefaults.synchronize()
+        }
+    }
 }
 
 class UserScore {
@@ -398,9 +501,9 @@ class SelectConditions {
         "ゲームの投稿が新しい曲順",
         "ゲームの投稿が古い曲順",
         "ゲームプレイ回数が多い曲順",
-        "ゲームプレイ回数が少ない曲順",
+        "ゲームプレイ回数が少ない曲順"/*,
         "最近ハイスコアが更新された曲順",
-        "最近コメントされた曲順"
+        "最近コメントされた曲順"*/
     ]
     
     //タグとタイプのセット

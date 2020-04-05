@@ -31,11 +31,13 @@ class MovieAccess{
         } else {
             print("インターネット接続なし")
         }
+        print("smNum=\(smNum)")
         
         
-        let userData = UserData.sharedInstance
+        //いつの間にかアカウント処理が上手くいかなくなったから一時的にやめる
+        //let userData = UserData.sharedInstance
         //アカウントなしの場合
-        if userData.NicoMail == "" || userData.NicoPass == "" {
+        if true/*userData.NicoMail == "" || userData.NicoPass == ""*/ {
             let strURL = String.init(format: "http://www.nicovideo.jp/watch/%@",smNum);
             let url = URL(string: strURL)
             

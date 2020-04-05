@@ -145,6 +145,7 @@ class GameView: UIViewController, UITextFieldDelegate {
                 let screenWidth:CGFloat = self.view.frame.size.width - self.view.safeAreaInsets.left - self.view.safeAreaInsets.right
                 let movieHeight = self.judgeOffsetLabel.frame.origin.y + self.judgeOffsetLabel.frame.size.height - self.view.safeAreaInsets.top
                 //let screenHeight:CGFloat = self.view.frame.size.height - self.view.safeAreaInsets.top - self.view.safeAreaInsets.bottom
+                print("\(screenWidth)x\(movieHeight)")
                 //  動画Viewの位置
                 self.moviePlayerViewController.view.frame = CGRect(x: 0, y: self.view.safeAreaInsets.top, width: screenWidth, height: movieHeight)
                 // 動画が終了した時に呼ばれるnotificationを登録

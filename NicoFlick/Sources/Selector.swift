@@ -285,6 +285,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         //スコアとコメの最新日時
         let sqlID = currentLevels[row].sqlID
         var newDate = 0
+        /*
         for scoreData in scoreDatas.scores {
             if scoreData.levelID == sqlID && newDate < scoreData.sqlUpdateTime! {
                 newDate = scoreData.sqlUpdateTime!
@@ -295,6 +296,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 newDate = commentData.sqlUpdateTime!
             }
         }
+ */
         if newDate != 0 {
             let dateUnix: TimeInterval = Double(newDate)
             let date = Date(timeIntervalSince1970: dateUnix)

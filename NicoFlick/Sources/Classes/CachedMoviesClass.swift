@@ -55,7 +55,14 @@ class CachedMovies {
         if cachedMovies.count > 0{
         }
         //URLから動画をロード
-        let avPlayerItem = AVPlayerItem(url: url)
+        let cookiesArray = HTTPCookieStorage.shared.cookies! //Stored Cookies of your request
+        let values = HTTPCookie.requestHeaderFields(with: cookiesArray)// Returns a dictionary of header fields corresponding to a provided array of cookies.ex.["Cookie":"your cookies values"]
+        let cookieArrayOptions = ["AVURLAssetHTTPHeaderFieldsKey": values]
+        let assets = AVURLAsset(url: url as URL, options: cookieArrayOptions)
+        let avPlayerItem = AVPlayerItem(asset: assets)
+        
+        
+        //let avPlayerItem = AVPlayerItem(url: url)
         let avPlayer = AVPlayer(playerItem: avPlayerItem)
         let avPlayerViewController = AVPlayerViewController()
         avPlayerViewController.player = avPlayer

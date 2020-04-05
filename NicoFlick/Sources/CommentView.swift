@@ -17,6 +17,8 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     @IBOutlet var commentTextView: UITextView!
     @IBOutlet var maku: UIView!
     @IBOutlet var commentPostButton: UIButton!
+    @IBOutlet weak var usernameDownloadProgressLabel: UILabel!
+    
     
     //遷移時に受け取り
     var selectMusic:musicData!
@@ -25,7 +27,8 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     var resultViewController:ResultView!
     
     var userNameDatas:userNameDataLists = userNameDataLists.sharedInstance
-    var commentData:Array<Dictionary<String,String>> = []
+    var commentData:[commentData] = []
+    let commentDatas:CommentDataLists = CommentDataLists.sharedInstance
     
     //Indicator
     private var activityIndicator:UIActivityIndicatorView!
@@ -35,6 +38,10 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         
         musicTitle.text = selectMusic.title
         musicRank.text = selectLevel.getLevelAsString()
+        if userNameDatas.usernameJsonNumCount >= 0 {
+            usernameDownloadProgressLabel.text = "ユーザーネームデータ分割\(userNameDatas.usernameJsonNumCount)まで取得済み"
+            usernameDownloadProgressLabel.isHidden = false
+        }
         
         //Indicatorを作成
         activityIndicator = Indicator(center: self.view.center).view
@@ -51,17 +58,19 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         commentTextView.returnKeyType = .done
         
         //データベース接続
-        ServerDataHandler().getCommentData(levelID: selectLevel.sqlID) { (data) in
+
+//        ServerDataHandler().DownloadScoreData(levelID: self.selectLevel.sqlID!){ (data) in
+        ServerDataHandler().DownloadCommentData(levelID: selectLevel.sqlID){ (error) in
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
                 //Indicator隠す
                 self.activityIndicator.stopAnimating()
-                if let data = data {
-                    self.commentData = data
-                    //テーブル再描画
-                    self.commentTable.reloadData()
-                }
+                self.commentData = self.commentDatas.getSortedComments(levelID: self.selectLevel.sqlID)
+                //テーブル再描画
+                self.commentTable.reloadData()
             }
+        }
+        ServerDataHandler().getCommentData(levelID: selectLevel.sqlID) { (data) in
         }
         
         commentTable.reloadData()
@@ -116,10 +125,12 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         }
         //ユーザーコメント
         //(cell.viewWithTag(1) as! UILabel).text = "\(indexPath.row+1)"
-        (cell.viewWithTag(2) as! UILabel).text = userNameDatas.getUserName( userID: commentData[row]["userID"]! )
-        (cell.viewWithTag(3) as! UILabel).text = commentData[row]["comment"]
+        cell.contentView.backgroundColor = UIColor.init(red: 0, green: 0, blue: 0, alpha: 0.0)
+        (cell.viewWithTag(2) as! UILabel).text = userNameDatas.getUserName( userID: commentData[row].userID! )
+        (cell.viewWithTag(2) as! UILabel).textColor = UIColor.init(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
+        (cell.viewWithTag(3) as! UILabel).text = commentData[row].comment
         (cell.viewWithTag(3) as! UILabel).sizeToFit()
-        let dateUnix: TimeInterval = Double(commentData[row]["updateTime"]!)!
+        let dateUnix: TimeInterval = Double(commentData[row].sqlUpdateTime!)
         let date = Date(timeIntervalSince1970: dateUnix)
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy.MM.dd"
@@ -251,16 +262,17 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         // コメント投稿
         ServerDataHandler().postComment(comment: commentTextView.text, levelID: selectLevel.sqlID, userID: userData.UserID) {
             // 再度データベースからコメントデータを取得してリストを更新
+            ServerDataHandler().DownloadCommentData(levelID: self.selectLevel.sqlID){ (error) in
+                
+            }
             ServerDataHandler().getCommentData(levelID: self.selectLevel.sqlID) { (data) in
                 DispatchQueue.main.async {
                     //UI処理はメインスレッドの必要あり
                     //Indicator隠す
                     self.activityIndicator.stopAnimating()
-                    if let data = data {
-                        self.commentData = data
-                        //テーブル再描画
-                        self.commentTable.reloadData()
-                    }
+                    self.commentData = self.commentDatas.getSortedComments(levelID: self.selectLevel.sqlID)
+                    //テーブル再描画
+                    self.commentTable.reloadData()
                 }
             }
         }
