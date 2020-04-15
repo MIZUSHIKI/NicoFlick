@@ -156,7 +156,7 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
         activityIndicator.startAnimating()
 
         //サーバから music,level,userName データを順次取得。
-        ServerDataHandler().Chanse_DownloadUserNameData_FirstData { (error) in
+        ServerDataHandler().Chance_DownloadUserNameData_FirstData { (error) in
             if let error = error {
                 print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
             }

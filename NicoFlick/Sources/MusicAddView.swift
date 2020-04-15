@@ -179,8 +179,9 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                                         }
                                         
                                     }))
-                                    self.present(alert, animated: true, completion: nil)
-                                    
+                                    DispatchQueue.main.async {
+                                        self.present(alert, animated: true, completion: nil)
+                                    }
                                 }
                             }
                         )
@@ -260,7 +261,9 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                                                 }
                                             }
                                         }))
-                                        self.present(alert, animated: true, completion: nil)
+                                        DispatchQueue.main.async {
+                                            self.present(alert, animated: true, completion: nil)
+                                        }
                                     }
                             }
                             )

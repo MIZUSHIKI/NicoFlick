@@ -341,7 +341,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         self.performSegue(withIdentifier: "toTableViewForTagFromSelector", sender: self)
     }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
-    func showHowToExtendView(){
+    func showHowToExtendView() -> Bool{
         // ５曲以上プレイしたら初期楽曲以外のプレイ方法を表示する
         if userData.lookedExtend == false {
             var musicIDSet:Set<Int> = []
@@ -361,8 +361,10 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                     print("HowToを表示")
                     self.performSegue(withIdentifier: "toHowToExtendView", sender: self)
                 }
+                return true
             }
         }
+        return false
     }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
@@ -383,7 +385,24 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             //ゲームスコアをピッカービューに反映するためCurrentLevelsを更新
             userScore = userData.Score //保存しているスコアデータの読み込み
             self.setCurrentLevels(index:self.carousel.currentItemIndex)
-            self.showHowToExtendView()
+            if !self.showHowToExtendView() {
+                //ユーザーネームデータをロードをするため、遷移させないようにする。
+                segueing = true
+                //Indicator くるくる開始
+                activityIndicator.startAnimating()
+                //サーバから music,level,userName データを順次取得。
+                ServerDataHandler().Chance_DownloadUserNameData_FirstData { (error) in
+                    self.segueing = false
+                    if let error = error {
+                        print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
+                    }
+                    DispatchQueue.main.async {
+                        //UI処理はメインスレッドの必要あり
+                        //Indicator隠す
+                        self.activityIndicator.stopAnimating()
+                    }
+                }
+            }
         }else if segue.identifier == "fromEditView" {
             print("back from editview")
             self.SetMusicToCarousel()

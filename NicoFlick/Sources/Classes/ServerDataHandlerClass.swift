@@ -491,8 +491,8 @@ class ServerDataHandler {
         }
         task.resume()
     }
-    func Chanse_DownloadUserNameData_FirstData(callback: @escaping (Error?) -> Void ) -> Void {
-        if userNameDatas.usernameJsonNumCount == -1 || userNameDatas.usernameJsonCreateTime == 0 {
+    func Chance_DownloadUserNameData_FirstData(callback: @escaping (Error?) -> Void ) -> Void {
+        if userNameDatas.usernameJsonNumCount == -1 {
             callback(nil)
             return
         }

@@ -46,6 +46,10 @@ class ResultView: UIViewController {
         let selectLevel = gameViewController.selectLevel!
         let noteData = gameViewController.noteData!
         
+        //Indicatorを作成
+        activityIndicator = Indicator(center: self.view.center).view
+        self.view.addSubview(activityIndicator)
+        
         let itemView = AsyncImageView(frame: CGRect(x: 0, y: 0,
                                                     width: self.thumbnailView.frame.size.width,
                                                     height: self.thumbnailView.frame.size.height))
@@ -179,28 +183,7 @@ class ResultView: UIViewController {
     override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {
         print("should")
         print(identifier)
-
-        if identifier == "toRankingTabBar" {
-            return true
-        }
-        usumaku.isHidden = false
-        //Indicator くるくる開始
-        activityIndicator.startAnimating()
-
-        //サーバから music,level,userName データを順次取得。
-        ServerDataHandler().Chanse_DownloadUserNameData_FirstData { (error) in
-            if let error = error {
-                print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
-            }
-            DispatchQueue.main.async {
-                //UI処理はメインスレッドの必要あり
-                //Indicator隠す
-                self.activityIndicator.stopAnimating()
-                //遷移指示
-                self.navigationController?.popViewController(animated: true)
-            }
-        }
-        return false
+        return true
     }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
 
