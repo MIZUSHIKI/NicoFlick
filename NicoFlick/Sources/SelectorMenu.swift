@@ -27,6 +27,9 @@ class SelectorMenu: UIViewController {
     var selectorController:Selector!
     var password = ""
     
+    var selectMusics:[musicData]?
+    var selectMusic:musicData?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
@@ -34,10 +37,26 @@ class SelectorMenu: UIViewController {
         activityIndicator = Indicator(center: self.view.center).view
         self.view.addSubview(activityIndicator)
         
-       if userData.ReportedMusicID.contains("\(selectorController.currentMusics[selectorController.indexCarousel].sqlID!)"){
+        // 格納
+        if selectorController.currentMusics.count > 0 {
+            selectMusics = selectorController.currentMusics
+        }
+        if let musics = selectMusics {
+            if selectorController.indexCarousel >= 0 && musics.count > selectorController.indexCarousel{
+                selectMusic = musics[selectorController.indexCarousel]
+            }
+        }
+        
+        if let music = selectMusic {
+            if userData.ReportedMusicID.contains("\(music.sqlID!)"){
+                reportButton.backgroundColor = UIColor.gray
+                reportButton.isEnabled = false
+            }
+        }else {
             reportButton.backgroundColor = UIColor.gray
             reportButton.isEnabled = false
         }
+        
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(true)
@@ -53,12 +72,14 @@ class SelectorMenu: UIViewController {
     //オブジェクトアクション_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     
     @IBAction func goMovieUrlButton(_ sender: UIButton) {
-        let url = URL(string: selectorController.currentMusics[selectorController.indexCarousel].movieURL)
+        if selectMusic == nil { return }
+        let url = URL(string: selectMusic!.movieURL)
         if UIApplication.shared.canOpenURL(url!) {
             UIApplication.shared.open(url!, options: [:], completionHandler: nil)
         }
     }
     @IBAction func ReportButton(_ sender: UIButton) {
+        if selectMusic == nil { return }
         let ac = UIAlertController(title: "違反報告", message: "この動画の使用が著作者の権利を侵害していることを報告します。\n\n・無断でアップロードされた楽曲\n・二次三次創作がある程度許容されうるジャンル(環境)ではない 等", preferredStyle: .alert)
                let ok = UIAlertAction(title: "報告", style: .default, handler: {[weak ac] (action) -> Void in
                    guard let textFields = ac?.textFields else {
@@ -71,7 +92,7 @@ class SelectorMenu: UIViewController {
 
                    for text in textFields {
                        if text.tag == 1 {
-                        let musicID = self.selectorController.currentMusics[self.selectorController.indexCarousel].sqlID!
+                        let musicID = self.selectMusic!.sqlID!
                         ServerDataHandler().postReport(musicID: musicID, comment: text.text!, userID: self.userData.UserID) { (bool) in
                             if bool {
                                 DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
@@ -120,6 +141,7 @@ class SelectorMenu: UIViewController {
     
     
     @IBAction func postLevelDataButton(_ sender: UIButton) {
+        if selectMusic == nil { return }
         //let music = selectorController.currentMusics[selectorController.indexCarousel]
         let level = selectorController.currentLevels[selectorController.indexPicker]
         let hoshi = level.level == 100 ? "FULL" : "☆\(level.level!)"
@@ -231,6 +253,7 @@ class SelectorMenu: UIViewController {
     override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {
         
         if identifier == "toEditor" {
+            if selectMusic == nil { return false }
             password = ""
             let level = selectorController.currentLevels[selectorController.indexPicker]
             let hoshi = level.level == 100 ? "FULL" : "☆\(level.level!)"
