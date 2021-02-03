@@ -23,6 +23,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>nicoflick</string>
 				<string>twitterkit-XrswCPUMoXr3EZUk22mJmCWKx</string>
 			</array>
 		</dict>
@@ -53,5 +54,7 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 </dict>
 </plist>

@@ -36,6 +36,7 @@ class ViewController: UIViewController {
         self.view.addSubview(activityIndicator)
         
         //
+        UserData.sharedInstance.UserNameID=0
     }
 
     override func didReceiveMemoryWarning() {

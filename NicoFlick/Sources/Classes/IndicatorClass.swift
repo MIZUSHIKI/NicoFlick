@@ -23,5 +23,10 @@ class Indicator {
         view.hidesWhenStopped = true
         view.activityIndicatorViewStyle = UIActivityIndicatorViewStyle.white
         view.isHidden = true
+        //  薄膜
+        let v = UIView(frame: CGRect(x: 75/2-center.x, y: 75/2-center.y, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height))
+        v.backgroundColor = .black
+        v.alpha = 0.05
+        view.addSubview(v)
     }
 }

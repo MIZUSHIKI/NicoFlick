@@ -112,13 +112,35 @@ class ResultView: UIViewController {
             }
         }
         //プレイ回数をデータベースに送信する(送信済みでないもの)
-        let playcountset = userData.PlayCount.getSendPlayCountStr() //送信するデータ
-        if playcountset != "" {
+        let pfcountset = PFCounter.init().getSendPlayFavoriteCountStr()
+        if pfcountset != "" {
             // プレイ回数 送信
-            ServerDataHandler().postPlayCountData(playcountset: playcountset) { (bool) in
+            ServerDataHandler().postPlayFavoriteCountData(pfcountset: pfcountset) { (bool) in
                 if bool {
                     //プレイ回数データを保存する(初期化データになる)
-                    userData.PlayCount.setSended()
+                    UserData.sharedInstance.PlayCount.setSended()
+                    UserData.sharedInstance.FavoriteCount.setSended()
+                }
+            }
+        }else{
+            let playcountset = UserData.sharedInstance.PlayCount.getSendPlayCountStr() //送信するデータ
+            if playcountset != "" {
+                // プレイ回数 送信
+                ServerDataHandler().postPlayCountData(playcountset: playcountset) { (bool) in
+                    if bool {
+                        //プレイ回数データを保存する(初期化データになる)
+                        UserData.sharedInstance.PlayCount.setSended()
+                    }
+                }
+            }
+            let favoritecountset = UserData.sharedInstance.FavoriteCount.getSendFavoriteCountStr() //送信するデータ
+            if favoritecountset != "" {
+                // プレイ回数 送信
+                ServerDataHandler().postFavoriteCountData(favoritecountset: favoritecountset) { (bool) in
+                    if bool {
+                        //プレイ回数データを保存する(初期化データになる)
+                        UserData.sharedInstance.FavoriteCount.setSended()
+                    }
                 }
             }
         }

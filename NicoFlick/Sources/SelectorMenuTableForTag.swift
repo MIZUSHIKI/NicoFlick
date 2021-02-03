@@ -12,6 +12,8 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
     
     @IBOutlet var textField: UITextField!
     @IBOutlet var xButton: UIButton!
+    @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var editButton: UIBarButtonItem!
     
     //音楽データ(シングルトン)
     var musicDatas:MusicDataLists = MusicDataLists.sharedInstance
@@ -21,11 +23,17 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
     //遷移時に受け取り
     var selectorMenuController:SelectorMenu!
     var list:[String] = []
+    var currentMusic:musicData! = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
         print(list)
         textField.text = userData.SelectedMusicCondition.tags
+        editButton.isEnabled = ( currentMusic != nil )
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        tableView.reloadData()
     }
     
     override func didReceiveMemoryWarning() {
@@ -115,9 +123,19 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
     }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    @IBAction func returnToMe(segue: UIStoryboardSegue){
+        print("returnToMe")
+    }
+    //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         print("seg")
-        userData.SelectedMusicCondition.tags = textField.text!
-
+        if segue.identifier == "toTagEditor" {
+            //遷移先にデータを渡す
+            let tagEditorController:TagEditor = segue.destination as! TagEditor
+            tagEditorController.tableviewForTagController = self
+        }else {
+            //戻る
+            userData.SelectedMusicCondition.tags = textField.text!
+        }
     }
 }

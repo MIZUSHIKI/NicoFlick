@@ -18,6 +18,9 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
     @IBOutlet var tagsTextField: UITextField!
     @IBOutlet var passwordTextField: UITextField!
     
+    //遷移時に受け取り
+    var selectorMenuController:SelectorMenu!
+    
     //Indicator（ネット処理中 画面中央でくるくるさせる）
     private var activityIndicator:UIActivityIndicatorView!
     
@@ -150,6 +153,9 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                                     alert.addAction(UIAlertAction(title: "OK", style: .cancel, handler: { (alertAction) in
                                         
                                         DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
+                                            self.selectorMenuController.selectorController.maeMusic = nil
+                                            UserData.sharedInstance.SelectedMusicCondition.tags = ""
+                                            UserData.sharedInstance.SelectedMusicCondition.sortItem = "ゲームの投稿が新しい曲順"
                                             //Indicator くるくる開始
                                             self.activityIndicator.startAnimating()
                                             //サーバから music,level,userName データを順次取得。
@@ -244,6 +250,9 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                                         alert.addAction(UIAlertAction(title: "OK", style: .cancel, handler: { (alertAction) in
                                             
                                             DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
+                                                self.selectorMenuController.selectorController.maeMusic = nil
+                                                UserData.sharedInstance.SelectedMusicCondition.tags = ""
+                                                UserData.sharedInstance.SelectedMusicCondition.sortItem = "ゲームの投稿が新しい曲順"
                                                 //Indicator くるくる開始
                                                 self.activityIndicator.startAnimating()
                                                 //サーバから music,level,userName データを順次取得。

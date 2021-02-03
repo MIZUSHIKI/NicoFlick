@@ -77,6 +77,7 @@ class GameView: UIViewController, UITextFieldDelegate {
     
     var signSE:CGFloat = 1
     var firstAttack = false
+    var borderOriginRect:CGRect?
     
     //遷移時に受け取り
     var selectMusic:musicData!
@@ -241,7 +242,24 @@ class GameView: UIViewController, UITextFieldDelegate {
         //キーボードを開く _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         textField.becomeFirstResponder()
     }
-    
+    override func viewDidLayoutSubviews() {
+        if borderOriginRect != nil{
+            return
+        }
+        borderOriginRect = borderMaxView.frame
+    }
+    override func viewWillAppear(_ animated: Bool) {
+        self.SetBorderY()
+    }
+    func SetBorderY(){
+        if let rect = borderOriginRect {
+            if userData.BorderY > 0 {
+                borderMaxView.frame = CGRect(x: rect.origin.x + rect.width/6 , y: userData.BorderY, width: rect.width * 2/3, height: rect.height)
+            }else{
+                borderMaxView.frame = rect
+            }
+        }
+    }
     override func viewWillDisappear(_ animated: Bool) {
         if (timer != nil) {
             timer.invalidate()
@@ -666,6 +684,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                     judgeOffset = Double(jo)
                 }
                 judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset))"
+                //
+                self.SetBorderY()
                 break
             case 1:
                 //リトライ
@@ -678,6 +698,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                     judgeOffset = Double(jo)
                 }
                 judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset))"
+                //
+                self.SetBorderY()
                 
                 //Labelを非表示かつ見えない位置に移動
                 for note in noteData.notes { //なんか前のが勝手に再利用される？ので苦肉の策
@@ -708,13 +730,35 @@ class GameView: UIViewController, UITextFieldDelegate {
                             //  プレイ回数データ
                             userData.PlayCount.addPlayCount(levelID: selectLevel.sqlID)
                             //プレイ回数をデータベースに送信する(送信済みでないもの)
-                            let playcountset = userData.PlayCount.getSendPlayCountStr() //送信するデータ
-                            if playcountset != "" {
+                            let pfcountset = PFCounter.init().getSendPlayFavoriteCountStr()
+                            if pfcountset != "" {
                                 // プレイ回数 送信
-                                ServerDataHandler().postPlayCountData(playcountset: playcountset) { (bool) in
+                                ServerDataHandler().postPlayFavoriteCountData(pfcountset: pfcountset) { (bool) in
                                     if bool {
                                         //プレイ回数データを保存する(初期化データになる)
-                                        self.userData.PlayCount.setSended()
+                                        UserData.sharedInstance.PlayCount.setSended()
+                                        UserData.sharedInstance.FavoriteCount.setSended()
+                                    }
+                                }
+                            }else{
+                                let playcountset = UserData.sharedInstance.PlayCount.getSendPlayCountStr() //送信するデータ
+                                if playcountset != "" {
+                                    // プレイ回数 送信
+                                    ServerDataHandler().postPlayCountData(playcountset: playcountset) { (bool) in
+                                        if bool {
+                                            //プレイ回数データを保存する(初期化データになる)
+                                            UserData.sharedInstance.PlayCount.setSended()
+                                        }
+                                    }
+                                }
+                                let favoritecountset = UserData.sharedInstance.FavoriteCount.getSendFavoriteCountStr() //送信するデータ
+                                if favoritecountset != "" {
+                                    // プレイ回数 送信
+                                    ServerDataHandler().postFavoriteCountData(favoritecountset: favoritecountset) { (bool) in
+                                        if bool {
+                                            //プレイ回数データを保存する(初期化データになる)
+                                            UserData.sharedInstance.FavoriteCount.setSended()
+                                        }
                                     }
                                 }
                             }

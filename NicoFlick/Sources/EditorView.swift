@@ -1299,6 +1299,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             if let sp = mySpoon.atTag["Speed"] {
                 speed = Int(sp)!
             }
+            print("post note")
             ServerDataHandler().postLevelUpdate(
                 sqlID: selectLevel.sqlID,
                 nicoURL: selectMusic.movieURL,

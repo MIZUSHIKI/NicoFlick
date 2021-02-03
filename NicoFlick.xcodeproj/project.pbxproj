@@ -48,6 +48,8 @@
 		10710D892104477600468C6B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10710D882104477600468C6B /* AppDelegate.swift */; };
 		107993BB2417B6F700B032C6 /* dot_circle.png in Resources */ = {isa = PBXBuildFile; fileRef = 107993BA2417B6F700B032C6 /* dot_circle.png */; };
 		107BCC0921CFC11500F39290 /* SpoonClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107BCC0821CFC11500F39290 /* SpoonClass.swift */; };
+		107FC63225B87E44007D1B5F /* SelectorMenuTagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107FC63125B87E44007D1B5F /* SelectorMenuTagEditorView.swift */; };
+		108A733D25C9CFBF00F3835C /* cursor-lr.png in Resources */ = {isa = PBXBuildFile; fileRef = 108A733C25C9CFBE00F3835C /* cursor-lr.png */; };
 		109830D121B56ACF00E2FBDA /* ServerDataHandlerClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109830D021B56ACF00E2FBDA /* ServerDataHandlerClass.swift */; };
 		10A701F221BCAB220055E6F8 /* JasracSearchWebkitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10A701F121BCAB220055E6F8 /* JasracSearchWebkitView.swift */; };
 		10B49C8C1EB4B4EF000C79D3 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49C8B1EB4B4EF000C79D3 /* ViewController.swift */; };
@@ -63,6 +65,11 @@
 		10B49CC91EBD73F5000C79D3 /* NoteDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49CC81EBD73F5000C79D3 /* NoteDataClass.swift */; };
 		10B7BE721F75E1A300EB7E0E /* UserDefaultsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B7BE711F75E1A300EB7E0E /* UserDefaultsData.swift */; };
 		10C7FB3321D9C80D00C74AD1 /* EditorMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C7FB3221D9C80D00C74AD1 /* EditorMenu.swift */; };
+		10D1A0BF2495EC0000D9DBCC /* star.png in Resources */ = {isa = PBXBuildFile; fileRef = 10D1A0BC2495EBFE00D9DBCC /* star.png */; };
+		10D1A0C02495EC0000D9DBCC /* hukidasi.png in Resources */ = {isa = PBXBuildFile; fileRef = 10D1A0BD2495EBFF00D9DBCC /* hukidasi.png */; };
+		10D1A0C12495EC0000D9DBCC /* star-color.png in Resources */ = {isa = PBXBuildFile; fileRef = 10D1A0BE2495EC0000D9DBCC /* star-color.png */; };
+		10D595E925B6A551003C3421 /* cursor-ud.png in Resources */ = {isa = PBXBuildFile; fileRef = 10D595E825B6A551003C3421 /* cursor-ud.png */; };
+		10D595EE25B6E2B0003C3421 /* WikipageWebkitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10D595ED25B6E2B0003C3421 /* WikipageWebkitView.swift */; };
 		10E1DBC21F86707C00C3BD33 /* comment.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC01F8669A100C3BD33 /* comment.png */; };
 		10E1DBC71F879D9300C3BD33 /* ranking.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC61F879D8B00C3BD33 /* ranking.png */; };
 		10E1DBC91F8A76F200C3BD33 /* flick.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC81F8A76EA00C3BD33 /* flick.png */; };
@@ -140,8 +147,10 @@
 		1070F52620C94E77008A5735 /* CachedMoviesClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CachedMoviesClass.swift; path = Sources/Classes/CachedMoviesClass.swift; sourceTree = "<group>"; };
 		10710D842102C09B00468C6B /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
 		10710D882104477600468C6B /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Sources/AppDelegate.swift; sourceTree = "<group>"; };
-		107993BA2417B6F700B032C6 /* dot_circle.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = dot_circle.png; sourceTree = "<group>"; };
+		107993BA2417B6F700B032C6 /* dot_circle.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = dot_circle.png; path = image/dot_circle.png; sourceTree = "<group>"; };
 		107BCC0821CFC11500F39290 /* SpoonClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpoonClass.swift; path = Sources/Classes/SpoonClass.swift; sourceTree = "<group>"; };
+		107FC63125B87E44007D1B5F /* SelectorMenuTagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectorMenuTagEditorView.swift; sourceTree = "<group>"; };
+		108A733C25C9CFBE00F3835C /* cursor-lr.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "cursor-lr.png"; path = "image/cursor-lr.png"; sourceTree = "<group>"; };
 		109830D021B56ACF00E2FBDA /* ServerDataHandlerClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ServerDataHandlerClass.swift; path = Sources/Classes/ServerDataHandlerClass.swift; sourceTree = "<group>"; };
 		10A701F121BCAB220055E6F8 /* JasracSearchWebkitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = JasracSearchWebkitView.swift; path = Sources/JasracSearchWebkitView.swift; sourceTree = "<group>"; };
 		10B49C861EB4B4EF000C79D3 /* NicoFlick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NicoFlick.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -163,6 +172,11 @@
 		10B49CC81EBD73F5000C79D3 /* NoteDataClass.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = NoteDataClass.swift; path = Sources/Classes/NoteDataClass.swift; sourceTree = "<group>"; };
 		10B7BE711F75E1A300EB7E0E /* UserDefaultsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UserDefaultsData.swift; path = Sources/Classes/UserDefaultsData.swift; sourceTree = "<group>"; };
 		10C7FB3221D9C80D00C74AD1 /* EditorMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EditorMenu.swift; path = Sources/EditorMenu.swift; sourceTree = "<group>"; };
+		10D1A0BC2495EBFE00D9DBCC /* star.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = star.png; path = image/star.png; sourceTree = "<group>"; };
+		10D1A0BD2495EBFF00D9DBCC /* hukidasi.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = hukidasi.png; path = image/hukidasi.png; sourceTree = "<group>"; };
+		10D1A0BE2495EC0000D9DBCC /* star-color.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "star-color.png"; path = "image/star-color.png"; sourceTree = "<group>"; };
+		10D595E825B6A551003C3421 /* cursor-ud.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "cursor-ud.png"; path = "image/cursor-ud.png"; sourceTree = "<group>"; };
+		10D595ED25B6E2B0003C3421 /* WikipageWebkitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikipageWebkitView.swift; sourceTree = "<group>"; };
 		10E1DBC01F8669A100C3BD33 /* comment.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = comment.png; path = image/comment.png; sourceTree = "<group>"; };
 		10E1DBC61F879D8B00C3BD33 /* ranking.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = ranking.png; path = image/ranking.png; sourceTree = "<group>"; };
 		10E1DBC81F8A76EA00C3BD33 /* flick.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = flick.png; path = image/flick.png; sourceTree = "<group>"; };
@@ -238,6 +252,11 @@
 		100BB4C11F6D44FB00058AAD /* image */ = {
 			isa = PBXGroup;
 			children = (
+				108A733C25C9CFBE00F3835C /* cursor-lr.png */,
+				10D1A0BD2495EBFF00D9DBCC /* hukidasi.png */,
+				10D595E825B6A551003C3421 /* cursor-ud.png */,
+				10D1A0BE2495EC0000D9DBCC /* star-color.png */,
+				10D1A0BC2495EBFE00D9DBCC /* star.png */,
 				101BD5662177781F00259375 /* Twitter_Social_Icon_Rounded_Square_Color_x100.png */,
 				100BB4C21F6D451600058AAD /* menu.png */,
 				107993BA2417B6F700B032C6 /* dot_circle.png */,
@@ -296,6 +315,7 @@
 				10B49CB91EB4B90D000C79D3 /* Selector.swift */,
 				10EBF2851F79170900FAAAA5 /* SelectorMenu.swift */,
 				10EBF2871F79675E00FAAAA5 /* SelectorMenuTableForTag.swift */,
+				107FC63125B87E44007D1B5F /* SelectorMenuTagEditorView.swift */,
 				10EBF2891F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift */,
 				10B49CC21EB61192000C79D3 /* GameView.swift */,
 				105B833C1EEEE2A300FC2244 /* GameMenu.swift */,
@@ -304,6 +324,7 @@
 				100BB4BF1F5BE48D00058AAD /* CommentView.swift */,
 				10293DBC21A93D1A008CF2F8 /* MusicAddView.swift */,
 				10A701F121BCAB220055E6F8 /* JasracSearchWebkitView.swift */,
+				10D595ED25B6E2B0003C3421 /* WikipageWebkitView.swift */,
 				106CB24F21C3EB9D00E3BD73 /* EditorView.swift */,
 				10C7FB3221D9C80D00C74AD1 /* EditorMenu.swift */,
 				1052F41A21F3F82300D3A795 /* EditorGame.swift */,
@@ -501,14 +522,17 @@
 				102D343C21FDF24C00A50C00 /* howtoEditor5.png in Resources */,
 				102D343D21FDF24C00A50C00 /* howtoEditor2.png in Resources */,
 				101BD56D217B2CEE00259375 /* howtoExtend3.png in Resources */,
+				10D1A0C12495EC0000D9DBCC /* star-color.png in Resources */,
 				10710D852102C09B00468C6B /* Settings.bundle in Resources */,
 				100BB4C31F6D451600058AAD /* menu.png in Resources */,
 				10B49C911EB4B4EF000C79D3 /* Assets.xcassets in Resources */,
 				102D534C22062DE5008A7843 /* howtoNotes3.png in Resources */,
+				10D1A0BF2495EC0000D9DBCC /* star.png in Resources */,
 				105B833B1EEED95900FC2244 /* badJingle.wav in Resources */,
 				101BD5672177782000259375 /* Twitter_Social_Icon_Rounded_Square_Color_x100.png in Resources */,
 				10B49C8F1EB4B4EF000C79D3 /* Main.storyboard in Resources */,
 				102D343B21FDF24C00A50C00 /* howtoEditor4.png in Resources */,
+				10D595E925B6A551003C3421 /* cursor-ud.png in Resources */,
 				106C5FD32115E47A00FF110B /* howto2.png in Resources */,
 				102D343A21FDF24C00A50C00 /* howtoEditor1.png in Resources */,
 				10E1DBC71F879D9300C3BD33 /* ranking.png in Resources */,
@@ -517,10 +541,12 @@
 				105B83351EEEAE1500FC2244 /* safeJingle.wav in Resources */,
 				106C5FD12115DDAF00FF110B /* howto1.png in Resources */,
 				1005EC181F9358A4003B9E5B /* circle.png in Resources */,
+				10D1A0C02495EC0000D9DBCC /* hukidasi.png in Resources */,
 				102D534A22062DE5008A7843 /* howtoNotes0.png in Resources */,
 				10E6C5EB2104E2A6004457F8 /* LaunchScreen.storyboard in Resources */,
 				10E1DBC21F86707C00C3BD33 /* comment.png in Resources */,
 				107993BB2417B6F700B032C6 /* dot_circle.png in Resources */,
+				108A733D25C9CFBF00F3835C /* cursor-lr.png in Resources */,
 				101BD56B217B2CEE00259375 /* howtoExtend2.png in Resources */,
 				105B83331EEEA55400FC2244 /* okJingle.wav in Resources */,
 			);
@@ -647,7 +673,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				1070F52520C412D0008A5735 /* CryptClass.swift in Sources */,
+				10D595EE25B6E2B0003C3421 /* WikipageWebkitView.swift in Sources */,
 				106CB25421C5B97A00E3BD73 /* AVPlayerExt.swift in Sources */,
+				107FC63225B87E44007D1B5F /* SelectorMenuTagEditorView.swift in Sources */,
 				100BB4C01F5BE48D00058AAD /* CommentView.swift in Sources */,
 				10EBF2861F79170900FAAAA5 /* SelectorMenu.swift in Sources */,
 				105B833D1EEEE2A300FC2244 /* GameMenu.swift in Sources */,
@@ -851,12 +879,12 @@
 			baseConfigurationReference = C201050390E3FF9EFDB81101 /* Pods-NicoFlick.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.3.4;
+				CURRENT_PROJECT_VERSION = 1.4.0.1;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.3.4;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";
@@ -871,12 +899,12 @@
 			baseConfigurationReference = DD9B574FCC333592F9762ED9 /* Pods-NicoFlick.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.3.4;
+				CURRENT_PROJECT_VERSION = 1.4.0.1;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.3.4;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";

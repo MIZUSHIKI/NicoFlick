@@ -53,6 +53,11 @@ class levelData {
     var sqlUpdateTime:Int!
     var sqlCreateTime:Int!
     var playCount:Int!
+    var playCountTime:Int!
+    var favoriteCount:Int!
+    var favoriteCountTime:Int!
+    var commentTime:Int!
+    var scoreTime:Int!
     
     func getLevelAsString() -> String {
         var star = ""
@@ -89,6 +94,7 @@ class MusicDataLists{
     var taglist: [String:Int] = [:] //musicのタグまとめ。[tag:count]
     var musicsSqlIDtoIndex:[Int:Int] = [:] //最初から musics:[Int:musics] にしとけば良かった
     var musicsMovieURLtoIndex:[String:Int] = [:] //最初から もう少し考えとけば良かった
+    var levelsSqlIDtoMovieURL:[Int:String] = [:] //最初から もう少し考えとけば良かった
     var flg_levelsFistrLoad = false //なんか処理に時間がかかる場所がある・・・。最初のloadのときは必要ない処理なのでflgで回避する。
     
     var userID: String = ""
@@ -156,7 +162,7 @@ class MusicDataLists{
         musics.append(musicdata)
     }
     
-    func setLevel(sqlID:Int, movieURL:String, level:Int, creator:String, description:String, speed:Int, noteData:String, updateTime:Int, createTime:Int, playCount:Int){
+    func setLevel(sqlID:Int, movieURL:String, level:Int, creator:String, description:String, speed:Int, noteData:String, updateTime:Int, createTime:Int, playCount:Int, playCountTime:Int, favoriteCount:Int, favoriteCountTime:Int, commentTime:Int, scoreTime:Int){
         if level == -1 {
             //削除
             //musicsの逆引き用のlevelIDsから指定IDを削除する
@@ -174,6 +180,9 @@ class MusicDataLists{
                 }
                 */
             }
+            if levelsSqlIDtoMovieURL[sqlID] != nil {
+                levelsSqlIDtoMovieURL[sqlID] = nil
+            }
             return
         }
         if let index = musicsMovieURLtoIndex[movieURL] {
@@ -182,6 +191,7 @@ class MusicDataLists{
         // なんか処理に時間がかかるようなのでフラグで回避（初回Load時には不要：上書き処理）
         if !flg_levelsFistrLoad {
             if let levelm = levels[movieURL] {
+                levelsSqlIDtoMovieURL[sqlID] = movieURL
                 let f = levelm.filter { (leveldata) -> Bool in
                     return leveldata.sqlID == sqlID
                 }
@@ -194,6 +204,11 @@ class MusicDataLists{
                     f.first!.sqlUpdateTime = updateTime
                     f.first!.sqlCreateTime = createTime
                     f.first!.playCount = playCount
+                    f.first!.playCountTime = playCountTime
+                    f.first!.favoriteCount = favoriteCount
+                    f.first!.favoriteCountTime = favoriteCountTime
+                    f.first!.commentTime = commentTime
+                    f.first!.scoreTime = scoreTime
                     return
                 }
             }
@@ -208,10 +223,44 @@ class MusicDataLists{
         leveldata.sqlUpdateTime = updateTime
         leveldata.sqlCreateTime = createTime
         leveldata.playCount = playCount
+        leveldata.playCountTime = playCountTime
+        leveldata.favoriteCount = favoriteCount
+        leveldata.favoriteCountTime = favoriteCountTime
+        leveldata.commentTime = commentTime
+        leveldata.scoreTime = scoreTime
         levels[movieURL] = levels[movieURL] ?? []// nilの場合配列を初期化する
         levels[movieURL]?.append(leveldata)
+        
+        levelsSqlIDtoMovieURL[sqlID] = movieURL
         //print(movieURL)
         //print(String(format: "levelsCount=%d", (levels[movieURL]?.count)!))
+    }
+    func setLevel_PlaycountFavorite(sqlID:Int, playCount:Int, playCountTime:Int, favoriteCount:Int, favoriteCountTime:Int, commentTime:Int, scoreTime:Int){
+        guard let movieURL = levelsSqlIDtoMovieURL[sqlID] else {
+            return
+        }
+        if let levelm = levels[movieURL] {
+            let f = levelm.filter { (leveldata) -> Bool in
+                return leveldata.sqlID == sqlID
+            }
+            if f.count > 0 { // 実は１個しかない(ハズだ)からfirstで処理
+                if playCount != -1 {
+                    f.first!.playCount = playCount
+                    f.first!.playCountTime = playCountTime
+                }
+                if favoriteCount != -1 {
+                    f.first!.favoriteCount = favoriteCount
+                    f.first!.favoriteCountTime = favoriteCountTime
+                }
+                if commentTime != -1 {
+                    f.first!.commentTime = commentTime
+                }
+                if scoreTime != -1 {
+                    f.first!.scoreTime = scoreTime
+                }
+                return
+            }
+        }
     }
     
     func getLastUpdateTimeMusic() -> Int {
@@ -235,6 +284,50 @@ class MusicDataLists{
         }
         return time
     }
+    func getLastPlayCountTimeLevel() -> Int {
+        var time = 0
+        for leveldates in levels {
+            for level in leveldates.value {
+                if time < level.playCountTime {
+                    time = level.playCountTime
+                }
+            }
+        }
+        return time
+    }
+    func getLastFavoriteCountTimeLevel() -> Int {
+        var time = 0
+        for leveldates in levels {
+            for level in leveldates.value {
+                if time < level.favoriteCountTime {
+                    time = level.favoriteCountTime
+                }
+            }
+        }
+        return time
+    }
+    func getLastCommentTimeLevel() -> Int {
+        var time = 0
+        for leveldates in levels {
+            for level in leveldates.value {
+                if time < level.commentTime {
+                    time = level.commentTime
+                }
+            }
+        }
+        return time
+    }
+    func getLastScoreTimeLevel() -> Int {
+        var time = 0
+        for leveldates in levels {
+            for level in leveldates.value {
+                if time < level.scoreTime {
+                    time = level.scoreTime
+                }
+            }
+        }
+        return time
+    }
 
     func createTaglist(){
         taglist = [:] //初期化
@@ -250,19 +343,69 @@ class MusicDataLists{
         }
     }
     
+    func getLevelIDtoMusicID(levelID:Int) -> Int {
+        if let movieURL = levelsSqlIDtoMovieURL[levelID] {
+            if let music = musics.first(where: { $0.movieURL == movieURL }) {
+                return music.sqlID
+            }
+        }
+        return 0
+    }
+    
     //selectConditionsによって抽出、ソートされるmusicを取得
     func getSelectMusics( callback:@escaping ([musicData]) -> () ){
-        let selectCondition = UserData.sharedInstance.SelectedMusicCondition //userData読み出し
+        //let selectCondition = UserData.sharedInstance.SelectedMusicCondition //userData読み出し
+        let outputMusics = _getSelectMusics(selectCondition: UserData.sharedInstance.SelectedMusicCondition)
         
-        print("selectCondition.tag.count = \(selectCondition.tag.count)")
+        self.getSortedMusics(musics: outputMusics, callback: callback)
+        return
+    }
+    func _getSelectMusics(selectCondition:SelectConditions, isMe:Bool = true) -> [musicData] {
+        var tagps:[SelectConditions.tagp] = []
+        for tagp in selectCondition.tag {
+            if tagp.word.hasPrefix("@g:") {//tagp.word.suffix(tagp.word.count-3)
+                let ids = tagp.word.suffix(tagp.word.count-3).components(separatedBy: "-").compactMap{ Int($0) }
+                //tagps += ids.map{ SelectConditions.tagp.init(tag: "@g:\($0)", type: tagp.type) }
+                //print(ids.map{ SelectConditions.tagp.init(tag: "@g:\($0)", type: tagp.type) })
+                // @mへの変換
+                for id in ids {
+                    if let movieURL = levelsSqlIDtoMovieURL[id],
+                       let music = musics.first(where: { $0.movieURL == movieURL }),
+                       let musicID = music.sqlID {
+                        let t = SelectConditions.tagp.init(tag: "@m:\(musicID)", type: tagp.type)
+                        tagps.append(t)
+                    }
+                }
+                continue
+            }else if tagp.word.hasPrefix("@m:") {
+                let ids = tagp.word.suffix(tagp.word.count-3).components(separatedBy: "-").compactMap{ Int($0) }
+                tagps += ids.map{ SelectConditions.tagp.init(tag: "@m:\($0)", type: tagp.type) }
+                continue
+            }else if tagp.word == "@初期楽曲" {
+                //
+            }else if tagp.word.hasPrefix("@") {
+                let w = tagp.word.suffix(tagp.word.count-1)
+                if let music = musics.first(where: { $0.movieURL.hasSuffix(w) }),
+                   let musicID = music.sqlID {
+                    let t = SelectConditions.tagp.init(tag: "@m:\(musicID)", type: tagp.type)
+                    tagps.append(t)
+                    print(t)
+                }
+                continue
+            }
+            tagps.append(tagp)
+        }
+        
+        print("selectCondition.tag.count = \(tagps.count)")
+        print(tagps)
         var extractMusics:[musicData] = []
-        if selectCondition.tag.count == 0 {
+        if tagps.count == 0 {
             extractMusics = musics
         }else {
             var remainMusics:[musicData] = musics
             
-            for tagp in selectCondition.tag {
-                print("\(tagp.type) \(tagp.word)")
+            for tagp in tagps {
+                //print("\(tagp.type) \(tagp.word)")
                 switch tagp.type {
                 case "or":
                     let rmCount = remainMusics.count
@@ -271,11 +414,17 @@ class MusicDataLists{
                     }
                     for bindex in 1...rmCount {
                         let index = rmCount - bindex
-                        print("\(remainMusics[index].sqlID! ) //")
-                        print(tagp.word)
+                        //print("\(remainMusics[index].sqlID! ) //")
+                        //print(tagp.word)
                         if tagp.word == "@初期楽曲" {
                             if remainMusics[index].sqlID! > 14 {
                                 continue
+                            }
+                        }else if tagp.word.hasPrefix("@m:") {
+                            if let id = Int(tagp.word.suffix(tagp.word.count-3)){
+                                if remainMusics[index].sqlID != id {
+                                    continue
+                                }
                             }
                         }else if !remainMusics[index].tag.contains(tagp.word) {
                             continue
@@ -295,6 +444,12 @@ class MusicDataLists{
                             if extractMusics[index].sqlID! <= 14 {
                                 continue
                             }
+                        }else if tagp.word.hasPrefix("@m:") {
+                            if let id = Int(tagp.word.suffix(tagp.word.count-3)){
+                                if extractMusics[index].sqlID == id {
+                                    continue
+                                }
+                            }
                         }else if extractMusics[index].tag.contains(tagp.word) {
                             continue
                         }
@@ -306,6 +461,11 @@ class MusicDataLists{
                     if tagp.word == "@初期楽曲" {
                         extractMusics = extractMusics.filter({$0.sqlID! > 14})
                         remainMusics = remainMusics.filter({$0.sqlID! > 14})
+                    }else if tagp.word.hasPrefix("@m:") {
+                        if let id = Int(tagp.word.suffix(tagp.word.count-3)){
+                            extractMusics = extractMusics.filter({ $0.sqlID != id })
+                            remainMusics = remainMusics.filter({ $0.sqlID != id })
+                        }
                     }else{
                         extractMusics = extractMusics.filter({!$0.tag.contains(tagp.word)})
                         remainMusics = remainMusics.filter({!$0.tag.contains(tagp.word)})
@@ -317,13 +477,12 @@ class MusicDataLists{
         }
         var outputMusics:[musicData] = []
         for music in extractMusics {
-            if getSelectMusicLevels_noSort(selectMovieURL: music.movieURL).count == 0 {
+            if getSelectMusicLevels_noSort(selectMovieURL: music.movieURL, isMe: isMe).count == 0 {
                 continue
             }
             outputMusics.append(music)
         }
-        self.getSortedMusics(musics: outputMusics, callback: callback)
-        return
+        return outputMusics
     }
     
     
@@ -333,16 +492,19 @@ class MusicDataLists{
         var sortedMusics:[musicData] = []
         switch selectCondition.sortItem {
         case "曲の投稿が新しい順":
-            sortedMusics = musics.sorted{ $0.sqlID > $1.sqlID }
+            sortedMusics = musics.sorted{ $0.sqlCreateTime > $1.sqlCreateTime }
             break
         case "曲の投稿が古い順":
-            sortedMusics = musics.sorted{ $0.sqlID < $1.sqlID }
+            sortedMusics = musics.sorted{ $0.sqlCreateTime < $1.sqlCreateTime }
             break
         case "ゲームの投稿が新しい曲順":
             var levelp:[String:Int] = [:] //[URL:sqlInt]
             for (key,lvInURL) in levels {
                 //print("\(key), \(lvInURL)")
                 for level in lvInURL {
+                    if level.isEditing && !level.isMyEditing {
+                        continue
+                    }
                     if let sqlID = levelp[key] {
                         if sqlID < level.sqlID {
                             levelp[key] = level.sqlID
@@ -360,6 +522,9 @@ class MusicDataLists{
             for (key,lvInURL) in levels {
                 //print("\(key), \(lvInURL)")
                 for level in lvInURL {
+                    if level.isEditing && !level.isMyEditing {
+                        continue
+                    }
                     if let sqlID = levelp[key] {
                         if sqlID > level.sqlID {
                             levelp[key] = level.sqlID
@@ -388,117 +553,92 @@ class MusicDataLists{
             sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
             sortedMusics.sort(by: {levelp[$0.movieURL]! <= levelp[$1.movieURL]!})
             break
-            /*
         case "最近ハイスコアが更新された曲順":
-            //スコアデータ更新取得
-            ServerDataHandler().DownloadScoreData { (error) in
-                if let error = error {
-                    print(error)
-                }
-                let scoreDatas:ScoreDataLists = ScoreDataLists.sharedInstance
-                //すべてのスコアを処理。レベルIDをkeyにしてそのレベルで一番スコアの高いものを保持する。(でないと、スコアが低くてもUpdateTimeが新しいものを抽出してしまうことになる)
-                var highScores : [Int : scoreData] = [:]
-                for score in scoreDatas.scores {
-                    if let highScore = highScores[score.levelID] {
-                        if highScore.score < score.score {
-                            highScores[score.levelID] = score
-                        }
-                    }else {
-                        highScores[score.levelID] = score
-                    }
-                }
-                //print(highScores)
-                //これでレベルがタイム順で並んだ
-                let sortedHighScores = highScores.sorted{ $0.value.sqlUpdateTime > $1.value.sqlUpdateTime }
-                //print(sortedHighScores)
-                
-                //レベルから曲を逆引き(曲が複数選ばれないようにしなくてはならない)
-                for (levelID, _) in sortedHighScores {
-                    var music:musicData? = nil
-                    for m in musics {
-                        if m.levelIDs.contains(levelID){
-                            music = m
-                            break
-                        }
-                    }
-                    if music == nil {
-                        continue
-                    }
-                    var appendable = true
-                    for m in sortedMusics {
-                        if m.sqlID == music?.sqlID {
-                            //既にこの曲は追加済み
-                            appendable = false
-                            break
-                        }
-                    }
-                    if appendable {
-                        sortedMusics.append(music!)
-                    }
-                }
-                callback(sortedMusics)
+            var levelp:[String:Int] = [:] //[URL:allPlayCount]
+            for (key,lvInURL) in levels {
+                levelp[key] = lvInURL.reduce(0){ max($0 , $1.scoreTime) }
             }
+            sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
+            sortedMusics.sort(by: {levelp[$0.movieURL]! > levelp[$1.movieURL]!})
             break
         case "最近コメントされた曲順":
-            //コメントデータ更新
-            ServerDataHandler().DownloadCommentData { (error) in
-                if let error = error {
-                    print(error)
-                }
-                let commentDatas:CommentDataLists = CommentDataLists.sharedInstance
-                
-                //これでコメントがタイム順で並んだ(ハイスコア順と違い純粋にUpdateTime順)
-                let sortedComments = commentDatas.comments.sorted{ $0.sqlUpdateTime > $1.sqlUpdateTime }
-                //print(sortedComments)
-                
-                //レベルから曲を逆引き(曲が複数選ばれないようにしなくてはならない)
-                for comment in sortedComments {
-                    let levelID = comment.levelID
-                    var music:musicData? = nil
-                    for m in musics {
-                        if m.levelIDs.contains(levelID!){
-                            music = m
-                            break
-                        }
-                    }
-                    if music == nil {
-                        continue
-                    }
-                    var appendable = true
-                    for m in sortedMusics {
-                        if m.sqlID == music?.sqlID {
-                            //既にこの曲は追加済み
-                            appendable = false
-                            break
-                        }
-                    }
-                    if appendable {
-                        sortedMusics.append(music!)
-                    }
-                }
-                callback(sortedMusics)
+            var levelp:[String:Int] = [:] //[URL:allPlayCount]
+            for (key,lvInURL) in levels {
+                levelp[key] = lvInURL.reduce(0){ max($0 , $1.commentTime) }
             }
+            sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
+            sortedMusics.sort(by: {levelp[$0.movieURL]! > levelp[$1.movieURL]!})
             break
- */
+        case "お気に入り数が多い曲順":
+            var levelp:[String:Int] = [:] //[URL:allPlayCount]
+            for (key,lvInURL) in levels {
+                levelp[key] = lvInURL.reduce(0){ $0 + $1.favoriteCount}
+            }
+            sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
+            sortedMusics.sort(by: {levelp[$0.movieURL]! > levelp[$1.movieURL]!})
+            break
+        case "お気に入り数が少ない曲順":
+            var levelp:[String:Int] = [:] //[URL:allPlayCount]
+            for (key,lvInURL) in levels {
+                levelp[key] = lvInURL.reduce(0){ $0 + $1.favoriteCount}
+            }
+            sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
+            sortedMusics.sort(by: {levelp[$0.movieURL]! <= levelp[$1.movieURL]!})
+            break
+        case "タグで選んだ順":
+            sortedMusics = musics
+            break
         default:
             sortedMusics = musics
             break
         }
         //《編集中》 levels[$0.movieURL] のすべてのdescriptionを調べて【非表示】が含まれるものを排除したとき、lelvelの数が0ならmusicもフィルタリングで除外される
         //sortedMusics = sortedMusics.filter({ levels[$0.movieURL]!.count>0 })
+        
+        //お気に入りを先頭に集める
+        if UserData.sharedInstance.musicSortCondition == 1 {
+            var levelp:[String:Bool] = [:] //[URL:allPlayCount]
+            for (key,lvInURL) in levels {
+                levelp[key] = false
+                for level in lvInURL {
+                    if UserData.sharedInstance.MyFavorite.contains(level.sqlID){
+                        levelp[key] = true
+                        break
+                    }
+                }
+            }
+            sortedMusics = sortedMusics.filter({ (levelp[$0.movieURL] ?? false) }) + sortedMusics.filter({ !(levelp[$0.movieURL] ?? false) })
+        }
+        
         callback(sortedMusics)
     }
     //とりあえずレベル取り出しを作ったけど、level順ソートだけしか無いか確認してから入れ替える
+    // レベルソート条件
     func getSelectMusicLevels(selectMovieURL:String) -> [levelData]{
-        return getSelectMusicLevels_noSort(selectMovieURL:selectMovieURL).sorted{ $0.level < $1.level }
+        if UserData.sharedInstance.LevelSortCondition == 0 {
+            return getSelectMusicLevels_noSort(selectMovieURL:selectMovieURL).sorted{ $0.level < $1.level }
+        }else {
+            var a:[levelData] = []
+            var b:[levelData] = []
+            for level in getSelectMusicLevels_noSort(selectMovieURL:selectMovieURL) {
+                if UserData.sharedInstance.MyFavorite.contains(level.sqlID) {
+                    a.append(level)
+                }else {
+                    b.append(level)
+                }
+            }
+            a.sort{ $0.level < $1.level }
+            b.sort{ $0.level < $1.level }
+            return a + b
+        }
     }
-    func getSelectMusicLevels_noSort(selectMovieURL:String) -> [levelData]{
+    func getSelectMusicLevels_noSort(selectMovieURL:String, isMe:Bool = true) -> [levelData]{
         var selectLevels:[levelData] = []
         guard let levels = levels[selectMovieURL] else {
             return selectLevels
         }
         for level in levels {
-            if level.isEditing && !level.isMyEditing{
+            if level.isEditing && !(level.isMyEditing && isMe){
                 continue
             }
             selectLevels.append(level)
@@ -558,7 +698,7 @@ class MusicDataLists{
     }
     
     // levels Json化。UserData保存用
-    func toLecelsJsonString() -> String {
+    func toLevelsJsonString() -> String {
         
         var jArray:[[String:String]] = []
         for (movieURL,leveldatas) in levels {
@@ -574,6 +714,11 @@ class MusicDataLists{
                 jObject["updateTime"] = String(leveldata.sqlUpdateTime)
                 jObject["createTime"] = String(leveldata.sqlCreateTime)
                 jObject["playCount"] = String(leveldata.playCount)
+                jObject["playCountTime"] = String(leveldata.playCountTime)
+                jObject["favorite"] = String(leveldata.favoriteCount)
+                jObject["favoriteTime"] = String(leveldata.favoriteCountTime)
+                jObject["commentTime"] = String(leveldata.commentTime)
+                jObject["scoreTime"] = String(leveldata.scoreTime)
                 
                 jArray.append(jObject)
             }
@@ -595,6 +740,27 @@ class MusicDataLists{
         do {
             let jsonArray = (try JSONSerialization.jsonObject(with: jsonData, options: [])) as! Array<Dictionary<String,String>>
             for dic in jsonArray {
+                //下位互換
+                var playCountTime = 0
+                var favoriteCount = 0
+                var favoriteCountTime = 0
+                var commentTime = 0
+                var scoreTime = 0
+                if dic["playCountTime"] != nil {
+                    playCountTime = Int(dic["playCountTime"]!)!
+                }
+                if dic["favorite"] != nil {
+                    favoriteCount = Int(dic["favorite"]!)!
+                }
+                if dic["favoriteTime"] != nil {
+                    favoriteCountTime = Int(dic["favoriteTime"]!)!
+                }
+                if dic["commentTime"] != nil {
+                    commentTime = Int(dic["commentTime"]!)!
+                }
+                if dic["scoreTime"] != nil {
+                    scoreTime = Int(dic["scoreTime"]!)!
+                }
                 self.setLevel(
                     sqlID: Int(dic["id"]!)!,
                     movieURL: dic["movieURL"]!,
@@ -605,7 +771,12 @@ class MusicDataLists{
                     noteData: dic["notes"]!,
                     updateTime: Int(dic["updateTime"]!)!,
                     createTime: Int(dic["createTime"]!)!,
-                    playCount: Int(dic["playCount"]!)!
+                    playCount: Int(dic["playCount"]!)!,
+                    playCountTime: playCountTime,
+                    favoriteCount: favoriteCount,
+                    favoriteCountTime: favoriteCountTime,
+                    commentTime: commentTime,
+                    scoreTime: scoreTime
                 )
             }
             self.createTaglist() //タグリストを更新

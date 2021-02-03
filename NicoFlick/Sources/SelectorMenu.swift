@@ -14,6 +14,7 @@ class SelectorMenu: UIViewController {
     @IBOutlet var tagLabel: UILabel!
     @IBOutlet var sortLabel: UILabel!
     @IBOutlet weak var reportButton: UIButton!
+    @IBOutlet weak var idLabel: UILabel!
     
     
     //音楽データ(シングルトン)
@@ -51,6 +52,13 @@ class SelectorMenu: UIViewController {
             if userData.ReportedMusicID.contains("\(music.sqlID!)"){
                 reportButton.backgroundColor = UIColor.gray
                 reportButton.isEnabled = false
+            }
+            let selectLevels = selectorController.currentLevels
+            if selectorController.indexPicker >= 0 && selectLevels.count > selectorController.indexPicker {
+                let selectLevel = selectLevels[selectorController.indexPicker]
+                if let mid = music.sqlID, let gid = selectLevel.sqlID {
+                    idLabel.text = "musicID=\(mid), gameID=\(gid)"
+                }
             }
         }else {
             reportButton.backgroundColor = UIColor.gray
@@ -239,6 +247,12 @@ class SelectorMenu: UIViewController {
             let tableViewController:TableViewForSort = segue.destination as! TableViewForSort
             
             tableViewController.selectorMenuController = self
+            
+        }else if segue.identifier == "toMusicAddView" {
+            //遷移先のTableViewにデータを渡す
+            let musicAddViewController:MusicAddView = segue.destination as! MusicAddView
+            
+            musicAddViewController.selectorMenuController = self
             
         }else if segue.identifier == "toEditor" {
             //現在選択中のデータをEditorViewに渡す

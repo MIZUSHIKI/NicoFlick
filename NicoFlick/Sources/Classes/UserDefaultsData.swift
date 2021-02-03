@@ -16,6 +16,7 @@ import Foundation
      var NicoPass
      var Score:UserScore
      var PlayCount:PlayCounter
+     var FavoriteCount:FavoriteCounter
      var 
  }
  class UserScore        //データベースにスコア等を送る際、ネット接続出来ない場合は後からまとめて送信処理する
@@ -67,6 +68,17 @@ class UserData {
             userDefaults.synchronize()
         }
     }
+    var UserNameID:Int {
+        get {
+            userDefaults.register(defaults: ["UserNameID":0])
+            let num = userDefaults.integer(forKey: "UserNameID")
+            return num
+        }
+        set(num) {
+            userDefaults.set(num, forKey: "UserNameID")
+            userDefaults.synchronize()
+        }
+    }
     //
     var NicoMail:String {
         get {
@@ -110,6 +122,24 @@ class UserData {
             //print("Score set")
         }
     }
+    //MyFavorite
+    var MyFavorite:Set<Int> {
+        get {
+            if let ids = userDefaults.string(forKey: "MyFavorite") {
+                //print(ids)
+                if ids == "" {
+                    return Set()
+                }
+                return Set( ids.components(separatedBy: ",").map { Int($0)! } )
+            }
+            return Set()
+        }
+        set(value) {
+            print("myfavorite set")
+            userDefaults.set(value.map{String($0)}.joined(separator: ","), forKey: "MyFavorite")
+            userDefaults.synchronize()
+        }
+    }
     
     //PlayCounter
     var PlayCount:PlayCounter {
@@ -124,6 +154,22 @@ class UserData {
         set(playCounter){
             let data = NSKeyedArchiver.archivedData(withRootObject: playCounter.counter)
             userDefaults.set(data, forKey: "PlayCount")
+            userDefaults.synchronize()
+        }
+    }
+    //FavoriteCounter
+    var FavoriteCount:FavoriteCounter {
+        get {
+            let favoriteCounter = FavoriteCounter()
+            if let pc = userDefaults.object(forKey: "FavoriteCount") as? NSData {
+                //print("プレイ回数 読み込み")
+                favoriteCounter.counter = NSKeyedUnarchiver.unarchiveObject(with: pc as Data) as! [Int:Int]
+            }
+            return favoriteCounter
+        }
+        set(favoriteCounter){
+            let data = NSKeyedArchiver.archivedData(withRootObject: favoriteCounter.counter)
+            userDefaults.set(data, forKey: "FavoriteCount")
             userDefaults.synchronize()
         }
     }
@@ -153,6 +199,29 @@ class UserData {
             //print("保存したよ")
         }
     }
+    //
+    var LevelSortCondition:Int {
+        get {
+            userDefaults.register(defaults: ["LevelSortCondition":0])
+            let num = userDefaults.integer(forKey: "LevelSortCondition")
+            return num
+        }
+        set(num) {
+            userDefaults.set(num, forKey: "LevelSortCondition")
+            userDefaults.synchronize()
+        }
+    }
+    var musicSortCondition:Int {
+        get {
+            userDefaults.register(defaults: ["musicSortCondition":0])
+            let num = userDefaults.integer(forKey: "musicSortCondition")
+            return num
+        }
+        set(num) {
+            userDefaults.set(num, forKey: "musicSortCondition")
+            userDefaults.synchronize()
+        }
+    }
     
     var JudgeOffset:[Int:Float] {
         get{
@@ -168,6 +237,17 @@ class UserData {
             userDefaults.set(data, forKey: "JudgeOffset")
             userDefaults.synchronize()
             //print("JudgeOffset set")
+        }
+    }
+    var BorderY:CGFloat {
+        get {
+            userDefaults.register(defaults: ["BorderY":Float(0)])
+            let x = userDefaults.float(forKey: "BorderY")
+            return CGFloat(x)
+        }
+        set(x) {
+            userDefaults.set(Float(x), forKey: "BorderY")
+            userDefaults.synchronize()
         }
     }
     
@@ -395,7 +475,8 @@ class UserScore {
         var scoreset = ""
         for (levelID,us) in scores {
             if us[FLG] == 0 {
-                scoreset += "<\(levelID),\(us[SCORE])>"
+                let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+                scoreset += "<\(levelID),\(musicID),\(us[SCORE])>"
             }
         }
         return scoreset
@@ -452,6 +533,88 @@ class PlayCounter {
     }
 }
 
+class FavoriteCounter {
+    var counter:[Int:Int] = [:]
+    
+    func addFavoriteCount(levelID:Int){
+        if let fc = counter[levelID] {
+            //あった
+            if fc == -1 {
+                //けど引こうとしていた
+                counter[levelID] = nil
+            }else {
+                return
+            }
+        }else {
+            //なかった
+            counter[levelID] = 1
+        }
+        
+        //保存
+        let userData = UserData.sharedInstance
+        userData.FavoriteCount = self
+    }
+    func subFavoriteCount(levelID:Int){
+        if let fc = counter[levelID] {
+            //あった
+            if fc == 1 {
+                //足そうとしていた
+                counter[levelID] = nil
+            }else {
+                return
+            }
+        }else {
+            //なかった
+            counter[levelID] = -1
+        }
+        //保存
+        let userData = UserData.sharedInstance
+        userData.FavoriteCount = self
+    }
+    //データベースに送るプレイ回数セット文字列
+    func getSendFavoriteCountStr() -> String {
+        var favoritecountset = ""
+        for (levelID,pc) in counter {
+            favoritecountset += "<\(levelID),\(pc)>"
+        }
+        return favoritecountset
+    }
+    //スコア送信後、FLGを送信済みにする
+    func setSended() {
+        counter = [:] //初期化
+        //保存
+        let userData = UserData.sharedInstance
+        userData.FavoriteCount = self
+    }
+}
+
+class PFCounter {
+    let userData = UserData.sharedInstance
+    let playCounter:[Int:Int]
+    let favoriteCounter:[Int:Int]
+    init() {
+        playCounter = userData.PlayCount.counter
+        favoriteCounter = userData.FavoriteCount.counter
+    }
+    func getSendPlayFavoriteCountStr() -> String {
+        
+        let sets = Set( Array(playCounter.keys) + Array(favoriteCounter.keys) )
+        
+        if sets.count == (playCounter.count + favoriteCounter.count){
+            //pfで重複してないなら片方だけで送るようにする
+            return ""
+        }
+        
+        var pfcountset = ""
+        for levelID in sets {
+            let pc = playCounter[levelID] ?? 0
+            let fc = favoriteCounter[levelID] ?? 0
+            pfcountset += "<\(levelID),\(pc),\(fc)>"
+        }
+        return pfcountset
+    }
+}
+
 class SelectConditions {
     
     init(tags:String, sortItem:String) {
@@ -501,9 +664,11 @@ class SelectConditions {
         "ゲームの投稿が新しい曲順",
         "ゲームの投稿が古い曲順",
         "ゲームプレイ回数が多い曲順",
-        "ゲームプレイ回数が少ない曲順"/*,
+        "ゲームプレイ回数が少ない曲順",
+        "お気に入り数が多い曲順",
+        "お気に入り数が少ない曲順",
         "最近ハイスコアが更新された曲順",
-        "最近コメントされた曲順"*/
+        "最近コメントされた曲順"
     ]
     
     //タグとタイプのセット

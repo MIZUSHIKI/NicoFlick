@@ -12,6 +12,9 @@ class GameMenu: UIViewController {
     
     @IBOutlet var judgeOffsetLabel: UILabel!
     @IBOutlet var judgeOffsetSlider: UISlider!
+    @IBOutlet weak var underbar: UIView!
+    @IBOutlet weak var overbar: UIView!
+    
     //遷移時に受け取り
     var gameViewController:GameView!
     
@@ -27,6 +30,10 @@ class GameMenu: UIViewController {
         }
         judgeOffsetSlider.value = value
         judgeOffsetLabel.text = String(format:"%0.02f",value)
+        if userData.BorderY > 0 {
+            underbar.isHidden = true
+            overbar.isHidden = false
+        }
     }
     
     override func didReceiveMemoryWarning() {
@@ -54,6 +61,17 @@ class GameMenu: UIViewController {
     @IBAction func musicSelect(_ sender: Any) {
         self.gameViewController.returnToMeData = 2
         self.performSegue(withIdentifier: "fromGameMenu", sender: self)
+    }
+    
+    @IBAction func UnderbarButton(_ sender: Any) {
+        underbar.isHidden = false
+        overbar.isHidden = true
+        userData.BorderY = 0
+    }
+    @IBAction func OverbarButton(_ sender: Any) {
+        underbar.isHidden = true
+        overbar.isHidden = false
+        userData.BorderY = overbar.frame.origin.y
     }
     
 }
