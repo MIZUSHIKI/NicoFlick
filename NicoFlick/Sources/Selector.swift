@@ -170,9 +170,12 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 retTag = retTag.trimmingCharacters(in: .whitespaces)
                 retTag = retTag.pregReplace(pattern: "\\s*/(and|AND)/\\s*", with: "/and/")
                 retTag = retTag.pregReplace(pattern: "\\s+", with: " or ")
+                retTag = retTag.pregReplace(pattern: "/and/", with: " ")
                 
                 userData.SelectedMusicCondition.tags = retTag
-                userData.SelectedMusicCondition.sortItem = retSort
+                if retSort != "" {
+                    userData.SelectedMusicCondition.sortItem = retSort
+                }
 
                 self.maeMusic = nil
                 self.SetMusicToCarousel()

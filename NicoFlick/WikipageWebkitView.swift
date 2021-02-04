@@ -57,6 +57,7 @@ class WikipageWebkitView: UIViewController, WKUIDelegate, WKNavigationDelegate, 
         print("tabBar.frame.height")
         tabBar.frame.origin.y = (UIApplication.shared.keyWindow?.rootViewController?.view.safeAreaInsets.bottom ?? 0) - tabBar.frame.height
          */
+        //WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: Date(timeIntervalSince1970: 0), completionHandler: {})
     }
     
     override func didReceiveMemoryWarning() {
