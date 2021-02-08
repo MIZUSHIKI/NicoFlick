@@ -247,6 +247,12 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             self.buttonRankingComment.isHidden = true
             self.labelRankingComment.isHidden = true
             self.levelSelectPicker.reloadAllComponents()
+            colorStar.isHidden = true
+            favoriteNum.isHidden = true
+            favoriteNum2.isHidden = true
+            rankingTimeLabel.isHidden = true
+            commentTimeLabel.isHidden = true
+            EditButtonView.isHidden = true
             return
         }
         self.musicTitle.text = currentMusics[index].title
