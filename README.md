@@ -27,7 +27,7 @@ https://itunes.apple.com/jp/app/nicoflick/id1415478437?mt=8
 また、すべての権利を委託するのではなく部分信託されている場合もあります。
 
 JASRACへの委託状況は以下の検索サービスから確認してください。  
-http://www2.jasrac.or.jp/eJwid/main.jsp?trxID=F00100
+http://www2.jasrac.or.jp/eJwid/
 
 #### 管理信託状況
 ##### ・全信託
@@ -49,9 +49,9 @@ NicoFlickでは、上記のJASRAC委託状況の検索サービスから「イ�
 
 ##### 例）
 ＜全信託＞  
-想像フォレスト/じん　http://www2.jasrac.or.jp/eJwid/main.jsp?trxID=F20101&WORKS_CD=70520810&subSessionID=001&subSession=start  
+想像フォレスト/じん　http://www2.jasrac.or.jp/eJwid/main?trxID=F20101&WORKS_CD=70520810&subSessionID=001&subSession=start  
 ＜部分信託＞  
-アカイト/みきとP　http://www2.jasrac.or.jp/eJwid/main.jsp?trxID=F20101&WORKS_CD=20723318&subSessionID=001&subSession=start
+アカイト/みきとP　http://www2.jasrac.or.jp/eJwid/main?trxID=F20101&WORKS_CD=20723318&subSessionID=001&subSession=start
 
 ### 作者様へのお願い
 JASRACに部分信託されている場合に限らず、管理を委託していない場合においても、当然 楽曲の著作権は作者様にあり、インターネット上・無料ゲームアプリ での利用を許可するかどうかは作者様に権利があります。  
