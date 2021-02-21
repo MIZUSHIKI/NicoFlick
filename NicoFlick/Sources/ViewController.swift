@@ -35,8 +35,9 @@ class ViewController: UIViewController {
         activityIndicator = Indicator(center: self.view.center).view
         self.view.addSubview(activityIndicator)
         
-        //
-        UserData.sharedInstance.UserNameID=0
+        //バージョンアップ時に必要な処理があれば実行
+        self.migration()
+        userData.MyVersion = AppDelegate.Version
     }
 
     override func didReceiveMemoryWarning() {
@@ -114,5 +115,18 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
         return true
     }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+    
+    
+    //マイグレーション
+    func migration(){
+        print("migration")
+        if UserData.sharedInstance.MyVersion < 1430 {
+            //データベースの初期データが上手く記録できていない時期があったため music,level を初期化して再取得
+            MusicDataLists.sharedInstance.reset()
+            UserData.sharedInstance.MusicsJson = ""
+            UserData.sharedInstance.LevelsJson = ""
+            print("music,level Reset")
+        }
+    }
 }
 

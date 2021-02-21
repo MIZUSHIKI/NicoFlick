@@ -28,6 +28,19 @@ class UserData {
     
     let userDefaults = UserDefaults.standard
     
+    //MyVersion
+    //  バージョンアップ時に必要な処理があれば実行するため
+    var MyVersion:Int {
+        get {
+            userDefaults.register(defaults: ["MyVersion":0])
+            let num = userDefaults.integer(forKey: "MyVersion")
+            return num
+        }
+        set(num) {
+            userDefaults.set(num, forKey: "MyVersion")
+            userDefaults.synchronize()
+        }
+    }
     //ユニークユーザーID
     var UserID:String {
         get {

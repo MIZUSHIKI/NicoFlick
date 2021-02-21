@@ -149,7 +149,7 @@
 		10710D882104477600468C6B /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Sources/AppDelegate.swift; sourceTree = "<group>"; };
 		107993BA2417B6F700B032C6 /* dot_circle.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = dot_circle.png; path = image/dot_circle.png; sourceTree = "<group>"; };
 		107BCC0821CFC11500F39290 /* SpoonClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpoonClass.swift; path = Sources/Classes/SpoonClass.swift; sourceTree = "<group>"; };
-		107FC63125B87E44007D1B5F /* SelectorMenuTagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectorMenuTagEditorView.swift; sourceTree = "<group>"; };
+		107FC63125B87E44007D1B5F /* SelectorMenuTagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectorMenuTagEditorView.swift; path = Sources/SelectorMenuTagEditorView.swift; sourceTree = "<group>"; };
 		108A733C25C9CFBE00F3835C /* cursor-lr.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "cursor-lr.png"; path = "image/cursor-lr.png"; sourceTree = "<group>"; };
 		109830D021B56ACF00E2FBDA /* ServerDataHandlerClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ServerDataHandlerClass.swift; path = Sources/Classes/ServerDataHandlerClass.swift; sourceTree = "<group>"; };
 		10A701F121BCAB220055E6F8 /* JasracSearchWebkitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = JasracSearchWebkitView.swift; path = Sources/JasracSearchWebkitView.swift; sourceTree = "<group>"; };
@@ -176,7 +176,7 @@
 		10D1A0BD2495EBFF00D9DBCC /* hukidasi.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = hukidasi.png; path = image/hukidasi.png; sourceTree = "<group>"; };
 		10D1A0BE2495EC0000D9DBCC /* star-color.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "star-color.png"; path = "image/star-color.png"; sourceTree = "<group>"; };
 		10D595E825B6A551003C3421 /* cursor-ud.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "cursor-ud.png"; path = "image/cursor-ud.png"; sourceTree = "<group>"; };
-		10D595ED25B6E2B0003C3421 /* WikipageWebkitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikipageWebkitView.swift; sourceTree = "<group>"; };
+		10D595ED25B6E2B0003C3421 /* WikipageWebkitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WikipageWebkitView.swift; path = Sources/WikipageWebkitView.swift; sourceTree = "<group>"; };
 		10E1DBC01F8669A100C3BD33 /* comment.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = comment.png; path = image/comment.png; sourceTree = "<group>"; };
 		10E1DBC61F879D8B00C3BD33 /* ranking.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = ranking.png; path = image/ranking.png; sourceTree = "<group>"; };
 		10E1DBC81F8A76EA00C3BD33 /* flick.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = flick.png; path = image/flick.png; sourceTree = "<group>"; };
@@ -879,12 +879,12 @@
 			baseConfigurationReference = C201050390E3FF9EFDB81101 /* Pods-NicoFlick.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.4.2.0;
+				CURRENT_PROJECT_VERSION = 1.4.3.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.4.2;
+				MARKETING_VERSION = 1.4.3;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";
@@ -899,12 +899,12 @@
 			baseConfigurationReference = DD9B574FCC333592F9762ED9 /* Pods-NicoFlick.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.4.2.0;
+				CURRENT_PROJECT_VERSION = 1.4.3.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.4.2;
+				MARKETING_VERSION = 1.4.3;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";
