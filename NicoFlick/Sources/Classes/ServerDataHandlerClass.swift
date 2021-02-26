@@ -774,7 +774,7 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
         var req = URLRequest(url: url)
-        let body = "req=favorite-add&favoritecountset=\(favoritecountset)"
+        let body = "req=favoritez-add&favoritecountset=\(favoritecountset)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
         let task = session.dataTask(with: req){(data,responce,error) in
@@ -798,7 +798,7 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
         var req = URLRequest(url: url)
-        let body = "req=PlaycountFavorite-add&PFcountset=\(pfcountset)"
+        let body = "req=PlaycountFavoritez-add&PFcountset=\(pfcountset)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
         let task = session.dataTask(with: req){(data,responce,error) in

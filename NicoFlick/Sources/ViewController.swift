@@ -127,6 +127,12 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
             UserData.sharedInstance.LevelsJson = ""
             print("music,level Reset")
         }
+        if UserData.sharedInstance.MyVersion < 1500 {
+            if UserData.sharedInstance.MyFavorite.count > 0 {
+                print("お気に入り仕様変更を見せる")
+                UserData.sharedInstance.lookedChangeFavoSpec_v1500 = false
+            }
+        }
     }
 }
 

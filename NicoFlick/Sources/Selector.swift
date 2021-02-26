@@ -25,6 +25,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     @IBOutlet weak var rankingTimeLabel: UILabel!
     @IBOutlet weak var commentTimeLabel: UILabel!
     
+    @IBOutlet weak var blackStar: UIImageView!
     @IBOutlet weak var colorStar: UIImageView!
     @IBOutlet weak var favoriteNum: UILabel!
     @IBOutlet weak var favoriteNum2: UILabel!
@@ -99,6 +100,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
 
         self.SetMusicToCarousel()
         
+        self.showChangeFavoSpecView()
         self.showHowToExtendView()
     }
     func SetMusicToCarousel() {
@@ -347,8 +349,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         //スピード反映
         levelSpeed.text = "speed: "+String(currentLevel.speed)
         //favorite反映
-        colorStar.isHidden = !userData.MyFavorite.contains(currentLevel.sqlID)
-        let fc = Int(currentLevel.favoriteCount / 10) * 10
+        colorStar.isHidden = !userData.MyFavorite2.contains(currentLevel.sqlID)
+        blackStar.isHidden = !userData.MyFavorite.contains(currentLevel.sqlID)
+        let fc = Int(currentLevel.favoriteCount / 5) * 5
         favoriteNum.text = String(fc)
         favoriteNum2.text = String(fc)
         favoriteNum.isHidden = ( fc == 0 )
@@ -557,14 +560,32 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             return
         }
         let currentLevel = currentLevels[levelSelectPicker.selectedRow(inComponent: 0)]
-        if userData.MyFavorite.contains(currentLevel.sqlID){
-            userData.MyFavorite.remove(currentLevel.sqlID)
+        if userData.MyFavorite2.contains(currentLevel.sqlID){
+            userData.MyFavorite2.remove(currentLevel.sqlID)
             userData.FavoriteCount.subFavoriteCount(levelID: currentLevel.sqlID)
-        }else{
-            userData.MyFavorite.insert(currentLevel.sqlID)
-            userData.FavoriteCount.addFavoriteCount(levelID: currentLevel.sqlID)
+        }else {
+            if userData.MyFavorite.contains(currentLevel.sqlID){
+                //Ver.1.5未満の互換
+                userData.MyFavorite.remove(currentLevel.sqlID)
+                //プレイしたことのあるレベルだけお気に入りできるようにする
+                if userData.Score.scores.keys.contains(currentLevel.sqlID){
+                    userData.MyFavorite2.insert(currentLevel.sqlID)
+                    userData.FavoriteCount.addFavoriteCount(levelID: currentLevel.sqlID)
+                }
+            }else{
+                //プレイしたことのあるレベルだけお気に入りできるようにする
+                if userData.Score.scores.keys.contains(currentLevel.sqlID){
+                    userData.MyFavorite2.insert(currentLevel.sqlID)
+                    userData.FavoriteCount.addFavoriteCount(levelID: currentLevel.sqlID)
+                }else{
+                    let alert = UIAlertController(title:"ゲームをプレイしたらお気に入りできるようになります", message: "譜面が良かったらお気に入りしよう！", preferredStyle: UIAlertControllerStyle.alert)
+                    alert.addAction( UIAlertAction(title: "OK", style: .cancel, handler: nil) )
+                    self.present(alert, animated: true, completion: nil)
+                }
+            }
         }
-        colorStar.isHidden = !userData.MyFavorite.contains(currentLevel.sqlID)
+        blackStar.isHidden = !userData.MyFavorite.contains(currentLevel.sqlID)
+        colorStar.isHidden = !userData.MyFavorite2.contains(currentLevel.sqlID)
         
     }
     @IBAction func levelSortButton(_ sender: UIButton) {
@@ -627,6 +648,16 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             }
         }
         return false
+    }
+    func showChangeFavoSpecView() {
+        if userData.lookedChangeFavoSpec_v1500 {
+            return
+        }
+        userData.lookedChangeFavoSpec_v1500 = true
+        DispatchQueue.main.async {
+            //UI処理はメインスレッドの必要あり
+            self.performSegue(withIdentifier: "toChangeFavoSpecView_v1500", sender: self)
+        }
     }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/

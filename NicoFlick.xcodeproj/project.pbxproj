@@ -47,11 +47,14 @@
 		10710D852102C09B00468C6B /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 10710D842102C09B00468C6B /* Settings.bundle */; };
 		10710D892104477600468C6B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10710D882104477600468C6B /* AppDelegate.swift */; };
 		107993BB2417B6F700B032C6 /* dot_circle.png in Resources */ = {isa = PBXBuildFile; fileRef = 107993BA2417B6F700B032C6 /* dot_circle.png */; };
+		107B46FC25E7651F008F4704 /* newfavo-black.png in Resources */ = {isa = PBXBuildFile; fileRef = 107B46FB25E7651F008F4704 /* newfavo-black.png */; };
 		107BCC0921CFC11500F39290 /* SpoonClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107BCC0821CFC11500F39290 /* SpoonClass.swift */; };
 		107FC63225B87E44007D1B5F /* SelectorMenuTagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107FC63125B87E44007D1B5F /* SelectorMenuTagEditorView.swift */; };
 		108A733D25C9CFBF00F3835C /* cursor-lr.png in Resources */ = {isa = PBXBuildFile; fileRef = 108A733C25C9CFBE00F3835C /* cursor-lr.png */; };
 		109830D121B56ACF00E2FBDA /* ServerDataHandlerClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109830D021B56ACF00E2FBDA /* ServerDataHandlerClass.swift */; };
 		10A701F221BCAB220055E6F8 /* JasracSearchWebkitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10A701F121BCAB220055E6F8 /* JasracSearchWebkitView.swift */; };
+		10AB749225E727B800BC95B2 /* star-bk.png in Resources */ = {isa = PBXBuildFile; fileRef = 10AB749125E727B800BC95B2 /* star-bk.png */; };
+		10AB749A25E740A300BC95B2 /* newfavo-color.png in Resources */ = {isa = PBXBuildFile; fileRef = 10AB749925E740A200BC95B2 /* newfavo-color.png */; };
 		10B49C8C1EB4B4EF000C79D3 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B49C8B1EB4B4EF000C79D3 /* ViewController.swift */; };
 		10B49C8F1EB4B4EF000C79D3 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 10B49C8D1EB4B4EF000C79D3 /* Main.storyboard */; };
 		10B49C911EB4B4EF000C79D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 10B49C901EB4B4EF000C79D3 /* Assets.xcassets */; };
@@ -148,11 +151,14 @@
 		10710D842102C09B00468C6B /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
 		10710D882104477600468C6B /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Sources/AppDelegate.swift; sourceTree = "<group>"; };
 		107993BA2417B6F700B032C6 /* dot_circle.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = dot_circle.png; path = image/dot_circle.png; sourceTree = "<group>"; };
+		107B46FB25E7651F008F4704 /* newfavo-black.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "newfavo-black.png"; path = "image/newfavo-black.png"; sourceTree = "<group>"; };
 		107BCC0821CFC11500F39290 /* SpoonClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpoonClass.swift; path = Sources/Classes/SpoonClass.swift; sourceTree = "<group>"; };
 		107FC63125B87E44007D1B5F /* SelectorMenuTagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectorMenuTagEditorView.swift; path = Sources/SelectorMenuTagEditorView.swift; sourceTree = "<group>"; };
 		108A733C25C9CFBE00F3835C /* cursor-lr.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "cursor-lr.png"; path = "image/cursor-lr.png"; sourceTree = "<group>"; };
 		109830D021B56ACF00E2FBDA /* ServerDataHandlerClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ServerDataHandlerClass.swift; path = Sources/Classes/ServerDataHandlerClass.swift; sourceTree = "<group>"; };
 		10A701F121BCAB220055E6F8 /* JasracSearchWebkitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = JasracSearchWebkitView.swift; path = Sources/JasracSearchWebkitView.swift; sourceTree = "<group>"; };
+		10AB749125E727B800BC95B2 /* star-bk.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "star-bk.png"; path = "image/star-bk.png"; sourceTree = "<group>"; };
+		10AB749925E740A200BC95B2 /* newfavo-color.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "newfavo-color.png"; path = "image/newfavo-color.png"; sourceTree = "<group>"; };
 		10B49C861EB4B4EF000C79D3 /* NicoFlick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NicoFlick.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		10B49C8B1EB4B4EF000C79D3 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ViewController.swift; path = Sources/ViewController.swift; sourceTree = "<group>"; };
 		10B49C8E1EB4B4EF000C79D3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -252,6 +258,9 @@
 		100BB4C11F6D44FB00058AAD /* image */ = {
 			isa = PBXGroup;
 			children = (
+				10AB749925E740A200BC95B2 /* newfavo-color.png */,
+				107B46FB25E7651F008F4704 /* newfavo-black.png */,
+				10AB749125E727B800BC95B2 /* star-bk.png */,
 				108A733C25C9CFBE00F3835C /* cursor-lr.png */,
 				10D1A0BD2495EBFF00D9DBCC /* hukidasi.png */,
 				10D595E825B6A551003C3421 /* cursor-ud.png */,
@@ -542,12 +551,15 @@
 				106C5FD12115DDAF00FF110B /* howto1.png in Resources */,
 				1005EC181F9358A4003B9E5B /* circle.png in Resources */,
 				10D1A0C02495EC0000D9DBCC /* hukidasi.png in Resources */,
+				107B46FC25E7651F008F4704 /* newfavo-black.png in Resources */,
 				102D534A22062DE5008A7843 /* howtoNotes0.png in Resources */,
 				10E6C5EB2104E2A6004457F8 /* LaunchScreen.storyboard in Resources */,
 				10E1DBC21F86707C00C3BD33 /* comment.png in Resources */,
+				10AB749225E727B800BC95B2 /* star-bk.png in Resources */,
 				107993BB2417B6F700B032C6 /* dot_circle.png in Resources */,
 				108A733D25C9CFBF00F3835C /* cursor-lr.png in Resources */,
 				101BD56B217B2CEE00259375 /* howtoExtend2.png in Resources */,
+				10AB749A25E740A300BC95B2 /* newfavo-color.png in Resources */,
 				105B83331EEEA55400FC2244 /* okJingle.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -879,12 +891,12 @@
 			baseConfigurationReference = C201050390E3FF9EFDB81101 /* Pods-NicoFlick.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.4.3.0;
+				CURRENT_PROJECT_VERSION = 1.5.0.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.4.3;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";
@@ -899,12 +911,12 @@
 			baseConfigurationReference = DD9B574FCC333592F9762ED9 /* Pods-NicoFlick.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.4.3.0;
+				CURRENT_PROJECT_VERSION = 1.5.0.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.4.3;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";

@@ -153,6 +153,27 @@ class UserData {
             userDefaults.synchronize()
         }
     }
+    //MyFavorite
+    var MyFavorite2:Set<Int> {
+        get {
+            if let ids = userDefaults.string(forKey: "MyFavorite2") {
+                //print(ids)
+                if ids == "" {
+                    return Set()
+                }
+                return Set( ids.components(separatedBy: ",").map { Int($0)! } )
+            }
+            return Set()
+        }
+        set(value) {
+            print("myfavorite set")
+            userDefaults.set(value.map{String($0)}.joined(separator: ","), forKey: "MyFavorite2")
+            userDefaults.synchronize()
+        }
+    }
+    var MyFavoriteAll:Set<Int> {
+        return self.MyFavorite.union(self.MyFavorite2)
+    }
     
     //PlayCounter
     var PlayCount:PlayCounter {
@@ -322,6 +343,18 @@ class UserData {
         }
         set(lh) {
             userDefaults.set(lh, forKey: "LookedHowToNotes")
+            userDefaults.synchronize()
+        }
+    }
+    //ver.1.5でのお気に入り仕様変更についてを見たかどうか
+    var lookedChangeFavoSpec_v1500:Bool {
+        get {
+            userDefaults.register(defaults: ["lookedChangeFavoSpec_v1500":true])
+            let le = userDefaults.bool(forKey: "lookedChangeFavoSpec_v1500")
+            return le
+        }
+        set(lh) {
+            userDefaults.set(lh, forKey: "lookedChangeFavoSpec_v1500")
             userDefaults.synchronize()
         }
     }

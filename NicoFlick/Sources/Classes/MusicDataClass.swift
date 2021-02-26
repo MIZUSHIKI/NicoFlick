@@ -601,7 +601,7 @@ class MusicDataLists{
             for (key,lvInURL) in levels {
                 levelp[key] = false
                 for level in lvInURL {
-                    if UserData.sharedInstance.MyFavorite.contains(level.sqlID){
+                    if UserData.sharedInstance.MyFavoriteAll.contains(level.sqlID){
                         levelp[key] = true
                         break
                     }
@@ -621,7 +621,7 @@ class MusicDataLists{
             var a:[levelData] = []
             var b:[levelData] = []
             for level in getSelectMusicLevels_noSort(selectMovieURL:selectMovieURL) {
-                if UserData.sharedInstance.MyFavorite.contains(level.sqlID) {
+                if UserData.sharedInstance.MyFavoriteAll.contains(level.sqlID) {
                     a.append(level)
                 }else {
                     b.append(level)
