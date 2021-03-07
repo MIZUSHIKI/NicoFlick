@@ -131,6 +131,7 @@ class MusicDataLists{
             }
             return
         }
+        let movieURL = movieURL.pregReplace(pattern: "\\?.*$", with: "")
         if let index = musicsSqlIDtoIndex[sqlID] {
             if musics[index].sqlID == sqlID {
                 musics[index].movieURL = movieURL
@@ -480,6 +481,21 @@ class MusicDataLists{
             if getSelectMusicLevels_noSort(selectMovieURL: music.movieURL, isMe: isMe).count == 0 {
                 continue
             }
+            if let levels = levels[music.movieURL] {
+                let flg = levels.contains { (levelData) -> Bool in
+                    if levelData.level > 10 {
+                        return selectCondition.sortStars[10]
+                    }
+                    if levelData.level <= 0 {
+                        return false
+                    }
+                    return selectCondition.sortStars[levelData.level-1]
+                }
+                if !flg {
+                    continue
+                }
+            }
+            
             outputMusics.append(music)
         }
         return outputMusics
@@ -490,7 +506,7 @@ class MusicDataLists{
         let selectCondition = UserData.sharedInstance.SelectedMusicCondition //userData読み出し
         
         var sortedMusics:[musicData] = []
-        switch selectCondition.sortItem {
+        switch selectCondition.sortItem.pregReplace(pattern: " [★☆]{10}[■□]$", with: "") {
         case "曲の投稿が新しい順":
             sortedMusics = musics.sorted{ $0.sqlCreateTime > $1.sqlCreateTime }
             break
@@ -585,6 +601,14 @@ class MusicDataLists{
             sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
             sortedMusics.sort(by: {levelp[$0.movieURL]! <= levelp[$1.movieURL]!})
             break
+        case "動画IDが大きい順":
+            sortedMusics = musics.sorted{ Int($0.movieURL.components(separatedBy: CharacterSet.decimalDigits.inverted).last!) ?? 0 > Int($1.movieURL.components(separatedBy: CharacterSet.decimalDigits.inverted).last!) ?? 0 }
+            //sortedMusics = musics.sorted{ Int($0.movieURL.pregReplace(pattern: "[^0-9]", with: "")) ?? 0 > Int($1.movieURL.pregReplace(pattern: "[^0-9]", with: "")) ?? 0 }
+            break
+        case "動画IDが小さい順":
+            sortedMusics = musics.sorted{ Int($0.movieURL.components(separatedBy: CharacterSet.decimalDigits.inverted).last!) ?? 0 < Int($1.movieURL.components(separatedBy: CharacterSet.decimalDigits.inverted).last!) ?? 0 }
+            //sortedMusics = musics.sorted{ Int($0.movieURL.pregReplace(pattern: "[^0-9]", with: "")) ?? 0 < Int($1.movieURL.pregReplace(pattern: "[^0-9]", with: "")) ?? 0 }
+            break
         case "タグで選んだ順":
             sortedMusics = musics
             break
@@ -616,11 +640,27 @@ class MusicDataLists{
     // レベルソート条件
     func getSelectMusicLevels(selectMovieURL:String) -> [levelData]{
         if UserData.sharedInstance.LevelSortCondition == 0 {
-            return getSelectMusicLevels_noSort(selectMovieURL:selectMovieURL).sorted{ $0.level < $1.level }
+            return getSelectMusicLevels_noSort(selectMovieURL:selectMovieURL).filter({ (levelData) -> Bool in
+                if levelData.level > 10 {
+                    return UserData.sharedInstance.SelectedMusicCondition.sortStars[10]
+                }
+                if levelData.level <= 0 {
+                    return false
+                }
+                return UserData.sharedInstance.SelectedMusicCondition.sortStars[levelData.level-1]
+            }).sorted{ $0.level < $1.level }
         }else {
             var a:[levelData] = []
             var b:[levelData] = []
-            for level in getSelectMusicLevels_noSort(selectMovieURL:selectMovieURL) {
+            for level in getSelectMusicLevels_noSort(selectMovieURL:selectMovieURL).filter({ (levelData) -> Bool in
+                if levelData.level > 10 {
+                    return UserData.sharedInstance.SelectedMusicCondition.sortStars[10]
+                }
+                if levelData.level <= 0 {
+                    return false
+                }
+                return UserData.sharedInstance.SelectedMusicCondition.sortStars[levelData.level-1]
+            }) {
                 if UserData.sharedInstance.MyFavoriteAll.contains(level.sqlID) {
                     a.append(level)
                 }else {

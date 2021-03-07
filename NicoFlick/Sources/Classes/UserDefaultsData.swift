@@ -663,10 +663,11 @@ class PFCounter {
 
 class SelectConditions {
     
-    init(tags:String, sortItem:String) {
+    init(tags:String="", sortItem:String="") {
         //init時はdidsetが効かない
         self.tags = tags
         self.sortItem = sortItem
+        sortStars = getSortStars(containingStars: sortItem)
         //以下tags{didset}と重複するけど・・・
         tag = [] //初期化
         if tags == "" {
@@ -698,10 +699,40 @@ class SelectConditions {
     private(set) var tag:[tagp] = []
     var sortItem:String {
         didSet {
+            sortStars = getSortStars(containingStars: self.sortItem)
             //保存
             let userData = UserData.sharedInstance
             userData.SelectedMusicCondition = self
         }
+    }
+    var sortStars:[Bool] = [true,true,true,true,true,true,true,true,true,true,true]
+    func getSortStarsString(containingStars:String? = nil) -> String {
+        if let str = containingStars {
+            return str.pregMatche_firstString(pattern: " [★☆]{10}[■□]$")
+        }
+        return sortItem.pregMatche_firstString(pattern: " [★☆]{10}[■□]$")
+    }
+    func getSortStars(containingStars:String? = nil) -> [Bool] {
+        var containingStars = containingStars
+        if containingStars == nil {
+            containingStars = sortItem
+        }
+        let hosi = getSortStarsString(containingStars: containingStars)
+        if hosi == "" {
+            return [true,true,true,true,true,true,true,true,true,true,true]
+        }
+        sortStars[0] = hosi.pregMatche(pattern: "★[★☆][★☆][★☆][★☆][★☆][★☆][★☆][★☆][★☆][■□]$")
+        sortStars[1] = hosi.pregMatche(pattern: "[★☆]★[★☆][★☆][★☆][★☆][★☆][★☆][★☆][★☆][■□]$")
+        sortStars[2] = hosi.pregMatche(pattern: "[★☆][★☆]★[★☆][★☆][★☆][★☆][★☆][★☆][★☆][■□]$")
+        sortStars[3] = hosi.pregMatche(pattern: "[★☆][★☆][★☆]★[★☆][★☆][★☆][★☆][★☆][★☆][■□]$")
+        sortStars[4] = hosi.pregMatche(pattern: "[★☆][★☆][★☆][★☆]★[★☆][★☆][★☆][★☆][★☆][■□]$")
+        sortStars[5] = hosi.pregMatche(pattern: "[★☆][★☆][★☆][★☆][★☆]★[★☆][★☆][★☆][★☆][■□]$")
+        sortStars[6] = hosi.pregMatche(pattern: "[★☆][★☆][★☆][★☆][★☆][★☆]★[★☆][★☆][★☆][■□]$")
+        sortStars[7] = hosi.pregMatche(pattern: "[★☆][★☆][★☆][★☆][★☆][★☆][★☆]★[★☆][★☆][■□]$")
+        sortStars[8] = hosi.pregMatche(pattern: "[★☆][★☆][★☆][★☆][★☆][★☆][★☆][★☆]★[★☆][■□]$")
+        sortStars[9] = hosi.pregMatche(pattern: "[★☆][★☆][★☆][★☆][★☆][★☆][★☆][★☆][★☆]★[■□]$")
+        sortStars[10] = hosi.pregMatche(pattern: "[★☆][★☆][★☆][★☆][★☆][★☆][★☆][★☆][★☆][★☆]■$")
+        return sortStars
     }
     
     static let SortItems = [
@@ -713,6 +744,8 @@ class SelectConditions {
         "ゲームプレイ回数が少ない曲順",
         "お気に入り数が多い曲順",
         "お気に入り数が少ない曲順",
+        "動画IDが大きい順",
+        "動画IDが小さい順",
         "最近ハイスコアが更新された曲順",
         "最近コメントされた曲順"
     ]

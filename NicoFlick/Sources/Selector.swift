@@ -358,14 +358,14 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         favoriteNum2.isHidden = ( fc == 0 )
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy.MM.dd"
-        if userData.SelectedMusicCondition.sortItem == "最近ハイスコアが更新された曲順" && currentLevel.scoreTime > 0 {
+        if (userData.SelectedMusicCondition.sortItem.hasPrefix("最近ハイスコアが更新された曲順") || (Int(Date().timeIntervalSince1970) -  currentLevel.scoreTime)<2592000) && currentLevel.scoreTime > 0 {
             rankingTimeLabel.text = dateFormatter.string(for: Date(timeIntervalSince1970: TimeInterval(currentLevel.scoreTime)))
             rankingTimeLabel.isHidden = false
         }else{
             rankingTimeLabel.isHidden = true
         }
         print("currentLevel.scoreTime=\(currentLevel.scoreTime)")
-        if userData.SelectedMusicCondition.sortItem == "最近コメントされた曲順" && currentLevel.commentTime > 0 {
+        if (userData.SelectedMusicCondition.sortItem.hasPrefix("最近コメントされた曲順") || (Int(Date().timeIntervalSince1970) -  currentLevel.commentTime)<2592000) && currentLevel.commentTime > 0 {
             commentTimeLabel.text = dateFormatter.string(for: Date(timeIntervalSince1970: TimeInterval(currentLevel.commentTime)))
             commentTimeLabel.isHidden = false
         }else{
