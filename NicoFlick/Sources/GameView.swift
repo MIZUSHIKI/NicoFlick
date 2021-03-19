@@ -135,7 +135,7 @@ class GameView: UIViewController, UITextFieldDelegate {
             //session.dataTas後のサブスレッド内でviewを処理させると表示関連が後回しになるので、メインスレッドでaddSubviewする。
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
-                self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!)
+                self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!, smNum: smNum)
                 //  add
                 self.view.addSubview(self.moviePlayerViewController.view)
                 self.view.sendSubview(toBack: self.moviePlayerViewController.view)

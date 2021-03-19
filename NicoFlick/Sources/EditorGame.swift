@@ -582,7 +582,7 @@ class EditorGame: UIViewController, UITextFieldDelegate {
     }
     
     @IBAction func OffsetSlider(_ sender: UISlider) {
-        sender.value = round(sender.value)
+        sender.value = round( Float(Int(sender.value / 10) * 10) )
         offsetLabel.text = "Offset: \(Int(sender.value))ms"
         judgeOffset = Double(sender.value) / 1000
         editorViewController.mySpoon.atTag["Offset"] = "\(Int(sender.value ))"

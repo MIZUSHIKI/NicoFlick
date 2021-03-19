@@ -14,6 +14,7 @@ class CachedMovies {
     
     struct CachedMovie {
         var url:URL
+        var smNum:String
         var avPlayerViewController:AVPlayerViewController
     }
     
@@ -23,10 +24,10 @@ class CachedMovies {
     
     var cachedMovies:[CachedMovie] = []
     
-    func access(url:URL) -> AVPlayerViewController {
+    func access(url:URL,smNum:String) -> AVPlayerViewController {
         //読み込み済みの物があればそれを返す
         for i in 0 ..< cachedMovies.count {
-            if cachedMovies[i].url == url {
+            if cachedMovies[i].smNum == smNum {
                 cachedMovies.append(cachedMovies[i])
                 cachedMovies.remove(at: i)
                 while cachedMovies.count > userData.cachedMovieNum {
@@ -61,6 +62,14 @@ class CachedMovies {
         let assets = AVURLAsset(url: url as URL, options: cookieArrayOptions)
         let avPlayerItem = AVPlayerItem(asset: assets)
         
+        //var options:[String:Any] = [:]
+        //if let cookies = HTTPCookieStorage.shared.cookies{
+        //    options[AVURLAssetHTTPCookiesKey] = cookies
+        //    print("cookies=")
+        //    print(cookies)
+        //}
+        //let assets:AVURLAsset = .init(url: url, options: options)
+        //let avPlayerItem:AVPlayerItem = .init(asset: assets)
         
         //let avPlayerItem = AVPlayerItem(url: url)
         let avPlayer = AVPlayer(playerItem: avPlayerItem)
@@ -71,7 +80,7 @@ class CachedMovies {
         //  viewのタッチアクションを下に透過（スルー）させるようにして、ムービーViewには何も干渉出来ないようにする
         avPlayerViewController.view.isUserInteractionEnabled = false
         
-        let cashedMovie = CachedMovie(url: url, avPlayerViewController: avPlayerViewController)
+        let cashedMovie = CachedMovie(url: url, smNum: smNum, avPlayerViewController: avPlayerViewController)
         cachedMovies.append(cashedMovie)
         
         while cachedMovies.count > userData.cachedMovieNum {

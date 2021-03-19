@@ -129,7 +129,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             //session.dataTas後のサブスレッド内でviewを処理させると表示関連が後回しになるので、メインスレッドでaddSubviewする。
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
-                self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!)
+                self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!, smNum: smNum)
                 if let moviePlayerViewController = self.moviePlayerViewController {
                     moviePlayerViewController.player?.currentItem!.audioTimePitchAlgorithm = .spectral
                     //  add
@@ -800,7 +800,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             }
             if playing {
                 if let currentTime = moviePlayerViewController?.player?.currentTime() {
-                    let (retIndex, maeSpoon) = mySpoon.setNotes_NearTimePos(mirisec: Int(CMTimeGetSeconds(currentTime) * 1000 ))
+                    let judgeOffset = Int(self.mySpoon.atTag["Offset"] ?? "0")!
+                    let (retIndex, maeSpoon) = mySpoon.setNotes_NearTimePos(mirisec: Int(CMTimeGetSeconds(currentTime) * 1000) - judgeOffset)
                     if retIndex != nil && maeSpoon != nil {
                         mySpoon.setCursor(index: retIndex!, scroll: true, scrollView: scrollView, animated: false)
                         mySpoon.setRireki(index: mySpoon.cursorIndex,
@@ -1006,8 +1007,15 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         //let time = CMTimeGetSeconds(currentTime!)
         if notesSwitch.isOn && player.isPlaying {
             if let currentTime = controller.player?.currentTime() {
-                
-                self.setText_setTimetagButton(timetag: String.secondsToTimetag(seconds: CMTimeGetSeconds(currentTime), noBrackets: false))
+                let judgeOffset = Int(self.mySpoon.atTag["Offset"] ?? "0")!
+                var judgeOffset_str = ""
+                if judgeOffset != 0 {
+                    judgeOffset_str = " \(-judgeOffset)ms"
+                    if judgeOffset < 0 {
+                        judgeOffset_str = " +\(-judgeOffset)ms"
+                    }
+                }
+                self.setText_setTimetagButton(timetag: String.secondsToTimetag(seconds: CMTimeGetSeconds(currentTime), noBrackets: false)+judgeOffset_str)
                 
             }
         }
