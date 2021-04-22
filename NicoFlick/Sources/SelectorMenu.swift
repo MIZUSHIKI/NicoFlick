@@ -165,7 +165,7 @@ class SelectorMenu: UIViewController {
                 name = "NO_NAME"
             }
             var noteData = level.noteData!
-            if noteData == "" {
+            if noteData.count <= 20 {
                 //基としたカレントlevelはNotesデータをまだ取得していない（遅延させてる）。
                 //その場合、エディタ画面に行った一発目にダウンロードさせるようにする。
                 noteData = "@NicoFlick=2\n@BaseDataNo=\(level.sqlID!)"

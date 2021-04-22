@@ -65,7 +65,8 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
         //GetThumbInfo
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.NicoApiURL_GetThumbInfo+"/"+smNum!)
-        session.dataTask(with: url!){(data,responce,error) in
+        let req = URLRequest(url: url!, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        session.dataTask(with: req){(data,responce,error) in
             if (error != nil) {
                 print("error") //エラー。例えばオフラインとか
                 DispatchQueue.main.async {//UI処理はメインスレッドの必要あり

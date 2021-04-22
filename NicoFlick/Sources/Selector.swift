@@ -7,6 +7,8 @@
 //
 
 import UIKit
+import AVKit
+import AVFoundation
 
 class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, iCarouselDataSource, iCarouselDelegate {
     
@@ -32,6 +34,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     @IBOutlet weak var levelSortButton: UIButton!
     @IBOutlet weak var musicSortButton: UIButton!
     
+    @IBOutlet weak var thumbMoviePlay: UIImageView!
+    @IBOutlet weak var thumbMoviePlay_Color: UIImageView!
     
     var timer:Timer?
     var hitViews:[UIView] = []
@@ -63,6 +67,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     var returnToMeData:Int = 0
     var password = ""
     
+    var moviePlayerViewController:AVPlayerViewController?
+    var flgThumbMovieStopping = false //曲選択後0.5秒遅延再生にしているためGame遷移後に再生始まったりするのを防ぐフラグ
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
@@ -90,6 +97,13 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         //お気に入りソート関係
         levelSortButton.alpha = (userData.LevelSortCondition != 0) ? 0.6 : 0.2
         musicSortButton.alpha = (userData.musicSortCondition != 0) ? 0.6 : 0.2
+        //
+        thumbMoviePlay.isHidden = userData.thumbMoviePlay
+        thumbMoviePlay_Color.isHidden = !userData.thumbMoviePlay
+        //
+        let view = SlashShadeView(frame: self.view.frame)
+        self.view.addSubview(view)
+        self.view.sendSubview(toBack: view)
         
         //現在設定されているタグで選択された楽曲を保持する
         //currentMusics = musicDatas.getSelectMusics()
@@ -100,7 +114,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
 
         self.SetMusicToCarousel()
         
-        self.showChangeFavoSpecView()
+        //self.showChangeFavoSpecView() //もういいか
         self.showHowToExtendView()
     }
     func SetMusicToCarousel() {
@@ -137,13 +151,20 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 self.carousel.currentItemIndex = selectIndex
                 //現在選択されている曲を保持する
                 self.setCurrentLevels(index:self.carousel.currentItemIndex)
+                
+                self.ThumbMoviePlay()
             }
         })
     }
     
+    var first_attack = true
     override func viewDidLayoutSubviews() {
         //iOS14用
         if #available(iOS 14.0, *) {
+            if !first_attack {
+                return
+            }
+            first_attack = false
             let pickerSubView = self.levelSelectPicker.subviews[1]
             pickerSubView.backgroundColor = UIColor.clear
             let borderTop = CALayer()
@@ -165,22 +186,26 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         if returnToMeString != "" {
             //returnToMe from できなくて
             print("selector return :\(returnToMeString)")
-            let retStr = returnToMeString.removingPercentEncoding
-            if var retTag = retStr?.pregMatche_firstString(pattern: "tag=(.*?)(&sort=|$)"),
-               let retSort = retStr?.pregMatche_firstString(pattern: "sort=(.*?)(&tag=|$)"){
-                
-                retTag = retTag.trimmingCharacters(in: .whitespaces)
-                retTag = retTag.pregReplace(pattern: "\\s*/(and|AND)/\\s*", with: "/and/")
-                retTag = retTag.pregReplace(pattern: "\\s+", with: " or ")
-                retTag = retTag.pregReplace(pattern: "/and/", with: " ")
-                
-                userData.SelectedMusicCondition.tags = retTag
-                if retSort != "" {
-                    userData.SelectedMusicCondition.sortItem = retSort
-                }
+            if returnToMeString != "BackButton" {
+                let retStr = returnToMeString.removingPercentEncoding
+                if var retTag = retStr?.pregMatche_firstString(pattern: "tag=(.*?)(&sort=|$)"),
+                   let retSort = retStr?.pregMatche_firstString(pattern: "sort=(.*?)(&tag=|$)"){
+                    
+                    retTag = retTag.trimmingCharacters(in: .whitespaces)
+                    retTag = retTag.pregReplace(pattern: "\\s*/(and|AND)/\\s*", with: "/and/")
+                    retTag = retTag.pregReplace(pattern: "\\s+", with: " or ")
+                    retTag = retTag.pregReplace(pattern: "/and/", with: " ")
+                    
+                    userData.SelectedMusicCondition.tags = retTag
+                    if retSort != "" {
+                        userData.SelectedMusicCondition.sortItem = retSort
+                    }
 
-                self.maeMusic = nil
-                self.SetMusicToCarousel()
+                    self.maeMusic = nil
+                    self.SetMusicToCarousel()
+                }
+            }else {
+                ThumbMoviePlay()
             }
             returnToMeString = ""
         }
@@ -235,6 +260,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }
         hitViews = []
         hitRow = -1
+        
+        ThumbMoviePlay()
     }
     func setCurrentLevels(index:Int){
         if index == -1 {
@@ -621,6 +648,171 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         alert.addAction( UIAlertAction(title: "キャンセル", style: .cancel, handler: nil) )
         self.present(alert, animated: true, completion: nil)
     }
+    @IBAction func ThumbMoviePlayButton(_ sender: UIButton) {
+        print("ThumbMoviePlayButton")
+        userData.thumbMoviePlay = !userData.thumbMoviePlay
+        thumbMoviePlay.isHidden = userData.thumbMoviePlay
+        thumbMoviePlay_Color.isHidden = !userData.thumbMoviePlay
+        if userData.thumbMoviePlay {
+            ThumbMovieStart(index: self.indexCarousel)
+        }else {
+            ThumbMovieStop()
+        }
+    }
+    func ThumbMoviePlay(){
+        if !userData.thumbMoviePlay {
+            return
+        }
+        //THumbMovie呼び込み _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+        //一度すべて止める
+        ThumbMovieStop()
+        //裏側で再生
+        ThumbMovieStart(index: self.indexCarousel)
+    }
+    private func ThumbMovieStop() {
+        flgThumbMovieStopping = true
+        //一度すべて止める
+        for avPlayerVC in CachedThumbMovies.sharedInstance.cachedMovies {
+            avPlayerVC.avPlayerViewController.player?.pause()
+        }
+        if let view = self.view.viewWithTag(5050) {
+            view.removeFromSuperview()
+        }
+    }
+    private func ThumbMovieStart(index:Int, loadOnly:Bool = false) {
+        flgThumbMovieStopping = false
+        if !self.currentMusics.indices.contains(index) {
+            return
+        }
+        var ans:[String]=[]
+        var smNum = ""
+        if (self.currentMusics[index].movieURL.pregMatche(pattern: "watch/(.+)$", matches: &ans)){
+            smNum = ans[1]
+        }else{
+            return
+        }
+        //let index = self.indexCarousel
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5){
+            //print("\(smNum) => \(index) / \(self.indexCarousel)")
+            if index == self.indexCarousel || loadOnly == true {
+                MovieAccess.init(ecoThumb: true).StreamingUrlNicoAccess(smNum: smNum){ nicodougaURL in
+                print("smNum=\(smNum), loadOnly=\(loadOnly), nicodougaURL=\(nicodougaURL)")
+                    if self.flgThumbMovieStopping == true {
+                        print("ThumbMovieStopping")
+                        return
+                    }
+                    if loadOnly == true && nicodougaURL == "cached" {
+                        return
+                    }
+                    //session.dataTas後のサブスレッド内でviewを処理させると表示関連が後回しになるので、メインスレッドでaddSubviewする。
+                    DispatchQueue.main.async {
+                        //print("\(smNum) <= \(index) / \(self.indexCarousel)")
+                        if index != self.indexCarousel && loadOnly == false {
+                            return
+                        }
+                        guard let nicoUrl = URL(string: nicodougaURL) else {
+                            return
+                        }
+                        let mpvc = CachedThumbMovies.sharedInstance.access(url: nicoUrl, smNum: smNum)
+                        if loadOnly == false {
+                            self.moviePlayerViewController = mpvc
+                            self.moviePlayerViewController?.view.backgroundColor = UIColor.white
+                            self.moviePlayerViewController?.view.alpha = 0.01
+                            self.moviePlayerViewController?.view.tag = 5050
+                            //  add
+                            self.view.addSubview(self.moviePlayerViewController!.view)
+                            self.view.sendSubview(toBack: self.moviePlayerViewController!.view)
+                            //  動画Viewの位置
+                            self.moviePlayerViewController?.view.frame.size = CGSize(width: self.view.frame.size.height * 19 / 6, height: self.view.frame.size.height)
+                            self.moviePlayerViewController!.view.center.x = self.view.center.x
+                        }
+                        var t30 = self.musicDatas.getNotesFirstTime(movieURL: self.currentMusics[index].movieURL)
+                        if t30 < 0.0 {
+                            t30 = 30.0
+                        }else {
+                            t30 -= 3.0
+                            if t30 < 0.0 {
+                                t30 = 0.0
+                            }
+                        }
+                        print("t30=\(t30)")
+                        print(self.currentMusics[index].movieURL)
+                        if loadOnly == false{
+                            //フェードイン・アウト・ループ設定
+                            var firstRun = true
+                            for i in 1 ... 10 {
+                                self.moviePlayerViewController!.player?.addBoundaryTimeObserver(forTimes: [NSValue(time: CMTimeMakeWithSeconds(t30 + 0.05 * Double(i), Int32(NSEC_PER_SEC)))], queue: nil){
+                                    //print("フェードイン \(i)")
+                                    self.moviePlayerViewController?.view.alpha = CGFloat(0.25 *  Double(i) / 10.0)
+                                    self.moviePlayerViewController?.player?.volume = Float(0.6 * Double(i) / 10.0)
+                                    //再生できたらcheckを入れる（キャッシュ分で再生できなくなってニコニコとのHeartBeatも切れるとCachedThumbMovies-avPlayerViewControllerじゃ再生できなくなるからアクセスからやり直させるフラグ）
+                                    if i==1 {
+                                        if let a = CachedThumbMovies.sharedInstance.cachedMovies.first(where: {$0.smNum == smNum}){
+                                            a.check = 1
+                                            //print("set \(smNum) - a.check= \(a.check)")
+                                        }
+                                        if firstRun {
+                                            firstRun = false
+                                            //前後の曲も読み込んどく
+                                            self.ThumbMovieStart(index: index + 1 ,loadOnly: true)
+                                            self.ThumbMovieStart(index: index - 1 ,loadOnly: true)
+                                        }
+                                    }
+                                }
+                                self.moviePlayerViewController!.player?.addBoundaryTimeObserver(forTimes: [NSValue(time: CMTimeMakeWithSeconds(t30 + 29.0 + 0.1 * Double(i), Int32(NSEC_PER_SEC)))], queue: nil){
+                                    //print("フェードアウト \(i)")
+                                    self.moviePlayerViewController?.view.alpha = CGFloat(0.25 *  Double(10 - i) / 10.0)
+                                    self.moviePlayerViewController?.player?.volume = Float(0.6 * Double(10 - i) / 10.0)
+                                }
+                            }
+                            self.moviePlayerViewController!.player?.addBoundaryTimeObserver(forTimes: [NSValue(time: CMTimeMakeWithSeconds(t30 + 30.0 + 0.1, Int32(NSEC_PER_SEC)))], queue: nil){
+                                print("30秒でループ")
+                                self.moviePlayerViewController?.player?.seek(to: CMTimeMakeWithSeconds(t30, Int32(NSEC_PER_SEC)) )
+                            }
+                            // 動画が終了した時に呼ばれるnotificationを登録
+                            NotificationCenter.default.addObserver(forName: NSNotification.Name.AVPlayerItemDidPlayToEndTime, object: nil, queue: nil){ notification in
+                                //もし再生終了したときもループ
+                                print("終了でループ")
+                                DispatchQueue.main.async {
+                                    //UI処理はメインスレッドの必要あり
+                                    self.moviePlayerViewController?.player?.seek(to: CMTimeMakeWithSeconds(t30, Int32(NSEC_PER_SEC)) )
+                                }
+                            }
+                            //5秒たって実際ムービー再生できたか確認する
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0){
+                                //print("\(smNum) => \(index) / \(self.indexCarousel)")
+                                if index == self.indexCarousel {
+                                    if let a = CachedThumbMovies.sharedInstance.cachedMovies.first(where: {$0.smNum == smNum}){
+                                        //5秒たって再生(a.check==1)されていなかったらcheckフラグ=2にしてCachedThumbMoviesからの削除を促す
+                                        //print("5s - a.check = \(a.check)")
+                                        if a.check == 0 {
+                                            a.check = 2
+                                            //print("set5s - a.check = \(a.check)")
+                                        }
+                                    }
+                                }
+                            }
+                        }else {
+                            //読み込みのみ
+                            mpvc.player?.addBoundaryTimeObserver(forTimes: [NSValue(time: CMTimeMakeWithSeconds(t30 + 0.5, Int32(NSEC_PER_SEC)))], queue: nil){
+                                if self.currentMusics[self.indexCarousel].movieURL.pregMatche_firstString(pattern: "watch/(.+)$") != smNum {
+                                    //選択中indexではない。両サイドの読み込みのみのとき
+                                    print("再生された形跡見つけたらムービーを止める")
+                                    mpvc.player?.pause()
+                                    print(self.currentMusics[self.indexCarousel].movieURL.pregMatche_firstString(pattern: "watch/(.+)$"))
+                                    print(smNum)
+                                }
+                            }
+                        }
+                        //  動画再生
+                        mpvc.player?.volume = 0.01
+                        mpvc.player?.seek(to: CMTimeMakeWithSeconds(t30, Int32(NSEC_PER_SEC)) )
+                        mpvc.player?.play()
+                    }
+                }
+            }
+        }
+    }
     
     
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
@@ -696,6 +888,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                     }
                 }
             }
+            self.ThumbMoviePlay()
+            
         }else if segue.identifier == "fromEditView" {
             print("back from editview")
             self.SetMusicToCarousel()
@@ -729,6 +923,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             let gameViewController:GameView = segue.destination as! GameView
             gameViewController.selectMusic = currentMusics[indexCarousel]
             gameViewController.selectLevel = currentLevels[levelSelectPicker.selectedRow(inComponent: 0)]
+            
+            ThumbMovieStop()
             
         }else if segue.identifier == "toRankingTabBar" {
             //現在選択中のデータをRankingTabBarに渡す
@@ -765,6 +961,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             editorViewController.selectLevel = currentLevels[indexPicker]
             editorViewController.password = password
             
+            ThumbMovieStop()
+            
         }else if segue.identifier == "toTableViewForTagFromSelector" {
             //遷移先のTableViewにデータを渡す
             let tableViewController:TableViewForTag = segue.destination as! TableViewForTag
@@ -775,6 +973,11 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             //遷移先にデータを渡す
             let wikipageWibkitController:WikipageWebkitView = segue.destination as! WikipageWebkitView
             wikipageWibkitController.selectorController = self
+            
+            ThumbMovieStop()
+        }else if segue.identifier == "fromSelector" {
+            
+            ThumbMovieStop()
         }
     }
     //遷移の許可
@@ -803,7 +1006,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
              */
             //選択しているlevel
             indexPicker = levelSelectPicker.selectedRow(inComponent: 0)
-            if( currentLevels[indexPicker].noteData == "" ){
+            // 初期データにnoteData先頭16文字を含めるようにした（thumbMovie再生に最初のタイムタグを使うため）
+            if( currentLevels[indexPicker].noteData.count <= 20 ){
                 // データが入っていなかったので取得する //
                 //データをロードした後に遷移させるため、一度、遷移キャンセル。
                 segueing = true

@@ -30,6 +30,8 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     var commentData:[commentData] = []
     let commentDatas:CommentDataLists = CommentDataLists.sharedInstance
     
+    let myID = UserData.sharedInstance.UserID
+    
     //Indicator
     private var activityIndicator:UIActivityIndicatorView!
     
@@ -126,8 +128,14 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         //ユーザーコメント
         //(cell.viewWithTag(1) as! UILabel).text = "\(indexPath.row+1)"
         cell.contentView.backgroundColor = UIColor.init(red: 0, green: 0, blue: 0, alpha: 0.0)
-        (cell.viewWithTag(2) as! UILabel).text = userNameDatas.getUserName( userID: commentData[row].userID! )
+        // -Name
+        if( commentData[row].userID! == myID ){
+            (cell.viewWithTag(2) as! UILabel).text = UserData.sharedInstance.UserName != "" ? UserData.sharedInstance.UserName : "NO_NAME"
+        }else {
+            (cell.viewWithTag(2) as! UILabel).text = userNameDatas.getUserName( userID: commentData[row].userID! )
+        }
         (cell.viewWithTag(2) as! UILabel).textColor = UIColor.init(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
+        // -Comment
         (cell.viewWithTag(3) as! UILabel).text = commentData[row].comment
         (cell.viewWithTag(3) as! UILabel).sizeToFit()
         let dateUnix: TimeInterval = Double(commentData[row].sqlUpdateTime!)

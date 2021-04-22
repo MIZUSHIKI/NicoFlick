@@ -63,6 +63,11 @@ class GameMenu: UIViewController {
         self.performSegue(withIdentifier: "fromGameMenu", sender: self)
     }
     
+    @IBAction func musicReload(_ sender: UIButton) {
+        self.gameViewController.returnToMeData = 3
+        self.performSegue(withIdentifier: "fromGameMenu", sender: self)
+    }
+    
     @IBAction func UnderbarButton(_ sender: Any) {
         underbar.isHidden = false
         overbar.isHidden = true

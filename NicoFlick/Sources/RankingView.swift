@@ -93,10 +93,11 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
         (cell.viewWithTag(1) as! UILabel).text = "\(indexPath.row+1)"
         if( indexPath.row == myIndex ){
             (cell.viewWithTag(2) as! UILabel).textColor = UIColor.red
+            (cell.viewWithTag(2) as! UILabel).text = UserData.sharedInstance.UserName != "" ? UserData.sharedInstance.UserName : "NO_NAME"
         }else {
             (cell.viewWithTag(2) as! UILabel).textColor = UIColor.black
+            (cell.viewWithTag(2) as! UILabel).text = userNameDatas.getUserName( userID: rankingData[indexPath.row].userID! )
         }
-        (cell.viewWithTag(2) as! UILabel).text = userNameDatas.getUserName( userID: rankingData[indexPath.row].userID! )
         (cell.viewWithTag(3) as! UILabel).text = String(rankingData[indexPath.row].score)
         
         return cell

@@ -136,12 +136,22 @@ class GameView: UIViewController, UITextFieldDelegate {
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
                 self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!, smNum: smNum)
+                self.moviePlayerViewController?.view.tag = 5050
                 //  add
                 self.view.addSubview(self.moviePlayerViewController.view)
                 self.view.sendSubview(toBack: self.moviePlayerViewController.view)
                 //  動画再生
                 self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                self.moviePlayerViewController.player?.play()
+                
+                let t03 = 3.0 - MusicDataLists.sharedInstance.getNotesFirstTime(movieURL: self.selectMusic.movieURL)
+                print("t03=\(t03)")
+                if t03 <= 0.0 {
+                    self.moviePlayerViewController.player?.play()
+                }else {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + t03){
+                        self.moviePlayerViewController.player?.play()
+                    }
+                }
                 
                 let screenWidth:CGFloat = self.view.frame.size.width - self.view.safeAreaInsets.left - self.view.safeAreaInsets.right
                 let movieHeight = self.judgeOffsetLabel.frame.origin.y + self.judgeOffsetLabel.frame.size.height - self.view.safeAreaInsets.top
@@ -711,7 +721,14 @@ class GameView: UIViewController, UITextFieldDelegate {
                     if moviePlayerViewController.player != nil {
                         //再生
                         moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                        moviePlayerViewController.player?.play()
+                        let t03 = 3.0 - MusicDataLists.sharedInstance.getNotesFirstTime(movieURL: self.selectMusic.movieURL)
+                        if t03 <= 0.0 {
+                            self.moviePlayerViewController.player?.play()
+                        }else {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + t03){
+                                self.moviePlayerViewController.player?.play()
+                            }
+                        }
                     }
                 }
                 
@@ -769,6 +786,83 @@ class GameView: UIViewController, UITextFieldDelegate {
                 
                 //曲選択に戻る
                 self.performSegue(withIdentifier: "fromGameView", sender: self)
+                
+                break
+                
+            case 3:
+                //リロード
+                textField.becomeFirstResponder() //キーボードを開く
+                noteData.noteReset() //データをリセットする
+                self.comboView.isHidden = true //表示関係もリセット
+                scoreLabel.text = "Score: "+String(noteData.score.totalScore)+" "
+                //  ジャッジオフセットの取得
+                if let jo = userData.JudgeOffset[selectLevel.sqlID] {
+                    judgeOffset = Double(jo)
+                }
+                judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset))"
+                //
+                self.SetBorderY()
+                
+                //Labelを非表示かつ見えない位置に移動
+                for note in noteData.notes { //なんか前のが勝手に再利用される？ので苦肉の策
+                    note.label.frame.origin.x = -200
+                    note.label.isHidden = true
+                }
+                
+                //Movie呼び込み _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+                var ans:[String]=[]
+                var smNum = ""
+                if (self.selectMusic.movieURL.pregMatche(pattern: "watch/(.+)$", matches: &ans)){
+                    smNum = ans[1]
+                }
+                //キャッシュ削除
+                self.cachedMovies.remove(smNum: smNum)
+                //movieView削除
+                self.view.viewWithTag(5050)?.removeFromSuperview()
+                
+                MovieAccess.init().StreamingUrlNicoAccess(smNum: smNum){ nicodougaURL in
+                    print(nicodougaURL)
+                    //session.dataTas後のサブスレッド内でviewを処理させると表示関連が後回しになるので、メインスレッドでaddSubviewする。
+                    DispatchQueue.main.async {
+                        //UI処理はメインスレッドの必要あり
+                        self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!, smNum: smNum)
+                        self.moviePlayerViewController?.view.tag = 5050
+                        //  add
+                        self.view.addSubview(self.moviePlayerViewController.view)
+                        self.view.sendSubview(toBack: self.moviePlayerViewController.view)
+                        //  動画再生
+                        self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
+                        
+                        let t03 = 3.0 - MusicDataLists.sharedInstance.getNotesFirstTime(movieURL: self.selectMusic.movieURL)
+                        print("t03=\(t03)")
+                        if t03 <= 0.0 {
+                            self.moviePlayerViewController.player?.play()
+                        }else {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + t03){
+                                self.moviePlayerViewController.player?.play()
+                            }
+                        }
+                        
+                        let screenWidth:CGFloat = self.view.frame.size.width - self.view.safeAreaInsets.left - self.view.safeAreaInsets.right
+                        let movieHeight = self.judgeOffsetLabel.frame.origin.y + self.judgeOffsetLabel.frame.size.height - self.view.safeAreaInsets.top
+                        //let screenHeight:CGFloat = self.view.frame.size.height - self.view.safeAreaInsets.top - self.view.safeAreaInsets.bottom
+                        print("\(screenWidth)x\(movieHeight)")
+                        //  動画Viewの位置
+                        self.moviePlayerViewController.view.frame = CGRect(x: 0, y: self.view.safeAreaInsets.top, width: screenWidth, height: movieHeight)
+                        // 動画が終了した時に呼ばれるnotificationを登録
+                        NotificationCenter.default.addObserver(forName: NSNotification.Name.AVPlayerItemDidPlayToEndTime, object: nil, queue: nil){ notification in
+                            //再生終了したとき
+                            print("終了")
+                            DispatchQueue.main.async {
+                                //UI処理はメインスレッドの必要あり
+                                self.performSegue(withIdentifier: "toResultView", sender: self)
+                            }
+                        }
+                        //ムービーロードbar
+                        self.loadedAndCurrentTimeBarView.frame = CGRect(x: 0, y: self.view.safeAreaInsets.top+movieHeight, width: screenWidth, height: self.loadedAndCurrentTimeBarView.frame.size.height)
+                        self.loadedAndCurrentTimeBarView.isHidden = false
+                    }
+                }
                 
                 break
             default:

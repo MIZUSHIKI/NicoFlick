@@ -14,12 +14,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     
     static let PHPURL = "http://timetag.main.jp/nicoflick/nicoflick.php"
-    //static let PHPURL = "http://192.168.11.8/nicoflick_20201103/nicoflick.php" //windows xampp
+    //static let PHPURL = "http://192.168.11.7/nicoflick_20201103/nicoflick.php" //windows xampp
     //static let PHPURL = "http://127.0.0.1:8888/nicoflick.php" //mac mamp PC
     //static let PHPURL = "http://MacBook.local:8000/nicoflick.php" //mac mamp スマホ
     static let NicoApiURL_GetThumbInfo = "http://ext.nicovideo.jp/api/getthumbinfo/"
-    static let Version = 1701
-    static var Flg_NicoLogout = false
+    static let Version = 1830
+    static var ServerErrorMessage = ""
+    static var DidEnterBackgroundTime:Date?
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
@@ -46,10 +47,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidEnterBackground(_ application: UIApplication) {
         // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
         // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+        AppDelegate.DidEnterBackgroundTime = Date()
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {
         // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
+        if let backDate = AppDelegate.DidEnterBackgroundTime {
+            if backDate.timeIntervalSinceNow < -60.0 {
+                //アプリ閉じて60秒以上立ってたら動画のキャッシュを削除する
+                print("Cached(Thumb)Movies削除")
+                CachedMovies.sharedInstance.cachedMovies = [] //HeartBeat切れるとアクセス出来なくなる
+                CachedThumbMovies.sharedInstance.cachedMovies = [] //HeartBeatすらしてない
+            }
+        }
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {

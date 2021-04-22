@@ -172,8 +172,9 @@ class WikipageWebkitView: UIViewController, WKUIDelegate, WKNavigationDelegate, 
     }
     
     func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
-        print(item.tag)
+        print("tabBarItem=\(item.tag)")
         //self.dismiss(animated: true, completion: nil)
+        selectorController.returnToMeString = "BackButton"
         self.navigationController?.popViewController(animated: true)
     }
     @IBAction func returnToMe(segue: UIStoryboardSegue){

@@ -74,7 +74,7 @@ class UserData {
             if let name = userDefaults.string(forKey: "UserName") {
                 return name
             }
-            return ""
+            return "NO_NAME"
         }
         set(name) {
             userDefaults.set(name, forKey: "UserName")
@@ -294,6 +294,18 @@ class UserData {
         }
         set(num) {
             userDefaults.set(num, forKey: "CachedMovieNum")
+            userDefaults.synchronize()
+        }
+    }
+    
+    //
+    var thumbMoviePlay:Bool {
+        get {
+            userDefaults.register(defaults: ["thumbMoviePlay":false])
+            return userDefaults.bool(forKey: "thumbMoviePlay")
+        }
+        set(bo) {
+            userDefaults.set(bo, forKey: "thumbMoviePlay")
             userDefaults.synchronize()
         }
     }

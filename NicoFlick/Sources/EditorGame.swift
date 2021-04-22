@@ -237,9 +237,13 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         }
         //着目noteがあったとき
         if flickedNote != nil {
-            
+            var string = string
             //まずフリックした文字とnoteの文字があっているか判定して次にタイミング判定
-            let judge=(flickedNote?.judgeWord(flickWord: string))!
+            var judge=(flickedNote?.judgeWord(flickWord: string))!
+            if string == "\n" || string == "☻" || string == "？" || string == "！" || string == "。" || string == "、" {
+                string = "＊"
+                judge = Note.NORMAL
+            }
             if judge == Note.BAD{
                 //Bad
                 flickedNote?.flickedTime = flickTime

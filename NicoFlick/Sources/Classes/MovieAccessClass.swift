@@ -14,42 +14,54 @@ class MovieAccess{
     
     let session = URLSession(configuration: .default)
     var firstAttack = true
+
+    let ecoThumb: Bool
     
+    init(ecoThumb: Bool = false) {
+        self.ecoThumb = ecoThumb
+    }
     
-    //StreamingPlay用getflv→ニコページアクセス（→再生） 処理
+    //(ログアウト確認→)ニコページアクセス→再生 処理
     func StreamingUrlNicoAccess(smNum: String, callback: @escaping (String) -> Void ) -> Void {
         
         //先にキャッシュ内にあるか確認。あればもうニコニコの動画ページにすらアクセスしないことにする
-        let cache = CachedMovies.sharedInstance
-        if cache.cachedMovies.contains(where: { $0.smNum == smNum }){
-            callback("cached")
-            return
-        }
-        
-        if !AppDelegate.Flg_NicoLogout {
-            AppDelegate.Flg_NicoLogout = true
-            //ニコニコから強制ログアウト（しないとURLSessionとAVURLAssetとでうまく噛み合わない？）
-            let url = URL(string:"https://account.nicovideo.jp/logout?site=spniconico&sec=header_spweb&cmnhd_ref=device%3Dsp%26site%3Dspniconico%26pos%3Duserpanel%26page%3Dtop")!
-            let task = session.dataTask(with: url){(data,responce,error) in
-                print("ログアウト")
-                self.StreamingUrlNicoAccess(smNum: smNum, callback: callback)
+        if !ecoThumb {
+            if CachedMovies.sharedInstance.cachedMovies.contains(where: { $0.smNum == smNum }){
+                callback("cached")
+                return
             }
-            task.resume()
-            return
+        }else {
+            if CachedThumbMovies.sharedInstance.containsWithinExpiration(smNum: smNum){
+                callback("cached")
+                return
+            }
         }
-        
         let strURL = String.init(format: "https://www.nicovideo.jp/watch/%@",smNum);
         let url = URL(string: strURL)
         let task2 = self.session.dataTask(with: url!){  (data, responce, error) in
             if data != nil{
                 //動画ページにアクセス。動画URLを取得
                 let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+                //ニコニコにログインしてたらログアウトする
+                if self.firstAttack && !str.contains("user.login_status = 'not_login';"){
+                    //ニコニコから強制ログアウト（しないとURLSessionとAVURLAssetとでうまく噛み合わない？）
+                    let url = URL(string:"https://account.nicovideo.jp/logout?site=spniconico&sec=header_spweb&cmnhd_ref=device%3Dsp%26site%3Dspniconico%26pos%3Duserpanel%26page%3Dtop")!
+                    let task = self.session.dataTask(with: url){(data,responce,error) in
+                        print("ログアウト")
+                        //もう一度アクセス
+                        self.StreamingUrlNicoAccess(smNum: smNum, callback: callback)
+                    }
+                    task.resume()
+                    return
+                }
+                self.firstAttack = false
                 var st = str.pregMatche_firstString(pattern: "<div id=\"js-initial-watch-data\" data-api-data=\"(.*?)\" hidden></div>")
                 st.htmlDecode()
                 if let nicoDMC = NicoDmc(smNum: smNum, js_initial_watch_data: st) {
+                    nicoDMC.eco = self.ecoThumb
                     let session = URLSession(configuration: URLSessionConfiguration.default)
                     let url = URL(string:"https://api.dmc.nico/api/sessions?_format=json")!
-                    var req = URLRequest(url: url)
+                    var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
                     let body = nicoDMC.sessionFormatJson
                     req.httpMethod = "POST"
                     req.httpBody = body.data(using: String.Encoding.utf8)
@@ -57,7 +69,10 @@ class MovieAccess{
                         let str:String = String(data: data!, encoding: String.Encoding.utf8)!
                         print(str)
                         nicoDMC.Set_session_metadata(ResponseMetadata: str)
-                        nicoDMC.Start_HeartBeat()
+                        //短く再生するだけの場合はハートビートしない（40秒以内）
+                        if !self.ecoThumb {
+                            nicoDMC.Start_HeartBeat()
+                        }
                         callback(nicoDMC.content_uri)
                     }
                     task3.resume()
@@ -78,6 +93,7 @@ class NicoDmc {
     let contentId : String
     let heartbeatLifetime : String
     let contentKeyTimeout : String
+    let priority : String
     let transferPresets : String
     let service_id : String
     let player_id : String
@@ -88,15 +104,15 @@ class NicoDmc {
     private(set) var session_id = ""
     private(set) var content_uri = ""
     
+    var eco = false
     var timer = Timer()
     
     init?(smNum:String, js_initial_watch_data:String) {
         self.smNum = smNum
         print("DMC")
-        print(js_initial_watch_data)
+        //print(js_initial_watch_data)
         // Jsonのマッピング辛すぎるので文字列検索
         var ans:[String]=[]
-        print("js_initial_watch_data=\(js_initial_watch_data)")
         if !js_initial_watch_data.pregMatche(pattern: "\"session\":\\{\"recipeId\":\"(.*?)\",\"playerId\":\"(.*?)\",\"videos\":\\[(.*?)\\],\"audios\":\\[(.*?)\\],", matches: &ans){
             return nil
         }
@@ -109,7 +125,7 @@ class NicoDmc {
         audios = ans[4]
         print("audios= \(audios)")
         ans = []
-        if !js_initial_watch_data.pregMatche(pattern: "\"signature\":\"(.*?)\",\"contentId\":\"(.*?)\",\"heartbeatLifetime\":(.*?),\"contentKeyTimeout\":(.*?),\"priority\":.*?,\"transferPresets\":\\[(.*?)\\],", matches: &ans){
+        if !js_initial_watch_data.pregMatche(pattern: "\"signature\":\"(.*?)\",\"contentId\":\"(.*?)\",\"heartbeatLifetime\":(.*?),\"contentKeyTimeout\":(.*?),\"priority\":(.*?),\"transferPresets\":\\[(.*?)\\],", matches: &ans){
             return nil
         }
         signature = ans[1]
@@ -120,7 +136,9 @@ class NicoDmc {
         print("heartbeatLifetime= \(heartbeatLifetime)")
         contentKeyTimeout = ans[4]
         print("contentKeyTimeout= \(contentKeyTimeout)")
-        transferPresets = ans[5].pregReplace(pattern: "^\"|\"$", with: "")
+        priority = ans[5]
+        print("priority= \(priority)")
+        transferPresets = ans[6].pregReplace(pattern: "^\"|\"$", with: "")
         print("transferPresets= \(transferPresets)")
         ans = []
         if !js_initial_watch_data.pregMatche(pattern: "\\\\\"service_id\\\\\":\\\\\"(.*?)\\\\\",\\\\\"player_id\\\\\":\\\\\"(.*?)\\\\\",\\\\\"recipe_id\\\\\":\\\\\".*?\\\\\",\\\\\"service_user_id\\\\\":\\\\\"(.*?)\\\\\",\\\\\"protocols\\\\\":\\[\\{\\\\\"name\\\\\":\\\\\"http\\\\\",\\\\\"auth_type\\\\\":\\\\\"(.*?)\\\\\"\\}", matches: &ans){
@@ -147,20 +165,29 @@ class NicoDmc {
             print("video_src=\(video_src)")
             let audio_src = audios
             let reachability = AMReachability()
-            if (reachability?.isReachable)! {
-                print("インターネット接続あり")
-                if (reachability?.isReachableViaWiFi)!{
-                    print("Wifi接続有り")
-                }else {
-                    print("Wifi接続なし")
-                    video_src = video_src.pregReplace(pattern: "^.*,", with: "")
-                    print("video_src=\(video_src)")
-                    //audio_src = audio_src.pregReplace(pattern: "^.*,", with: "")
+            if eco {
+                //強制eco（曲セレクト画面での30秒プレビューに使用）
+                video_src = video_src.pregReplace(pattern: "^.*,", with: "")
+                print("video_src=\(video_src)")
+                //hls
+                return #"{"session":{"recipe_id":"\#(recipeId)","content_id":"\#(contentId)","content_type":"movie","content_src_id_sets":[{"content_src_ids":[{"src_id_to_mux":{"video_src_ids":[\#(video_src)],"audio_src_ids":[\#(audio_src)]}}]}],"timing_constraint":"unlimited","keep_method":{"heartbeat":{"lifetime":\#(heartbeatLifetime)}},"protocol":{"name":"http","parameters":{"http_parameters":{"parameters":{"hls_parameters":{"use_well_known_port":"yes","use_ssl":"yes","transfer_preset":"\#(transferPresets)","segment_duration":6000}}}}},"content_uri":"","session_operation_auth":{"session_operation_auth_by_signature":{"token":"\#(token)","signature":"\#(signature)"}},"content_auth":{"auth_type":"\#(auth_type)","content_key_timeout":\#(contentKeyTimeout),"service_id":"\#(service_id)","service_user_id":"\#(service_user_id)"},"client_info":{"player_id":"\#(playerID)"},"priority":\#(priority)}}"#
+            }else{
+                if (reachability?.isReachable)! {
+                    print("インターネット接続あり")
+                    if (reachability?.isReachableViaWiFi)!{
+                        print("Wifi接続有り")
+                    }else {
+                        print("Wifi接続なし")
+                        video_src = video_src.pregReplace(pattern: "^.*,", with: "")
+                        print("video_src=\(video_src)")
+                        //audio_src = audio_src.pregReplace(pattern: "^.*,", with: "")
+                    }
+                } else {
+                    print("インターネット接続なし")
                 }
-            } else {
-                print("インターネット接続なし")
+                //mp4
+                return #"{"session":{"recipe_id":"\#(recipeId)","content_id":"\#(contentId)","content_type":"movie","content_src_id_sets":[{"content_src_ids":[{"src_id_to_mux":{"video_src_ids":[\#(video_src)],"audio_src_ids":[\#(audio_src)]}}]}],"timing_constraint":"unlimited","keep_method":{"heartbeat":{"lifetime":\#(heartbeatLifetime)}},"protocol":{"name":"http","parameters":{"http_parameters":{"parameters":{"http_output_download_parameters":{"use_well_known_port":"yes","use_ssl":"yes","transfer_preset":"\#(transferPresets)"}}}}},"content_uri":"","session_operation_auth":{"session_operation_auth_by_signature":{"token":"\#(token)","signature":"\#(signature)"}},"content_auth":{"auth_type":"\#(auth_type)","content_key_timeout":\#(contentKeyTimeout),"service_id":"\#(service_id)","service_user_id":"\#(service_user_id)"},"client_info":{"player_id":"\#(playerID)"},"priority":\#(priority)}}"#
             }
-            return #"{"session":{"recipe_id":"\#(recipeId)","content_id":"\#(contentId)","content_type":"movie","content_src_id_sets":[{"content_src_ids":[{"src_id_to_mux":{"video_src_ids":[\#(video_src)],"audio_src_ids":[\#(audio_src)]}}]}],"timing_constraint":"unlimited","keep_method":{"heartbeat":{"lifetime":\#(heartbeatLifetime)}},"protocol":{"name":"http","parameters":{"http_parameters":{"parameters":{"http_output_download_parameters":{"use_well_known_port":"yes","use_ssl":"yes","transfer_preset":"\#(transferPresets)"}}}}},"content_uri":"","session_operation_auth":{"session_operation_auth_by_signature":{"token":"\#(token)","signature":"\#(signature)"}},"content_auth":{"auth_type":"\#(auth_type)","content_key_timeout":\#(contentKeyTimeout),"service_id":"\#(service_id)","service_user_id":"\#(service_user_id)"},"client_info":{"player_id":"\#(playerID)"},"priority":0}}"#
         }
     }
     func Set_session_metadata(ResponseMetadata:String) {

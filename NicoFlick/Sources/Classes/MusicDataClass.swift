@@ -108,6 +108,7 @@ class MusicDataLists{
         taglist = [:]
         musicsSqlIDtoIndex = [:]
         musicsMovieURLtoIndex = [:]
+        levelsSqlIDtoMovieURL = [:]
         flg_levelsFistrLoad = false
     }
 
@@ -351,6 +352,24 @@ class MusicDataLists{
             }
         }
         return 0
+    }
+    
+    func getNotesFirstTime(movieURL:String) -> Double {
+        if let levelm = levels[movieURL] {
+            var timetag = ""
+            for levelData in levelm {
+                timetag = levelData.noteData.pregMatche_firstString(pattern: "(\\[\\d\\d\\:\\d\\d[\\:|\\.]\\d\\d\\])")
+                print(timetag)
+                if timetag != "" {
+                    let time = timetag.timetagToSeconds()
+                    if time < 0.0 {
+                        return 0.0
+                    }
+                    return time
+                }
+            }
+        }
+        return -0.01
     }
     
     //selectConditionsによって抽出、ソートされるmusicを取得

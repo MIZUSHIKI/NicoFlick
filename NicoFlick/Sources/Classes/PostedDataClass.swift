@@ -67,6 +67,9 @@ class userNameDataLists {
     
     func getUserName(userID:String) -> String {
         if let usernamedata = userNames[userID] {
+            if usernamedata.name == "" {
+                return "NO_NAME"
+            }
             return usernamedata.name
         }else {
             return "NO_NAME"

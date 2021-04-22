@@ -134,17 +134,24 @@ class ServerDataHandler {
     
     func DownloadMusicData(callback: @escaping (Error?) -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL+"?req=musicz&time="+String(self.musicDatas.getLastUpdateTimeMusic()))!
+        let url = URL(string:AppDelegate.PHPURL+"?req=musicm&time="+String(self.musicDatas.getLastUpdateTimeMusic()))!
         print("URL=\(url)")
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if let error = error {
                 print("musicLoad-error") //エラー。例えばオフラインとか
+                AppDelegate.ServerErrorMessage = "予期しないエラーが発生しました"
                 callback(error)
                 return
             }
             print("downloaded")
             //ロードしたmusicデータを処理
-            let htRet = String(data: data!, encoding:.utf8)!
+            var htRet = String(data: data!, encoding:.utf8)!
+            if htRet.hasPrefix("<!--NicoFlickMessage=") {
+                AppDelegate.ServerErrorMessage = htRet.pregMatche_firstString(pattern: "^<!--NicoFlickMessage=(.*?)-->")
+                htRet = htRet.pregReplace(pattern: "^<!--NicoFlickMessage=.*?-->", with:"" )
+                print(AppDelegate.ServerErrorMessage)
+            }
             //print(htRet)
             if htRet == "latest" {
                 callback(nil)
@@ -187,7 +194,8 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:serverURL+"musicJson")!
         print("URL=\(url)")
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if let error = error {
                 print("musicLoad-error") //エラー。例えばオフラインとか
                 callback(error)
@@ -229,7 +237,8 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=levelm-noTimetag&userID=\(UserData.sharedInstance.UserID.prefix(8))&time="+String(self.musicDatas.getLastUpdateTimeLevel()))!
         print("URL=\(url)")
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if let error = error {
                 print("levelLoad-error") //エラー
                 callback(error)
@@ -278,7 +287,7 @@ class ServerDataHandler {
                                               creator: dic["creator"]!,
                                               description: dic["description"]!,
                                               speed: Int(dic["speed"]!)!,
-                                              noteData: "",
+                                              noteData: dic["bitNote"] ?? "",
                                               updateTime: Int(dic["updateTime"]!)!,
                                               createTime: Int(dic["createTime"]!)!,
                                               playCount: Int(dic["playCount"]!)!,
@@ -306,7 +315,8 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:serverURL+"levelJson")!
         print("URL=\(url)")
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if let error = error {
                 print("musicLoad-error") //エラー。例えばオフラインとか
                 callback(error)
@@ -344,7 +354,7 @@ class ServerDataHandler {
                                               creator: dic["creator"]!,
                                               description: dic["description"]!,
                                               speed: Int(dic["speed"]!)!,
-                                              noteData: "",
+                                              noteData: dic["bitNote"] ?? "",
                                               updateTime: Int(dic["updateTime"]!)!,
                                               createTime: Int(dic["createTime"]!)!,
                                               playCount: Int(dic["playCount"]!)!,
@@ -374,7 +384,8 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=PcFcCtSt&playcountTime="+String(self.musicDatas.getLastPlayCountTimeLevel())+"&favoriteTime="+String(self.musicDatas.getLastFavoriteCountTimeLevel())+"&commentTime="+String(self.musicDatas.getLastCommentTimeLevel())+"&scoreTime="+String(self.musicDatas.getLastScoreTimeLevel()))!
         print("URL=\(url)")
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if let error = error {
                 print("PlayFavoriteCountLoad-error") //エラー
                 callback(error)
@@ -416,7 +427,8 @@ class ServerDataHandler {
         //データベース接続、noteDataロード。
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL( string:AppDelegate.PHPURL+"?req=timetag&id=\(level.sqlID!)")!
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if let error = error {
                 print("notesLoad-error")//エラー。例えばオフラインとか
                 callback(error)
@@ -426,6 +438,8 @@ class ServerDataHandler {
             //musicDatasに保存（次回からロードしなくなる）
             level.noteData = jsonDic["notes"]
             
+            //保存データも更新
+            UserData.sharedInstance.LevelsJson = self.musicDatas.toLevelsJsonString()
             print("Notes Download")
             callback(nil)
             
@@ -436,7 +450,8 @@ class ServerDataHandler {
         //データベース接続
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=scorez&levelID=\(levelID)&time=\(scoreDatas.getLastUpdateTime(levelID: levelID))")!
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if let error = error {
                 print("DownloadScoreData-error")//エラー。例えばオフラインとか
                 callback(error)
@@ -469,7 +484,8 @@ class ServerDataHandler {
         //データベース接続
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=commentz&levelID=\(levelID)&time=\(commentDatas.getLastUpdateTime(levelID: levelID))")!
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if let error = error {
                 print("DownloadCommentData-error")//エラー。例えばオフラインとか
                 callback(error)
@@ -505,7 +521,8 @@ class ServerDataHandler {
             updateTime = 0
         }
         let url = URL(string:AppDelegate.PHPURL+"?req=usernamez&time=\(updateTime)")!
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if let error = error {
                 print("DownloadUserName-error")//エラー。例えばオフラインとか
                 callback(error)
@@ -570,7 +587,8 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:serverURL+"usernameJson\(userNameDatas.usernameJsonNumCount)")!
         print(url)
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if let error = error {
                 print("DownloadUserName-error")//エラー。例えばオフラインとか
                 callback(error)
@@ -636,7 +654,8 @@ class ServerDataHandler {
         //データベース接続
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=score&levelID=\(levelID)")!
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if error != nil {
                 print("getScoreData-error")//エラー。例えばオフラインとか
                 callback(nil)
@@ -650,7 +669,8 @@ class ServerDataHandler {
     func getCommentData(levelID:Int, callback: @escaping (Array<Dictionary<String,String>>?) -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=comment&levelID=\(levelID)")!
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if error != nil {
                 print("getCommentData-error")//エラー。例えばオフラインとか
                 callback(nil)
@@ -666,7 +686,8 @@ class ServerDataHandler {
         //
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=level-passCheck&id=\(id)&userPASS=\(pass)")!
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if error != nil {
                 print("checkLevelPass-error") //エラー。例えばオフラインとか
                 callback(false)
@@ -680,7 +701,7 @@ class ServerDataHandler {
     func postUserName(name:String, userID:String, callback: @escaping () -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=userName-add&id="+userID+"&name="+name.urlEncoded
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
@@ -704,7 +725,8 @@ class ServerDataHandler {
         //データベース接続
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=userNameID&id=\(userID)")!
-        let task = session.dataTask(with: url){(data,responce,error) in
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
             if error != nil {
                 print("getUserNameID-error")//エラー。例えばオフラインとか
                 callback()
@@ -724,7 +746,7 @@ class ServerDataHandler {
         //  登録
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=scorez-add&userID=\(userID)&userNameID=\(UserData.sharedInstance.UserNameID)&scoreset=\(scoreset)&pass=\(Crypt.init().encriptx_urlsafe(plainText: "ニコFlick", pass: userID))"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
@@ -749,7 +771,7 @@ class ServerDataHandler {
         //  登録
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=playcount-add&playcountset=\(playcountset)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
@@ -773,7 +795,7 @@ class ServerDataHandler {
         //  登録
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=favoritez-add&favoritecountset=\(favoritecountset)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
@@ -797,7 +819,7 @@ class ServerDataHandler {
         //  登録
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=PlaycountFavoritez-add&PFcountset=\(pfcountset)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
@@ -821,7 +843,7 @@ class ServerDataHandler {
         //  登録
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let urlEncodeComment:String = comment.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)!
         let body = "req=comment-add&userID=\(userID)&levelID=\(levelID)&comment=\(urlEncodeComment)"
         //print(body)
@@ -836,7 +858,7 @@ class ServerDataHandler {
     func postMusicInsert(nicoURL:String, thumbnailURL:String, title:String, artist:String, timeLength:String, tags:String, userPASS:String, callback: @escaping (String, Error?) -> Void) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=music-insert&movieURL=\(nicoURL)&thumbnailURL=\(thumbnailURL)&title=\(title.urlEncoded)&artist=\(artist.urlEncoded)&movieLength=\(timeLength)&tags=\(tags.urlEncoded)&userPASS=\(userPASS)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
@@ -855,7 +877,7 @@ class ServerDataHandler {
         //  登録
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=musicTag-update&id=\(id)&tags=\(tags.urlEncoded)&userID=\(userID)&pass=\(Crypt.init().encriptx_urlsafe(plainText: "ニコFlick", pass: userID))"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
@@ -880,7 +902,7 @@ class ServerDataHandler {
         // ゲームデータの投稿
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=level-insert&movieURL=\(nicoURL)&level=\(level)&creator=\(creator.urlEncoded)&description=\(description.urlEncoded)&speed=\(speed)&notes=\(notes.urlEncoded)&userPASS=\(userPASS)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
@@ -899,7 +921,7 @@ class ServerDataHandler {
         // ゲームデータの投稿
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=level-update&id=\(sqlID)&movieURL=\(nicoURL)&level=\(level)&creator=\(creator.urlEncoded)&description=\(description.urlEncoded)&speed=\(speed)&notes=\(notes.urlEncoded)&userPASS=\(userPASS)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
@@ -918,7 +940,7 @@ class ServerDataHandler {
         // ゲームデータの投稿
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=level-delete&id=\(sqlID)&userPASS=\(userPASS)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
@@ -938,7 +960,7 @@ class ServerDataHandler {
         //  登録
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let urlEncodeComment:String = comment.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)!
         print("urlEncodeComment")
         print(urlEncodeComment)
@@ -960,7 +982,7 @@ class ServerDataHandler {
     func postTagsToMusics(tags:String, musicsStr:String, callback: @escaping () -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let body = "req=tagsToMusics&tags="+tags.urlEncoded+"&musics="+musicsStr.urlEncoded
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)

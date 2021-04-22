@@ -105,9 +105,20 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
                     //UI処理はメインスレッドの必要あり
                     //Indicator隠す
                     self.activityIndicator.stopAnimating()
-                    //遷移指示
-                    self.segueing = false
-                    self.performSegue(withIdentifier: "toSelector", sender: self)
+                    if AppDelegate.ServerErrorMessage != "" {
+                        let alert = UIAlertController(title:"サーバエラー", message: AppDelegate.ServerErrorMessage, preferredStyle: UIAlertControllerStyle.alert)
+                        alert.addAction( UIAlertAction(title: "OK", style: .default, handler: {_ in
+                            AppDelegate.ServerErrorMessage = ""
+                            //エラーメッセージ確認後、遷移指示
+                            self.segueing = false
+                            self.performSegue(withIdentifier: "toSelector", sender: self)
+                        }) )
+                        self.present(alert, animated: true, completion: nil)
+                    }else {
+                        //特にエラーなし遷移指示
+                        self.segueing = false
+                        self.performSegue(withIdentifier: "toSelector", sender: self)
+                    }
                 }
             }
             return false
@@ -131,6 +142,19 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
             if UserData.sharedInstance.MyFavorite.count > 0 {
                 print("お気に入り仕様変更を見せる")
                 UserData.sharedInstance.lookedChangeFavoSpec_v1500 = false
+            }
+        }
+        if UserData.sharedInstance.MyVersion < 1802 {
+            //notesの頭16文字だけ拾ってthumbMovieに使用するため music,level を初期化して再取得
+            MusicDataLists.sharedInstance.reset()
+            UserData.sharedInstance.MusicsJson = ""
+            UserData.sharedInstance.LevelsJson = ""
+            print("music,level Reset")
+        }
+        if UserData.sharedInstance.MyVersion < 1810 {
+            //avplayerを34個くらい配列(Cacheとして)で持ったらそれ以上アクセスできなくなったからThumbMovieと動画キャッシュで合計30までにしとこうということで動画保持件数の最大を10に引き下げ
+            if UserData.sharedInstance.cachedMovieNum > 10 {
+                UserData.sharedInstance.cachedMovieNum = 10
             }
         }
     }

@@ -686,7 +686,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             }
             let session = URLSession(configuration: URLSessionConfiguration.default)
             let url = URL(string:urlStr)!
-            let task = session.dataTask(with: url){(data,responce,error) in
+            let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+            let task = session.dataTask(with: req){(data,responce,error) in
                 DispatchQueue.main.async {
                     //  Indicator隠す
                     self.activityIndicator.stopAnimating()
