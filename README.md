@@ -4,12 +4,19 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
 
 - Android版はコチラ：https://github.com/MIZUSHIKI/NicoFlick-Android
 
+### デザイン協力募集中
+
+[デザイン協力について](#デザイン等-修正したい箇所)
+
+- Issues等からご意見ください。  
+https://github.com/MIZUSHIKI/NicoFlick/issues?q=label%3Adesign+
+
 ## App Store
 https://itunes.apple.com/jp/app/nicoflick/id1415478437?mt=8
 
 ## Xcodeで試す
 ページ上部の　Clone or download ▼ ＞ Open in Xcode
-
+  
 ## こんな感じ
 ![20180805_103105](https://user-images.githubusercontent.com/33353602/43682202-084e5d12-98a8-11e8-975f-10bca5228906.GIF)
 - 楽曲/ゲームの投稿ができるのでプレイできる曲が増えていきます。  
