@@ -134,7 +134,7 @@ class ServerDataHandler {
     
     func DownloadMusicData(callback: @escaping (Error?) -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL+"?req=musicm&time="+String(self.musicDatas.getLastUpdateTimeMusic()))!
+        let url = URL(string:AppDelegate.PHPURL+"?req=musicy&time="+String(self.musicDatas.getLastUpdateTimeMusic()))!
         print("URL=\(url)")
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let task = session.dataTask(with: req){(data,responce,error) in
@@ -979,6 +979,45 @@ class ServerDataHandler {
         }
         task.resume()
     }
+    func getReport(musicID:Int, callback: @escaping (Int,String) -> Void ) -> Void {
+        //データベース接続
+        let session = URLSession(configuration: URLSessionConfiguration.default)
+        let url = URL(string:AppDelegate.PHPURL+"?req=getReport&musicID=\(musicID)&pass=nicoflick_lzmys")!
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
+            if error != nil {
+                print("getReport-error")//エラー。例えばオフラインとか
+                return
+            }
+            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            print(str)
+            if str.hasPrefix("success num="){
+                let num = Int(str.pregMatche_firstString(pattern: "num=(\\d+)&")) ?? -1
+                let comm = str.pregMatche_firstString(pattern: "comment=(.*)$")
+                callback( num, comm )
+            }
+        }
+        task.resume()
+    }
+    func postMusicDelete(musicID:Int,masterPass:String, callback: @escaping () -> Void ) -> Void {
+        //データベース接続
+        let session = URLSession(configuration: URLSessionConfiguration.default)
+        let url = URL(string:AppDelegate.PHPURL+"?req=music-delete&musicID=\(musicID)&masterPASS=\(masterPass)")!
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
+            if error != nil {
+                print("postMusicDelete-error")//エラー。例えばオフラインとか
+                return
+            }
+            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            print(str)
+            if str.pregMatche(pattern: "message=Success"){
+                callback()
+            }
+        }
+        task.resume()
+    }
+    
     func postTagsToMusics(tags:String, musicsStr:String, callback: @escaping () -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!

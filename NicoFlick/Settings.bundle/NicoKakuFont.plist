@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>StringsTable</key>
+    <string>Root</string>
+    <key>PreferenceSpecifiers</key>
+    <array>
+        <dict>
+        <key>Title</key>
+        <string>License</string>
+        <key>Type</key>
+        <string>PSGroupSpecifier</string>
+        <key>FooterText</key>
+        <string>
+丸文字「ニコ角」フォント
+・ニコモジ＋の角ゴシック版
+
+製作者： Ku-Ku
+
+以下、ライセンス等の情報は配布サイトから引用。
+
+- LICENSE ----------------
+二次創作フォントですので、本家サービスの迷惑にならない範囲でご使用をお願いします。
+個人・商用の使用には特に制限は設けていません。
+
+【詳細事項】
+ひらがな・カタカナ・英数字はオリジナルですが、それ以外の文字グリフ（漢字など）は
+オープンソースフォントである「M+フォント」を利用させていただいております。
+Copyright(c) 2014 M+ FONTS PROJECT
+
+「M+フォント」の制作者様・提供者様に心よりお礼申し上げます。
+
+- SPEC -------------------
+フォント名：「ニコモジ＋（プラス）」
+収録文字：ひらがな・漢字・カタカナ・アルファベット大文字・アルファベット小文字・数字など
+フォント形式：TrueTypeフォント（プロポーショナルフォント）
+動作環境：Windows 95以降、Mac OS X 10.3以降
+
+- DATA -------------------
+このフォントの使用によるトラブル・不利益には、一切の責任を負いません。
+またサポートについてはすべて未保証とさせていただきます。
+        </string>
+        </dict>
+    </array>
+</dict>
+</plist>

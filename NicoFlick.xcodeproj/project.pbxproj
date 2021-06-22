@@ -50,6 +50,7 @@
 		107B46FC25E7651F008F4704 /* newfavo-black.png in Resources */ = {isa = PBXBuildFile; fileRef = 107B46FB25E7651F008F4704 /* newfavo-black.png */; };
 		107BCC0921CFC11500F39290 /* SpoonClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107BCC0821CFC11500F39290 /* SpoonClass.swift */; };
 		107FC63225B87E44007D1B5F /* SelectorMenuTagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107FC63125B87E44007D1B5F /* SelectorMenuTagEditorView.swift */; };
+		1081083A266E4021005D28E0 /* nicokaku_v1.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 10810839266E4021005D28E0 /* nicokaku_v1.ttf */; };
 		108A733D25C9CFBF00F3835C /* cursor-lr.png in Resources */ = {isa = PBXBuildFile; fileRef = 108A733C25C9CFBE00F3835C /* cursor-lr.png */; };
 		109830D121B56ACF00E2FBDA /* ServerDataHandlerClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109830D021B56ACF00E2FBDA /* ServerDataHandlerClass.swift */; };
 		10A701F221BCAB220055E6F8 /* JasracSearchWebkitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10A701F121BCAB220055E6F8 /* JasracSearchWebkitView.swift */; };
@@ -154,6 +155,7 @@
 		107B46FB25E7651F008F4704 /* newfavo-black.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "newfavo-black.png"; path = "image/newfavo-black.png"; sourceTree = "<group>"; };
 		107BCC0821CFC11500F39290 /* SpoonClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpoonClass.swift; path = Sources/Classes/SpoonClass.swift; sourceTree = "<group>"; };
 		107FC63125B87E44007D1B5F /* SelectorMenuTagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectorMenuTagEditorView.swift; path = Sources/SelectorMenuTagEditorView.swift; sourceTree = "<group>"; };
+		10810839266E4021005D28E0 /* nicokaku_v1.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = nicokaku_v1.ttf; path = "../../../../XCODE/NicoFlick/nicokaku-plus/nicokaku_v1.ttf"; sourceTree = "<group>"; };
 		108A733C25C9CFBE00F3835C /* cursor-lr.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "cursor-lr.png"; path = "image/cursor-lr.png"; sourceTree = "<group>"; };
 		109830D021B56ACF00E2FBDA /* ServerDataHandlerClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ServerDataHandlerClass.swift; path = Sources/Classes/ServerDataHandlerClass.swift; sourceTree = "<group>"; };
 		10A701F121BCAB220055E6F8 /* JasracSearchWebkitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = JasracSearchWebkitView.swift; path = Sources/JasracSearchWebkitView.swift; sourceTree = "<group>"; };
@@ -292,6 +294,14 @@
 			name = image;
 			sourceTree = "<group>";
 		};
+		10810834266BFC27005D28E0 /* fonts */ = {
+			isa = PBXGroup;
+			children = (
+				10810839266E4021005D28E0 /* nicokaku_v1.ttf */,
+			);
+			path = fonts;
+			sourceTree = "<group>";
+		};
 		10B49C7D1EB4B4EF000C79D3 = {
 			isa = PBXGroup;
 			children = (
@@ -317,6 +327,7 @@
 		10B49C881EB4B4EF000C79D3 /* NicoFlick */ = {
 			isa = PBXGroup;
 			children = (
+				10810834266BFC27005D28E0 /* fonts */,
 				10B49C8D1EB4B4EF000C79D3 /* Main.storyboard */,
 				10710D882104477600468C6B /* AppDelegate.swift */,
 				10B49C8B1EB4B4EF000C79D3 /* ViewController.swift */,
@@ -558,6 +569,7 @@
 				10AB749225E727B800BC95B2 /* star-bk.png in Resources */,
 				107993BB2417B6F700B032C6 /* dot_circle.png in Resources */,
 				108A733D25C9CFBF00F3835C /* cursor-lr.png in Resources */,
+				1081083A266E4021005D28E0 /* nicokaku_v1.ttf in Resources */,
 				101BD56B217B2CEE00259375 /* howtoExtend2.png in Resources */,
 				10AB749A25E740A300BC95B2 /* newfavo-color.png in Resources */,
 				105B83331EEEA55400FC2244 /* okJingle.wav in Resources */,
@@ -891,12 +903,12 @@
 			baseConfigurationReference = C201050390E3FF9EFDB81101 /* Pods-NicoFlick.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.8.3.0;
+				CURRENT_PROJECT_VERSION = 1.9.0.5;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.8.3;
+				MARKETING_VERSION = 1.9.0;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";
@@ -911,12 +923,12 @@
 			baseConfigurationReference = DD9B574FCC333592F9762ED9 /* Pods-NicoFlick.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.8.3.0;
+				CURRENT_PROJECT_VERSION = 1.9.0.5;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.8.3;
+				MARKETING_VERSION = 1.9.0;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";

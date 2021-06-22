@@ -101,7 +101,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         thumbMoviePlay.isHidden = userData.thumbMoviePlay
         thumbMoviePlay_Color.isHidden = !userData.thumbMoviePlay
         //
-        let view = SlashShadeView(frame: self.view.frame)
+        let view = SlashShadeView.init(frame: self.view.frame, color: .white, lineWidth: 1, space: 2)
         self.view.addSubview(view)
         self.view.sendSubview(toBack: view)
         
@@ -190,13 +190,23 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 let retStr = returnToMeString.removingPercentEncoding
                 if var retTag = retStr?.pregMatche_firstString(pattern: "tag=(.*?)(&sort=|$)"),
                    let retSort = retStr?.pregMatche_firstString(pattern: "sort=(.*?)(&tag=|$)"){
-                    
+                    var jikanSitei = ""
+                    let array = retTag.components(separatedBy: " ") //タグ文字列を空白で分割
+                    if (array.contains(where: {$0.hasPrefix("@t:")})) {
+                        if let a = array.first(where: {$0.hasPrefix("@t:")}){
+                            jikanSitei = a
+                        }
+                        //時間指定が機能するように一度削除して最後に持っていく
+                        retTag = retTag.pregReplace(pattern: "\\s?@t:(\\d+:\\d+)?-?(\\d+:\\d+)?", with: "")
+                    }
                     retTag = retTag.trimmingCharacters(in: .whitespaces)
                     retTag = retTag.pregReplace(pattern: "\\s*/(and|AND)/\\s*", with: "/and/")
                     retTag = retTag.pregReplace(pattern: "\\s+", with: " or ")
                     retTag = retTag.pregReplace(pattern: "/and/", with: " ")
-                    
-                    userData.SelectedMusicCondition.tags = retTag
+                    if retTag != "" && jikanSitei != ""{
+                        jikanSitei = " " + jikanSitei
+                    }
+                    userData.SelectedMusicCondition.tags = retTag + jikanSitei
                     if retSort != "" {
                         userData.SelectedMusicCondition.sortItem = retSort
                     }
@@ -553,6 +563,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         self.performSegue(withIdentifier: "toTableViewForSortFromSelector", sender: self)
     }
     @IBAction func TapMusicNumLabel(_ sender: UITapGestureRecognizer) {
+        if currentMusics.count == 0 {
+            return
+        }
         let title = "曲の選択"
         let message = "\n\n\n\n\n\n\n\n\n\n" //改行入れないとOKCancelがかぶる
 
@@ -576,6 +589,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         present(alert, animated: true, completion: nil)
     }
     @IBAction func TapTagLabel(_ sender: UITapGestureRecognizer) {
+        if currentMusics.count == 0 {
+            return
+        }
         self.performSegue(withIdentifier: "toTableViewForTagFromSelector", sender: self)
     }
     @IBAction func favoriteButton(_ sender: UIButton) {

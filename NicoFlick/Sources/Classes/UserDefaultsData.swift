@@ -370,6 +370,17 @@ class UserData {
             userDefaults.synchronize()
         }
     }
+    var lookedDesignCoop_v1900:Bool {
+        get {
+            userDefaults.register(defaults: ["lookedDesignCoop_v1900":false])
+            let le = userDefaults.bool(forKey: "lookedDesignCoop_v1900")
+            return le
+        }
+        set(lh) {
+            userDefaults.set(lh, forKey: "lookedDesignCoop_v1900")
+            userDefaults.synchronize()
+        }
+    }
     
     var MySpoonSet:[Int:String] {
         get {

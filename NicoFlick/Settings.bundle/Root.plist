@@ -34,6 +34,14 @@
             <key>File</key>
             <string>TwitterKit</string>
         </dict>
+        <dict>
+            <key>Title</key>
+            <string>NicoKakuFont</string>
+            <key>Type</key>
+            <string>PSChildPaneSpecifier</string>
+            <key>File</key>
+            <string>NicoKakuFont</string>
+        </dict>
 	</array>
 </dict>
 </plist>

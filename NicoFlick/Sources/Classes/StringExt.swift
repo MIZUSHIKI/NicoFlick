@@ -157,6 +157,14 @@ extension String {
         }
         return -0.001
     }
+    func timeToSec(FailureValue:Int = -1) -> Int {
+        var ans:[String] = []
+        print(self)
+        if self.pregMatche(pattern: "(\\d+)\\:(\\d+)", matches: &ans){
+            return Int(ans[1])!*60 + Int(ans[2])!
+        }
+        return FailureValue
+    }
     var isDotTimetag : Bool {
         return self.pregMatche(pattern: "\\[[\\d\\*][\\d\\*]\\:[\\d\\*][\\d\\*]\\.[\\d\\*][\\d\\*]\\]")
     }

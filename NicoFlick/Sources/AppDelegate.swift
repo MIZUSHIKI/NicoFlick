@@ -14,11 +14,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     
     static let PHPURL = "http://timetag.main.jp/nicoflick/nicoflick.php"
-    //static let PHPURL = "http://192.168.11.7/nicoflick_20201103/nicoflick.php" //windows xampp
+    //static let PHPURL = "http://192.168.11.9/nicoflick_20201103/nicoflick.php" //windows xampp
     //static let PHPURL = "http://127.0.0.1:8888/nicoflick.php" //mac mamp PC
     //static let PHPURL = "http://MacBook.local:8000/nicoflick.php" //mac mamp スマホ
     static let NicoApiURL_GetThumbInfo = "http://ext.nicovideo.jp/api/getthumbinfo/"
-    static let Version = 1830
+    static let Version = 1905
     static var ServerErrorMessage = ""
     static var DidEnterBackgroundTime:Date?
 

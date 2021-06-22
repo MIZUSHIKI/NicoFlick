@@ -15,6 +15,7 @@ class SelectorMenu: UIViewController {
     @IBOutlet var sortLabel: UILabel!
     @IBOutlet weak var reportButton: UIButton!
     @IBOutlet weak var idLabel: UILabel!
+    @IBOutlet weak var reportNum: UIButton!
     
     
     //音楽データ(シングルトン)
@@ -30,6 +31,8 @@ class SelectorMenu: UIViewController {
     
     var selectMusics:[musicData]?
     var selectMusic:musicData?
+    
+    var reportComment = ""
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -58,6 +61,16 @@ class SelectorMenu: UIViewController {
                 let selectLevel = selectLevels[selectorController.indexPicker]
                 if let mid = music.sqlID, let gid = selectLevel.sqlID {
                     idLabel.text = "musicID=\(mid), gameID=\(gid)"
+                }
+            }
+            //開発者用 通報数、コメント確認。
+            if userData.UserIDxxx == "358ED61B-F5F1-4A70-BF39-************" {
+                ServerDataHandler().getReport(musicID: music.sqlID) { (num, comments) in
+                    DispatchQueue.main.async {
+                        self.reportNum.setTitle("\(num)", for: .normal)
+                        self.reportNum.isHidden = false
+                        self.reportComment = comments
+                    }
                 }
             }
         }else {
@@ -125,6 +138,38 @@ class SelectorMenu: UIViewController {
                ac.addAction(cancel)
 
                present(ac, animated: true, completion: nil)
+    }
+    //開発者用 楽曲削除
+    @IBAction func ReportNumButton(_ sender: UIButton) {
+        var comm = self.reportComment
+        if comm == "" {
+            comm = "コメントなし"
+        }
+        let alert = UIAlertController(title:"report-comment", message: comm, preferredStyle: UIAlertControllerStyle.alert)
+        alert.addAction(UIAlertAction(title: "削除", style: UIAlertActionStyle.default, handler: {
+            (action: UIAlertAction!) in
+            //print("はいをタップした時の処理")
+            
+            print(alert.textFields![0].text!)
+            // データの削除
+            if let music = self.selectMusic  {
+                ServerDataHandler().postMusicDelete(musicID: music.sqlID, masterPass: alert.textFields![0].text!) {
+                    DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
+                        let alert = UIAlertController(title:"music delete", message: "成功", preferredStyle: UIAlertControllerStyle.alert)
+                        alert.addAction(UIAlertAction(title: "OK", style: .cancel, handler: nil))
+                        self.present(alert, animated: true, completion: nil)
+                    }
+                }
+            }
+            
+        }))
+        alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel, handler: nil))
+        //textfiledの追加
+        alert.addTextField(configurationHandler: {(textField: UITextField!) in
+            textField.isSecureTextEntry = true // for password input
+            textField.placeholder = "マスターパスワード"
+        })
+        self.present(alert, animated: true, completion: nil)
     }
     
     @IBAction func goExtLink(_ sender: UIButton) {
@@ -261,6 +306,11 @@ class SelectorMenu: UIViewController {
             editorViewController.selectLevel = selectorController.currentLevels[selectorController.indexPicker]
             editorViewController.password = password
             
+        }else if segue.identifier == "toJasracRevalidationWebkitView" {
+            if let music = selectMusic {
+                let jasracSearchWebkitViewController:JasracSearchWebkitView = segue.destination as! JasracSearchWebkitView
+                jasracSearchWebkitViewController.titleText = music.title
+            }
         }
     }
     //遷移の許可

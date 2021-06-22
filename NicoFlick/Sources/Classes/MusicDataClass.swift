@@ -113,7 +113,7 @@ class MusicDataLists{
     }
 
     func setMusic(sqlID:Int, movieURL:String, thumbnailURL:String, title:String, artist:String, movieLength:String, tags:String, updateTime:Int, createTime:Int){
-        if movieURL == "delete" {
+        if movieURL == "delete" || thumbnailURL == "delete"  {
             //削除
             if let index = musicsSqlIDtoIndex[sqlID] {
                 musics.remove(at: index)
@@ -382,6 +382,8 @@ class MusicDataLists{
     }
     func _getSelectMusics(selectCondition:SelectConditions, isMe:Bool = true) -> [musicData] {
         var tagps:[SelectConditions.tagp] = []
+        var sita = 0
+        var ue = 99 * 60 + 99
         for tagp in selectCondition.tag {
             if tagp.word.hasPrefix("@g:") {//tagp.word.suffix(tagp.word.count-3)
                 let ids = tagp.word.suffix(tagp.word.count-3).components(separatedBy: "-").compactMap{ Int($0) }
@@ -400,6 +402,21 @@ class MusicDataLists{
             }else if tagp.word.hasPrefix("@m:") {
                 let ids = tagp.word.suffix(tagp.word.count-3).components(separatedBy: "-").compactMap{ Int($0) }
                 tagps += ids.map{ SelectConditions.tagp.init(tag: "@m:\($0)", type: tagp.type) }
+                continue
+            }else if tagp.word.hasPrefix("@t:") {
+                var ans:[String]=[]
+                if (tagp.word.pregMatche(pattern: "@t:(\\d+:\\d+)-(\\d+:\\d+)$", matches: &ans)){
+                    sita = ans[1].timeToSec(FailureValue: 0)
+                    ue = ans[2].timeToSec(FailureValue: 99*60+99)
+                }else if (tagp.word.pregMatche(pattern: "@t:(\\d+:\\d+)-$", matches: &ans)){
+                    sita = ans[1].timeToSec(FailureValue: 0)
+                }else if (tagp.word.pregMatche(pattern: "@t:-?(\\d+:\\d+)$", matches: &ans)){
+                    ue = ans[1].timeToSec(FailureValue: 99*60+99)
+                }
+                if sita > ue {
+                    swap(&sita, &ue)
+                }
+                print("sita=\(sita), ue=\(ue)")
                 continue
             }else if tagp.word == "@初期楽曲" {
                 //
@@ -495,6 +512,10 @@ class MusicDataLists{
                 }
             }
         }
+        if sita != 0 || ue != 99 * 60 + 99 {
+            extractMusics = extractMusics.filter({ sita...ue ~= $0.movieLength.timeToSec() })
+        }
+        
         var outputMusics:[musicData] = []
         for music in extractMusics {
             if getSelectMusicLevels_noSort(selectMovieURL: music.movieURL, isMe: isMe).count == 0 {

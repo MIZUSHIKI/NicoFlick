@@ -10,6 +10,8 @@ import UIKit
 
 class ViewController: UIViewController {
     
+    @IBOutlet weak var designCoopLabel: UILabel!
+    
     //音楽データ
     var musicDatas:MusicDataLists = MusicDataLists.sharedInstance
     //各ユーザーのネームデータ
@@ -19,6 +21,8 @@ class ViewController: UIViewController {
     var segueing = false
     //Indicator（ネット処理中 画面中央でくるくるさせる）
     private var activityIndicator:UIActivityIndicatorView!
+    
+    var slashView:SlashShadeView?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -38,6 +42,25 @@ class ViewController: UIViewController {
         //バージョンアップ時に必要な処理があれば実行
         self.migration()
         userData.MyVersion = AppDelegate.Version
+        
+        //「デザイン募集中」が気になる人は消せるように
+        designCoopLabel.isHidden = userData.lookedDesignCoop_v1900
+        
+        //上昇斜め背景
+        let frame = CGRect(x: 0, y: 0, width: self.view.frame.width, height: self.view.frame.height + 15.0)
+        slashView = SlashShadeView.init(frame: frame, color: UIColor.init(red: 0.60, green: 0.70, blue: 1.0, alpha: 0.035), lineWidth: 1.5, space: 15)
+        self.view.addSubview(slashView!)
+        self.view.sendSubview(toBack: slashView!)
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(self.viewWillEnter), name: .UIApplicationWillEnterForeground, object: nil)
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        UIView.animate(withDuration: 1.0, delay: 0.0, options: [.repeat, .curveLinear], animations: {self.slashView?.frame.origin.y = -15}, completion: {_ in self.slashView?.frame.origin.y = 0})
+    }
+    @objc func viewWillEnter(notification: NSNotification){
+        UIView.animate(withDuration: 1.0, delay: 0.0, options: [.repeat, .curveLinear], animations: {self.slashView?.frame.origin.y = -15}, completion: {_ in self.slashView?.frame.origin.y = 0})
+        
     }
 
     override func didReceiveMemoryWarning() {
@@ -72,6 +95,13 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
         }) )
         alert.addAction( UIAlertAction(title: "OK", style: .default, handler: nil) )
         self.present(alert, animated: true, completion: nil)
+        //
+        UserData.sharedInstance.lookedDesignCoop_v1900 = false
+        designCoopLabel.isHidden = false
+    }
+    @IBAction func TapDesignCoopLabel(_ sender: UITapGestureRecognizer) {
+        UserData.sharedInstance.lookedDesignCoop_v1900 = true
+        designCoopLabel.isHidden = true
     }
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     
