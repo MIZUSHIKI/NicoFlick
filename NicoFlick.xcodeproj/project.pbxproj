@@ -78,6 +78,18 @@
 		10E1DBC71F879D9300C3BD33 /* ranking.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC61F879D8B00C3BD33 /* ranking.png */; };
 		10E1DBC91F8A76F200C3BD33 /* flick.png in Resources */ = {isa = PBXBuildFile; fileRef = 10E1DBC81F8A76EA00C3BD33 /* flick.png */; };
 		10E6C5EB2104E2A6004457F8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 10E6C5E92104E2A5004457F8 /* LaunchScreen.storyboard */; };
+		10E82ACC283A7AAE003CD1DA /* shuffle.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82AC0283A7AAE003CD1DA /* shuffle.mp3 */; };
+		10E82ACD283A7AAE003CD1DA /* START2.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82AC1283A7AAE003CD1DA /* START2.mp3 */; };
+		10E82ACE283A7AAE003CD1DA /* START.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82AC2283A7AAE003CD1DA /* START.mp3 */; };
+		10E82ACF283A7AAE003CD1DA /* cansel.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82AC3283A7AAE003CD1DA /* cansel.mp3 */; };
+		10E82AD0283A7AAE003CD1DA /* OPEN.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82AC4283A7AAE003CD1DA /* OPEN.mp3 */; };
+		10E82AD1283A7AAE003CD1DA /* GameMenu.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82AC5283A7AAE003CD1DA /* GameMenu.mp3 */; };
+		10E82AD2283A7AAE003CD1DA /* OpenSelectorMenu.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82AC6283A7AAE003CD1DA /* OpenSelectorMenu.mp3 */; };
+		10E82AD3283A7AAE003CD1DA /* LoopDrumRoll.wav in Resources */ = {isa = PBXBuildFile; fileRef = 10E82AC7283A7AAE003CD1DA /* LoopDrumRoll.wav */; };
+		10E82AD4283A7AAE003CD1DA /* cansel2.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82AC8283A7AAE003CD1DA /* cansel2.mp3 */; };
+		10E82AD5283A7AAE003CD1DA /* GO.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82AC9283A7AAE003CD1DA /* GO.mp3 */; };
+		10E82AD6283A7AAE003CD1DA /* RANK.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82ACA283A7AAE003CD1DA /* RANK.mp3 */; };
+		10E82AD7283A7AAE003CD1DA /* OpenSub.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 10E82ACB283A7AAE003CD1DA /* OpenSub.mp3 */; };
 		10EBF2861F79170900FAAAA5 /* SelectorMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF2851F79170900FAAAA5 /* SelectorMenu.swift */; };
 		10EBF2881F79675E00FAAAA5 /* SelectorMenuTableForTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF2871F79675E00FAAAA5 /* SelectorMenuTableForTag.swift */; };
 		10EBF28A1F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF2891F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift */; };
@@ -85,7 +97,7 @@
 		10ED448B1EEB8AD60072FB8B /* MusicDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10ED448A1EEB8AD60072FB8B /* MusicDataClass.swift */; };
 		10ED45141EEBECAF0072FB8B /* iCarousel.m in Sources */ = {isa = PBXBuildFile; fileRef = 10ED45121EEBECAF0072FB8B /* iCarousel.m */; };
 		1572D92DB5EBA5C788A5B2E5 /* Pods_NicoFlickTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84D287F0BE60DD947F2B8391 /* Pods_NicoFlickTests.framework */; };
-		3718C00F649D584F32027AFD /* Pods_NicoFlick.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0127DDC02C08ACEEE322A44F /* Pods_NicoFlick.framework */; };
+		2D2D6033F45C30A274F3D929 /* Pods_NicoFlick.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0127DDC02C08ACEEE322A44F /* Pods_NicoFlick.framework */; };
 		E88D1C83E498B5BE42BAC6EC /* Pods_NicoFlickUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 227C54DEBC0DAFEF735E3C22 /* Pods_NicoFlickUITests.framework */; };
 /* End PBXBuildFile section */
 
@@ -189,6 +201,18 @@
 		10E1DBC61F879D8B00C3BD33 /* ranking.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = ranking.png; path = image/ranking.png; sourceTree = "<group>"; };
 		10E1DBC81F8A76EA00C3BD33 /* flick.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = flick.png; path = image/flick.png; sourceTree = "<group>"; };
 		10E6C5EA2104E2A5004457F8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		10E82AC0283A7AAE003CD1DA /* shuffle.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = shuffle.mp3; path = se/shuffle.mp3; sourceTree = "<group>"; };
+		10E82AC1283A7AAE003CD1DA /* START2.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = START2.mp3; path = se/START2.mp3; sourceTree = "<group>"; };
+		10E82AC2283A7AAE003CD1DA /* START.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = START.mp3; path = se/START.mp3; sourceTree = "<group>"; };
+		10E82AC3283A7AAE003CD1DA /* cansel.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = cansel.mp3; path = se/cansel.mp3; sourceTree = "<group>"; };
+		10E82AC4283A7AAE003CD1DA /* OPEN.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = OPEN.mp3; path = se/OPEN.mp3; sourceTree = "<group>"; };
+		10E82AC5283A7AAE003CD1DA /* GameMenu.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = GameMenu.mp3; path = se/GameMenu.mp3; sourceTree = "<group>"; };
+		10E82AC6283A7AAE003CD1DA /* OpenSelectorMenu.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = OpenSelectorMenu.mp3; path = se/OpenSelectorMenu.mp3; sourceTree = "<group>"; };
+		10E82AC7283A7AAE003CD1DA /* LoopDrumRoll.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = LoopDrumRoll.wav; path = se/LoopDrumRoll.wav; sourceTree = "<group>"; };
+		10E82AC8283A7AAE003CD1DA /* cansel2.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = cansel2.mp3; path = se/cansel2.mp3; sourceTree = "<group>"; };
+		10E82AC9283A7AAE003CD1DA /* GO.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = GO.mp3; path = se/GO.mp3; sourceTree = "<group>"; };
+		10E82ACA283A7AAE003CD1DA /* RANK.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = RANK.mp3; path = se/RANK.mp3; sourceTree = "<group>"; };
+		10E82ACB283A7AAE003CD1DA /* OpenSub.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = OpenSub.mp3; path = se/OpenSub.mp3; sourceTree = "<group>"; };
 		10EBF2851F79170900FAAAA5 /* SelectorMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectorMenu.swift; path = Sources/SelectorMenu.swift; sourceTree = "<group>"; };
 		10EBF2871F79675E00FAAAA5 /* SelectorMenuTableForTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectorMenuTableForTag.swift; path = Sources/SelectorMenuTableForTag.swift; sourceTree = "<group>"; };
 		10EBF2891F7E600C00FAAAA5 /* SelectorMenuTableForSort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SelectorMenuTableForSort.swift; path = Sources/SelectorMenuTableForSort.swift; sourceTree = "<group>"; };
@@ -211,7 +235,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3718C00F649D584F32027AFD /* Pods_NicoFlick.framework in Frameworks */,
+				2D2D6033F45C30A274F3D929 /* Pods_NicoFlick.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -253,6 +277,18 @@
 				105B83321EEEA55400FC2244 /* okJingle.wav */,
 				105B83341EEEAE1500FC2244 /* safeJingle.wav */,
 				105B833A1EEED95900FC2244 /* badJingle.wav */,
+				10E82AC3283A7AAE003CD1DA /* cansel.mp3 */,
+				10E82AC8283A7AAE003CD1DA /* cansel2.mp3 */,
+				10E82AC5283A7AAE003CD1DA /* GameMenu.mp3 */,
+				10E82AC9283A7AAE003CD1DA /* GO.mp3 */,
+				10E82AC7283A7AAE003CD1DA /* LoopDrumRoll.wav */,
+				10E82AC4283A7AAE003CD1DA /* OPEN.mp3 */,
+				10E82AC6283A7AAE003CD1DA /* OpenSelectorMenu.mp3 */,
+				10E82ACB283A7AAE003CD1DA /* OpenSub.mp3 */,
+				10E82ACA283A7AAE003CD1DA /* RANK.mp3 */,
+				10E82AC0283A7AAE003CD1DA /* shuffle.mp3 */,
+				10E82AC2283A7AAE003CD1DA /* START.mp3 */,
+				10E82AC1283A7AAE003CD1DA /* START2.mp3 */,
 			);
 			name = se;
 			sourceTree = "<group>";
@@ -428,8 +464,8 @@
 				10B49C821EB4B4EF000C79D3 /* Sources */,
 				10B49C831EB4B4EF000C79D3 /* Frameworks */,
 				10B49C841EB4B4EF000C79D3 /* Resources */,
-				418A084ED3B5D8F81C37DD1F /* [CP] Embed Pods Frameworks */,
-				6111F42669883CB62D4BD1CD /* [CP] Copy Pods Resources */,
+				C146C5EB587DF51004A6F696 /* [CP] Embed Pods Frameworks */,
+				5D18C86D3CC6DD07F27C48D5 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -536,26 +572,35 @@
 			buildActionMask = 2147483647;
 			files = (
 				10E1DBC91F8A76F200C3BD33 /* flick.png in Resources */,
+				10E82ACC283A7AAE003CD1DA /* shuffle.mp3 in Resources */,
 				101BD56F217B305A00259375 /* howtoExtend1.png in Resources */,
 				102D343921FDF24C00A50C00 /* howtoEditor3.png in Resources */,
 				102D343F21FE1C8500A50C00 /* howtoEditor6.png in Resources */,
 				102D343C21FDF24C00A50C00 /* howtoEditor5.png in Resources */,
+				10E82ACE283A7AAE003CD1DA /* START.mp3 in Resources */,
 				102D343D21FDF24C00A50C00 /* howtoEditor2.png in Resources */,
+				10E82AD4283A7AAE003CD1DA /* cansel2.mp3 in Resources */,
 				101BD56D217B2CEE00259375 /* howtoExtend3.png in Resources */,
 				10D1A0C12495EC0000D9DBCC /* star-color.png in Resources */,
 				10710D852102C09B00468C6B /* Settings.bundle in Resources */,
 				100BB4C31F6D451600058AAD /* menu.png in Resources */,
 				10B49C911EB4B4EF000C79D3 /* Assets.xcassets in Resources */,
 				102D534C22062DE5008A7843 /* howtoNotes3.png in Resources */,
+				10E82AD1283A7AAE003CD1DA /* GameMenu.mp3 in Resources */,
 				10D1A0BF2495EC0000D9DBCC /* star.png in Resources */,
 				105B833B1EEED95900FC2244 /* badJingle.wav in Resources */,
+				10E82AD3283A7AAE003CD1DA /* LoopDrumRoll.wav in Resources */,
 				101BD5672177782000259375 /* Twitter_Social_Icon_Rounded_Square_Color_x100.png in Resources */,
 				10B49C8F1EB4B4EF000C79D3 /* Main.storyboard in Resources */,
+				10E82ACF283A7AAE003CD1DA /* cansel.mp3 in Resources */,
 				102D343B21FDF24C00A50C00 /* howtoEditor4.png in Resources */,
 				10D595E925B6A551003C3421 /* cursor-ud.png in Resources */,
 				106C5FD32115E47A00FF110B /* howto2.png in Resources */,
+				10E82AD7283A7AAE003CD1DA /* OpenSub.mp3 in Resources */,
 				102D343A21FDF24C00A50C00 /* howtoEditor1.png in Resources */,
 				10E1DBC71F879D9300C3BD33 /* ranking.png in Resources */,
+				10E82AD2283A7AAE003CD1DA /* OpenSelectorMenu.mp3 in Resources */,
+				10E82AD0283A7AAE003CD1DA /* OPEN.mp3 in Resources */,
 				102D534D22062DE5008A7843 /* howtoNotes2.png in Resources */,
 				102D534B22062DE5008A7843 /* howtoNotes1.png in Resources */,
 				105B83351EEEAE1500FC2244 /* safeJingle.wav in Resources */,
@@ -564,8 +609,11 @@
 				10D1A0C02495EC0000D9DBCC /* hukidasi.png in Resources */,
 				107B46FC25E7651F008F4704 /* newfavo-black.png in Resources */,
 				102D534A22062DE5008A7843 /* howtoNotes0.png in Resources */,
+				10E82ACD283A7AAE003CD1DA /* START2.mp3 in Resources */,
 				10E6C5EB2104E2A6004457F8 /* LaunchScreen.storyboard in Resources */,
+				10E82AD6283A7AAE003CD1DA /* RANK.mp3 in Resources */,
 				10E1DBC21F86707C00C3BD33 /* comment.png in Resources */,
+				10E82AD5283A7AAE003CD1DA /* GO.mp3 in Resources */,
 				10AB749225E727B800BC95B2 /* star-bk.png in Resources */,
 				107993BB2417B6F700B032C6 /* dot_circle.png in Resources */,
 				108A733D25C9CFBF00F3835C /* cursor-lr.png in Resources */,
@@ -593,7 +641,43 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		418A084ED3B5D8F81C37DD1F /* [CP] Embed Pods Frameworks */ = {
+		56AF9EE88565321E8A732D4E /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-NicoFlickTests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		5D18C86D3CC6DD07F27C48D5 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh",
+				"${PODS_ROOT}/TwitterKit/iOS/TwitterKit.framework/TwitterKitResources.bundle",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/TwitterKitResources.bundle",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		C146C5EB587DF51004A6F696 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -615,42 +699,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		56AF9EE88565321E8A732D4E /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-NicoFlickTests-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		6111F42669883CB62D4BD1CD /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh",
-				"${PODS_ROOT}/TwitterKit/iOS/TwitterKit.framework/TwitterKitResources.bundle",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/TwitterKitResources.bundle",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		EB0DC938656B7F04EE5BBCE6 /* [CP] Check Pods Manifest.lock */ = {
@@ -823,6 +871,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				EXCLUDED_ARCHS = "";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -882,6 +931,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				EXCLUDED_ARCHS = "";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -903,12 +953,14 @@
 			baseConfigurationReference = C201050390E3FF9EFDB81101 /* Pods-NicoFlick.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.9.0.5;
+				CURRENT_PROJECT_VERSION = 1.10.1.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
+				EXCLUDED_ARCHS = "";
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.9.0;
+				MARKETING_VERSION = 1.10.1;
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";
@@ -923,12 +975,13 @@
 			baseConfigurationReference = DD9B574FCC333592F9762ED9 /* Pods-NicoFlick.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.9.0.5;
+				CURRENT_PROJECT_VERSION = 1.10.1.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
+				EXCLUDED_ARCHS = "";
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.9.0;
+				MARKETING_VERSION = 1.10.1;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";

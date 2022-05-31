@@ -20,6 +20,8 @@ class SelectorMenu: UIViewController {
     
     //音楽データ(シングルトン)
     var musicDatas:MusicDataLists = MusicDataLists.sharedInstance
+    //効果音プレイヤー(シングルトン)
+    var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
     //保存データ
     let userData = UserData.sharedInstance
     //Indicator
@@ -61,10 +63,15 @@ class SelectorMenu: UIViewController {
                 let selectLevel = selectLevels[selectorController.indexPicker]
                 if let mid = music.sqlID, let gid = selectLevel.sqlID {
                     idLabel.text = "musicID=\(mid), gameID=\(gid)"
+                    //開発者用
+                    if userData.UserIDxxx == AppDelegate.MIZUSHIKI_IDxxx {
+                        let eco = (self.selectorController.nowNicoDMC?.eco ?? false) ? "eco" : "normal"
+                        idLabel.text! +=  " - \(eco)"
+                    }
                 }
             }
             //開発者用 通報数、コメント確認。
-            if userData.UserIDxxx == "358ED61B-F5F1-4A70-BF39-************" {
+            if userData.UserIDxxx == AppDelegate.MIZUSHIKI_IDxxx {
                 ServerDataHandler().getReport(musicID: music.sqlID) { (num, comments) in
                     DispatchQueue.main.async {
                         self.reportNum.setTitle("\(num)", for: .normal)
@@ -230,6 +237,7 @@ class SelectorMenu: UIViewController {
                 speed: level.speed,
                 notes: noteData,
                 userPASS: self.password,
+                userID: UserData.sharedInstance.UserID,
                 callback: { (retStr, error) in
                     if error != nil {
                         return
@@ -286,12 +294,16 @@ class SelectorMenu: UIViewController {
             tableViewController.list = selectorController.musicDatas.taglist.sorted(by: { $0.value > $1.value }).map{$0.0}
             //tableViewController.list.append("@初期楽曲")
             tableViewController.selectorMenuController = self
+            //se
+            seSystemAudio.openSePlay()
             
         }else if segue.identifier == "toTableViewForSort" {
             //遷移先のTableViewにデータを渡す
             let tableViewController:TableViewForSort = segue.destination as! TableViewForSort
             
             tableViewController.selectorMenuController = self
+            //se
+            seSystemAudio.openSePlay()
             
         }else if segue.identifier == "toMusicAddView" {
             //遷移先のTableViewにデータを渡す
@@ -305,6 +317,8 @@ class SelectorMenu: UIViewController {
             editorViewController.selectMusic = selectorController.currentMusics[selectorController.indexCarousel]
             editorViewController.selectLevel = selectorController.currentLevels[selectorController.indexPicker]
             editorViewController.password = password
+            
+            selectorController.ThumbMovieStop()
             
         }else if segue.identifier == "toJasracRevalidationWebkitView" {
             if let music = selectMusic {
@@ -328,7 +342,7 @@ class SelectorMenu: UIViewController {
                 //print("はいをタップした時の処理")
                 //Indicator くるくる開始
                 self.activityIndicator.startAnimating()
-                ServerDataHandler().checkLevelPassword(id: level.sqlID, pass: alert.textFields![0].text!, callback: { (bool) in
+                ServerDataHandler().checkLevelPassword(id: level.sqlID, pass: alert.textFields![0].text!, userID: self.userData.UserID, callback: { (bool) in
                     //passCheck
                     DispatchQueue.main.async {
                         //  Indicator隠す

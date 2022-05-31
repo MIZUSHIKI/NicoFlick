@@ -93,7 +93,7 @@ class Spoon {
         }
     }
     
-    private var isCheckableWord: Bool {
+    var isCheckableWord: Bool {
         let wd = word.applyingTransform(.hiraganaToKatakana, reverse: true)!
         switch wd {
         case "ぁ":return false
@@ -161,9 +161,13 @@ class Spoons {
         var str_ = timetagText.pregReplace(pattern: "\r\n", with: "\n")
         //@tag
         var ans:[String]=[]
+        var ofs = 0
         if str_.pregMatche(pattern: "^@(.*?)\\s*=\\s*(.*?)$", matches:&ans) {
             for index in 0..<(ans.count/3) {
                 print("あっと\(ans[index*3+1]) = \(ans[index*3+2])")
+                if ans[index*3+1] == "OffsetWhenPosted" {
+                    ofs = Int( ans[index*3+2] ) ?? 0
+                }
                 self.atTag[ ans[index*3+1] ] = ans[index*3+2]
             }
             str_ = str_.pregReplace(pattern: "^@(.*?)\\s*=\\s*(.*?)$", with: "")
@@ -180,7 +184,7 @@ class Spoons {
             if an.count == 10 {//Timetag
                 if maeTimetag != "" {
                     let spoon = Spoon(word: "",
-                                      miriSec: Int(maeTimetag.timetagToSeconds()*1000),
+                                      miriSec: Int(maeTimetag.timetagToSeconds()*1000) - ofs,
                                       note: maeTimetag.isDotTimetag,
                                       oya: self)
                     self.spoons.append(spoon)
@@ -195,7 +199,7 @@ class Spoons {
                 
             }else {
                 let spoon = Spoon(word: an,
-                                  miriSec: Int(maeTimetag.timetagToSeconds()*1000),
+                                  miriSec: Int(maeTimetag.timetagToSeconds()*1000) - ofs,
                                   note: maeTimetag.isDotTimetag,
                                   oya: self)
                 maeTimetag = ""
@@ -355,6 +359,9 @@ class Spoons {
                 offset = Int(os)!
             }
             tags = ["NicoFlick":"1"]
+            if offset != 0 {
+                tags["OffsetWhenPosted"] = "\(offset)"
+            }
         }
         //Notes
         var text = ""
@@ -595,7 +602,7 @@ class Spoons {
         currentMiriSec = mirisec
     }
     
-    func getLevelStarReferencevalue() -> Int {
+    func getLevelStarReferencevalue(FULL:Bool = false) -> Int {
         var maeMirisec = 0
         var count = 0
         var sumJikanSa = 0
@@ -607,7 +614,7 @@ class Spoons {
             }
             */
             if spoon.miriSec == -1 { continue }
-            if spoon.note == false { continue }
+            if spoon.isCheckableWord && spoon.note == false && FULL == false { continue }
             if maeMirisec == 0 {
                 maeMirisec = spoon.miriSec
                 continue

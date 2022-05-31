@@ -83,7 +83,7 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                     self.titleTextField.text = resText.pregMatche_firstString(pattern: "<title>(.*?)</title>")
                     self.artistTextField.text = resText.pregMatche_firstString(pattern: "<user_nickname>(.*?)</user_nickname>")
                     self.timeLengthTextField.text = resText.pregMatche_firstString(pattern: "<length>(.*?)</length>")
-                    self.tagsTextField.text = resText.pregMatche_firstString(pattern: "<tags.*?>(.*?)</tags>").pregReplace(pattern: "</?tag.*?>", with: "").pregReplace(pattern: "\n", with: " ").pregReplace(pattern: " +", with: " ").trimmingCharacters(in: .whitespaces)
+                    self.tagsTextField.text = resText.pregMatche_firstString(pattern: "<tags.*?>(.*?)</tags>").pregReplace(pattern: "</?tag.*?>", with: "").pregReplace(pattern: "\n", with: " ").pregReplace(pattern: " +", with: " ").trimmingCharacters(in: .whitespaces).htmlDecoded
                 }
             }
             DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
@@ -145,6 +145,7 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                             speed: 150,
                             notes: "@NicoFlick%3d2",
                             userPASS: passwordText,
+                            userID: UserData.sharedInstance.UserID,
                             callback: { (retStr, error) in
                                 if error != nil {
                                     return
@@ -241,6 +242,7 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                                 speed: 150,
                                 notes: "\n@NicoFlick%3d2",
                                 userPASS: passwordText,
+                                userID: UserData.sharedInstance.UserID,
                                 callback: { (retStr, error) in
                                     if error != nil {
                                         return

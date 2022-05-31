@@ -135,6 +135,23 @@ class UserData {
             //print("Score set")
         }
     }
+    //Score
+    var JustPlayedScore:UserJustPlayedScore {
+        get {
+            let userScore = UserJustPlayedScore()
+            if let us = userDefaults.object(forKey: "JustPlayedUserScore") as? NSData {
+                //print("スコア 読み込み")
+                userScore.scores = NSKeyedUnarchiver.unarchiveObject(with: us as Data) as! [Int:[Int]]
+            }
+            return userScore
+        }
+        set(userScore) {
+            let data = NSKeyedArchiver.archivedData(withRootObject: userScore.scores)
+            userDefaults.set(data, forKey: "JustPlayedUserScore")
+            userDefaults.synchronize()
+            print("JustPlayedScore set")
+        }
+    }
     //MyFavorite
     var MyFavorite:Set<Int> {
         get {
@@ -284,6 +301,54 @@ class UserData {
             userDefaults.synchronize()
         }
     }
+    var Time3secExitZureTime:Double {
+        get {
+            userDefaults.register(defaults: ["Time3secExitZureTime":Double(0.0)])
+            let x = userDefaults.double(forKey: "Time3secExitZureTime")
+            return x
+        }
+        set(x) {
+            if fabs(x) < 0.2 {
+                userDefaults.set(Double(x), forKey: "Time3secExitZureTime")
+            }else {
+                userDefaults.set(Double(0.0), forKey: "Time3secExitZureTime")
+            }
+            userDefaults.synchronize()
+        }
+    }
+    var SoundVolumeMovie:Float {
+        get {
+            userDefaults.register(defaults: ["SoundVolumeMovie":Float(1.0)])
+            let x = userDefaults.float(forKey: "SoundVolumeMovie")
+            return x
+        }
+        set(x) {
+            userDefaults.set(Float(x), forKey: "SoundVolumeMovie")
+            userDefaults.synchronize()
+        }
+    }
+    var SoundVolumeGameSE:Float {
+        get {
+            userDefaults.register(defaults: ["SoundVolumeGameSE":Float(1.0)])
+            let x = userDefaults.float(forKey: "SoundVolumeGameSE")
+            return x
+        }
+        set(x) {
+            userDefaults.set(Float(x), forKey: "SoundVolumeGameSE")
+            userDefaults.synchronize()
+        }
+    }
+    var SoundVolumeSystemSE:Float {
+        get {
+            userDefaults.register(defaults: ["SoundVolumeSystemSE":Float(1.0)])
+            let x = userDefaults.float(forKey: "SoundVolumeSystemSE")
+            return x
+        }
+        set(x) {
+            userDefaults.set(Float(x), forKey: "SoundVolumeSystemSE")
+            userDefaults.synchronize()
+        }
+    }
     
     //cachedMoviesNum
     var cachedMovieNum:Int {
@@ -301,7 +366,7 @@ class UserData {
     //
     var thumbMoviePlay:Bool {
         get {
-            userDefaults.register(defaults: ["thumbMoviePlay":false])
+            userDefaults.register(defaults: ["thumbMoviePlay":true])
             return userDefaults.bool(forKey: "thumbMoviePlay")
         }
         set(bo) {
@@ -560,6 +625,79 @@ class UserScore {
         //保存
         let userData = UserData.sharedInstance
         userData.Score = self
+    }
+    func getScore(levelID:Int) -> Int{
+        return (scores[levelID]?[SCORE])!
+    }
+    func getRank(levelID:Int) -> Int{
+        return (scores[levelID]?[RANK])!
+    }
+}
+//ちょっと酷いが仕方ない
+class UserJustPlayedScore {
+    var scores: [Int:[Int]] = [:] // [levelID:[score,rank,flg(投稿済みかどうか)]]
+    private let SCORE = 0
+    private let RANK = 1
+    private let FLG = 2
+    
+    func setScore(levelID:Int, score:Int, rank:Int){
+        if let us = scores[levelID] {
+            //あった
+            if us[SCORE] < score {
+                scores[levelID]?[SCORE] = score
+                //FalseはHighScoreを保存するけどデータベースには送信しない
+                if rank < Score.RankFalse {
+                    scores[levelID]?[FLG] = 0 //スコア投稿済みかのフラグ
+                }else {
+                    scores[levelID]?[FLG] = 1 //スコア投稿済みかのフラグ
+                }
+            }
+            if us[RANK] > rank {
+                scores[levelID]?[RANK] = rank
+                //print("ランク更新")
+            }
+        }else {
+            //なかった
+            //FalseはHighScoreを保存するけどデータベースには送信しない
+            if rank < Score.RankFalse {
+                scores[levelID] = [score, rank, 0]
+            }else {
+                scores[levelID] = [score, rank, 1]
+            }
+        }
+        //保存
+        let userData = UserData.sharedInstance
+        userData.JustPlayedScore = self
+        return
+    }
+    //データベースに送るスコアセット文字列
+    func appendSendScoresStr(scoreset:String) -> String {
+        var scoreset = scoreset
+        var ans:[String]=[]
+        var scoresetIDs:[Int] = []
+        print("append - scoreset= \(scoreset)")
+        if (scoreset.pregMatche(pattern: "<(\\d+),\\d+,\\d+>", matches: &ans)) {
+            for i in 0 ..< (ans.count / 2) {
+                guard let n = Int(ans[i*2+1]) else { continue }
+                scoresetIDs.append( n )
+                print("scoresetIDs:\(n)")
+            }
+        }
+        for (levelID,us) in scores {
+            if us[FLG] == 0 {
+                if scoresetIDs.contains(levelID){ continue }
+                let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+                scoreset += "<\(levelID),\(musicID),\(us[SCORE])>"
+            }
+        }
+        print("scoreset(appended)= \(scoreset)")
+        return scoreset
+    }
+    func clearSendedData() {
+        print("clearSendedData")
+        //初期化
+        let userData = UserData.sharedInstance
+        userData.JustPlayedScore = UserJustPlayedScore()
     }
     func getScore(levelID:Int) -> Int{
         return (scores[levelID]?[SCORE])!

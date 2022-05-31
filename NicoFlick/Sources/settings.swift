@@ -7,6 +7,8 @@
 //
 
 import UIKit
+import AVKit
+import AVFoundation
 
 class Settings: UIViewController {
     
@@ -17,6 +19,18 @@ class Settings: UIViewController {
     @IBOutlet var cachedMovieNum: UILabel!
     @IBOutlet var cachedMovieNumSlider: UISlider!
     
+    @IBOutlet weak var movieVolumeLabel: UILabel!
+    @IBOutlet weak var movieVolumeSlider: UISlider!
+    @IBOutlet weak var gameSeVolumeLabel: UILabel!
+    @IBOutlet weak var systemSeVolumeLabel: UILabel!
+    @IBOutlet weak var gameSeVolumeSlider: UISlider!
+    @IBOutlet weak var systemSeVolumeSlider: UISlider!
+    
+    @IBOutlet weak var playMovie: UIButton!
+    
+    //効果音プレイヤー(シングルトン)
+    var seAudio:SEAudio = SEAudio.sharedInstance
+    var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
     //保存データ
     let userData = UserData.sharedInstance
     
@@ -34,6 +48,24 @@ class Settings: UIViewController {
         textfieldName.text = userData.UserName
         cachedMovieNum.text = String(userData.cachedMovieNum)+" 件"
         cachedMovieNumSlider.value = Float(userData.cachedMovieNum)
+        movieVolumeLabel.text = "\(Int(userData.SoundVolumeMovie * 100))%"
+        gameSeVolumeLabel.text = "\(Int(userData.SoundVolumeGameSE * 100))%"
+        systemSeVolumeLabel.text = "\(Int(userData.SoundVolumeSystemSE * 100))%"
+        movieVolumeSlider.value = userData.SoundVolumeMovie
+        gameSeVolumeSlider.value = userData.SoundVolumeGameSE
+        systemSeVolumeSlider.value = userData.SoundVolumeSystemSE
+        
+        if #available(iOS 15.0, *){
+            playMovie.configuration = nil
+        }
+        playMovie.titleLabel?.font = UIFont.systemFont(ofSize: 10)
+        playMovie.titleLabel?.numberOfLines = 1
+        playMovie.titleLabel?.lineBreakMode = NSLineBreakMode.byWordWrapping
+        if let cache = CachedMovies.sharedInstance.cachedMovies.last {
+            playMovie.setTitle("  動画再生：\(cache.smNum)", for: .normal)
+        }else {
+            playMovie.setTitle("  動画再生：キャッシュなし", for: .normal)
+        }
         
         //Indicatorを作成
         activityIndicator = Indicator(center: self.view.center).view
@@ -68,14 +100,24 @@ class Settings: UIViewController {
         activityIndicator.startAnimating()
         
         //データベースに登録
-        ServerDataHandler().postUserName(name: textfieldName.text!, userID: userData.UserID, callback: {
+        ServerDataHandler().postUserName(name: textfieldName.text!, userID: userData.UserID, callback: { bool in
             
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
                 //  Indicator隠す
                 self.activityIndicator.stopAnimating()
-                //  データ保存
-                self.userData.UserName = self.textfieldName.text!
+                if bool {
+                    //  データ保存
+                    self.userData.UserName = self.textfieldName.text!
+                    
+                    let alert = UIAlertController(title:"あなたの名前を登録しました", message: nil, preferredStyle: UIAlertControllerStyle.alert)
+                    alert.addAction( UIAlertAction(title: "OK", style: .default, handler: nil) )
+                    self.present(alert, animated: true, completion: nil)
+                }else {
+                    let alert = UIAlertController(title:"名前の登録に失敗しました", message: nil, preferredStyle: UIAlertControllerStyle.alert)
+                    alert.addAction( UIAlertAction(title: "OK", style: .default, handler: nil) )
+                    self.present(alert, animated: true, completion: nil)
+                }
             }
         })
         
@@ -86,6 +128,46 @@ class Settings: UIViewController {
         sender.value = Float(userData.cachedMovieNum)
         cachedMovieNum.text = String(userData.cachedMovieNum)+" 件"
     }
+    
+    @IBAction func playMovieButton(_ sender: UIButton) {
+        if let cache = CachedMovies.sharedInstance.cachedMovies.last {
+            if cache.avPlayerViewController.player?.isPlaying == false {
+                cache.avPlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0, Int32(NSEC_PER_SEC)) )
+                cache.avPlayerViewController.player?.play()
+            }else {
+                cache.avPlayerViewController.player?.pause()
+            }
+        }
+    }
+    @IBAction func movieVolumeSlider_ValueChanged(_ sender: UISlider) {
+        userData.SoundVolumeMovie = sender.value
+        movieVolumeLabel.text = "\(Int(sender.value * 100))%"
+        if let cache = CachedMovies.sharedInstance.cachedMovies.last {
+            cache.avPlayerViewController.player?.volume = userData.SoundVolumeMovie
+        }
+    }
+    @IBAction func movieVolumeSlider_TouchUp(_ sender: UISlider) {
+        for cache in CachedMovies.sharedInstance.cachedMovies {
+            cache.avPlayerViewController.player?.volume = userData.SoundVolumeMovie
+        }
+    }
+    @IBAction func GameSeVolumeSlider_ValueChanged(_ sender: UISlider) {
+        userData.SoundVolumeGameSE = sender.value
+        gameSeVolumeLabel.text = "\(Int(sender.value * 100))%"
+    }
+    @IBAction func GameSeVolumeSlider_TouchUp(_ sender: UISlider) {
+        seAudio.volume = userData.SoundVolumeGameSE
+        seAudio.okJinglePlay()
+    }
+    @IBAction func systemSeVolumeSlider_ValueChanged(_ sender: UISlider) {
+        userData.SoundVolumeSystemSE = sender.value
+        systemSeVolumeLabel.text = "\(Int(sender.value * 100))%"
+    }
+    @IBAction func systemSeVolumeSlider_TouchUp(_ sender: UISlider) {
+        seSystemAudio.volume = userData.SoundVolumeSystemSE
+        seSystemAudio.startSePlay()
+    }
+    
     @IBAction func buttonDeleteLoadData(_ sender: UIButton) {
 
         //削除
@@ -118,7 +200,12 @@ class Settings: UIViewController {
         //データ保存
         userData.NicoMail = textfieldMail.text!
         userData.NicoPass = textfieldPass.text!
+        //動画ストップ
+        for cache in CachedMovies.sharedInstance.cachedMovies {
+            cache.avPlayerViewController.player?.pause()
+        }
 
+        seSystemAudio.canselSePlay()
     }
     //遷移の許可
     override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {

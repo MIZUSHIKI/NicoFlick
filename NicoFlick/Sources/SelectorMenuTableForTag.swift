@@ -294,6 +294,7 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
             tagEditorController.tableviewForTagController = self
         }else {
             //戻る
+            SESystemAudio.sharedInstance.openSubSePlay()
             userData.SelectedMusicCondition.tags = textField.text!
         }
     }

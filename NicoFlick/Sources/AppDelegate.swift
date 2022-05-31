@@ -14,14 +14,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     
     static let PHPURL = "http://timetag.main.jp/nicoflick/nicoflick.php"
-    //static let PHPURL = "http://192.168.11.9/nicoflick_20201103/nicoflick.php" //windows xampp
+    //static let PHPURL = "http://192.168.11.7/nicoflick_20201103/nicoflick.php" //windows xampp
     //static let PHPURL = "http://127.0.0.1:8888/nicoflick.php" //mac mamp PC
     //static let PHPURL = "http://MacBook.local:8000/nicoflick.php" //mac mamp スマホ
+    
+    static let NICOFLICK_PATH = "https://main-timetag.ssl-lolipop.jp/nicoflick/"
+    //static let NICOFLICK_PATH = "http://192.168.11.7/nicoflick_20201103/"
+    
     static let NicoApiURL_GetThumbInfo = "http://ext.nicovideo.jp/api/getthumbinfo/"
-    static let Version = 1905
+    static let Version = 1907
     static var ServerErrorMessage = ""
     static var DidEnterBackgroundTime:Date?
 
+    static let MIZUSHIKI_IDxxx = "358ED61B-F5F1-4A70-BF39-************"
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -57,7 +62,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 //アプリ閉じて60秒以上立ってたら動画のキャッシュを削除する
                 print("Cached(Thumb)Movies削除")
                 CachedMovies.sharedInstance.cachedMovies = [] //HeartBeat切れるとアクセス出来なくなる
-                CachedThumbMovies.sharedInstance.cachedMovies = [] //HeartBeatすらしてない
+                CachedThumbMovies.sharedInstance.cachedMovies = [] //HeartBeatすらしてない(ver.1.9.1〜してる可能性あり)
             }
         }
     }

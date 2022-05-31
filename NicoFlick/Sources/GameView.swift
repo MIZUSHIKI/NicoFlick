@@ -66,8 +66,11 @@ class GameView: UIViewController, UITextFieldDelegate {
     var cachedMovies:CachedMovies = CachedMovies.sharedInstance
     var moviePlayerViewController:AVPlayerViewController!
     var timer:Timer!
+    var t03 = 3.0
+    var time3secMediaTime:CFTimeInterval?
     //効果音プレイヤー(シングルトン)
     var seAudio:SEAudio = SEAudio.sharedInstance
+    var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
     
     //ゲームデータ
     var noteData: Notes!
@@ -80,6 +83,7 @@ class GameView: UIViewController, UITextFieldDelegate {
     var borderOriginRect:CGRect?
     
     //遷移時に受け取り
+    var selectorController:Selector?
     var selectMusic:musicData!
     var selectLevel:levelData!
     var returnToMeData:Int = 0
@@ -123,6 +127,13 @@ class GameView: UIViewController, UITextFieldDelegate {
     
         //計算しておく
         xps = (gameviewWidth-flickPointX)*Double(selectLevel.speed)/300 //ノートが一秒間に進む距離
+        let timetag = selectLevel.noteData.pregMatche_firstString(pattern: "(\\[\\d\\d\\:\\d\\d[\\:|\\.]\\d\\d\\])")
+        if timetag != "" {
+            t03 = 3.0 - timetag.timetagToSeconds()
+            if t03 < 0.0 {
+                t03 = 0.0
+            }
+        }
         
         //Movie呼び込み _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         var ans:[String]=[]
@@ -143,14 +154,12 @@ class GameView: UIViewController, UITextFieldDelegate {
                 //  動画再生
                 self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
                 
-                let t03 = 3.0 - MusicDataLists.sharedInstance.getNotesFirstTime(movieURL: self.selectMusic.movieURL)
-                print("t03=\(t03)")
-                if t03 <= 0.0 {
-                    self.moviePlayerViewController.player?.play()
+                print("t03=\(self.t03)")
+                self.moviePlayerViewController.player?.play()
+                if self.t03 <= 0.0 {
+                    self.time3secMediaTime = nil
                 }else {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + t03){
-                        self.moviePlayerViewController.player?.play()
-                    }
+                    self.time3secMediaTime = CACurrentMediaTime()
                 }
                 
                 let screenWidth:CGFloat = self.view.frame.size.width - self.view.safeAreaInsets.left - self.view.safeAreaInsets.right
@@ -225,7 +234,7 @@ class GameView: UIViewController, UITextFieldDelegate {
         judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset)) "
 
         //効果音準備 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-        seAudio.loadGameSE()
+        //seAudio.loadGameSE() //instance時に準備する
         
         //判定エフェクトView下準備。Great等を複製 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         // １つだけだと連続で判定されたとき複数表示されないので複製を作る(ImegeView化)
@@ -295,7 +304,10 @@ class GameView: UIViewController, UITextFieldDelegate {
         testLabel.text = string
         if string == "\n" {
             //強制終了(ランク算出に難あり)
-            //performSegue(withIdentifier: "toResultView", sender: self)
+            //開発者用
+            //if userData.UserIDxxx == AppDelegate.MIZUSHIKI_IDxxx {
+            //    performSegue(withIdentifier: "toResultView", sender: self)
+            //}
         }
         //フリックアクション
         self.FlickAction()
@@ -464,11 +476,29 @@ class GameView: UIViewController, UITextFieldDelegate {
             currentTimeBarView.frame.size.width = loadedAndCurrentTimeBarView.frame.size.width * CGFloat(CMTimeGetSeconds(currentTime!)/CMTimeGetSeconds(duration!))
         }
         
-        if moviePlayerViewController.player?.isPlaying == false {
+        if time3secMediaTime == nil && moviePlayerViewController.player?.isPlaying == false {
             return
         }
         
-        let time = CMTimeGetSeconds((moviePlayerViewController.player?.currentTime())!)
+        var time = CMTimeGetSeconds((moviePlayerViewController.player?.currentTime())!)
+        //print("time=\(time)")
+        if time3secMediaTime != nil {
+            let time3sec = -t03 + time3secMediaTime!.distance(to: CACurrentMediaTime())
+            //print("time3sec=\(time3sec)")
+            //print("userData.Time3secExitZureTime=\(userData.Time3secExitZureTime)")
+            if time3sec < -0.275 + userData.Time3secExitZureTime {
+                self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
+                time = time3sec
+            }else {
+                if time == 0.0 {
+                    time = time3sec
+                }else {
+                    userData.Time3secExitZureTime = userData.Time3secExitZureTime + ( time - time3sec ) / 2
+                    time3secMediaTime = nil
+                }
+            }
+        }
+
         //xps = (gameviewWidth-flickPointX)*Double(selectLevel.speed)/300 //ノートが一秒間に進む距離（View作成時に計算済み）
         // speed=300が出現してから打つまでの時間が１秒。つまりspeed=100は出現してから打つまでの時間が３秒。
         let offsetX:Double = time * xps
@@ -476,14 +506,17 @@ class GameView: UIViewController, UITextFieldDelegate {
         for note in noteData.notes {
             let x = note.posX - offsetX + flickPointX
             //もしオフセット後の表示位置が400(375+25)以内なら動かす
-            if -100<x && x<400 {
-                note.label.frame.origin.x = CGFloat(x)
-                note.label.isHidden = false
+            if -200<x && x<400 {
+                if -100<x {
+                    note.label.frame.origin.x = CGFloat(x)
+                    note.label.isHidden = false
+                }
                 
                 //過ぎ去りBad判定
                 if note.isFlickable && note.flicked==false  {
                     let diffTime = note.time-(time+judgeOffset)
                     if diffTime < safeLine[0]{
+                        //print("x=\(x) \(note.word)")
                         //Miss
                         note.flickedTime = -1.0
                         note.flicked = true
@@ -680,6 +713,8 @@ class GameView: UIViewController, UITextFieldDelegate {
         if segue.identifier == "fromGameMenu" {
             switch returnToMeData {
             case 0:
+                //se
+                seSystemAudio.canselSePlay()
                 // 再開
                 textField.becomeFirstResponder() //キーボードを開く
                 
@@ -698,6 +733,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                 self.SetBorderY()
                 break
             case 1:
+                //se
+                seSystemAudio.canselSePlay()
                 //リトライ
                 textField.becomeFirstResponder() //キーボードを開く
                 noteData.noteReset() //データをリセットする
@@ -721,19 +758,19 @@ class GameView: UIViewController, UITextFieldDelegate {
                     if moviePlayerViewController.player != nil {
                         //再生
                         moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                        let t03 = 3.0 - MusicDataLists.sharedInstance.getNotesFirstTime(movieURL: self.selectMusic.movieURL)
-                        if t03 <= 0.0 {
-                            self.moviePlayerViewController.player?.play()
+                        self.moviePlayerViewController.player?.play()
+                        if self.t03 <= 0.0 {
+                            self.time3secMediaTime = nil
                         }else {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + t03){
-                                self.moviePlayerViewController.player?.play()
-                            }
+                            self.time3secMediaTime = CACurrentMediaTime()
                         }
                     }
                 }
                 
                 break
             case 2:
+                //se
+                seSystemAudio.cansel2SePlay()
                 print("戻る")
                 
                 if moviePlayerViewController != nil {
@@ -790,7 +827,10 @@ class GameView: UIViewController, UITextFieldDelegate {
                 break
                 
             case 3:
+                //se
+                seSystemAudio.canselSePlay()
                 //リロード
+                userData.Time3secExitZureTime = 0.0
                 textField.becomeFirstResponder() //キーボードを開く
                 noteData.noteReset() //データをリセットする
                 self.comboView.isHidden = true //表示関係もリセット
@@ -833,14 +873,12 @@ class GameView: UIViewController, UITextFieldDelegate {
                         //  動画再生
                         self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
                         
-                        let t03 = 3.0 - MusicDataLists.sharedInstance.getNotesFirstTime(movieURL: self.selectMusic.movieURL)
-                        print("t03=\(t03)")
-                        if t03 <= 0.0 {
-                            self.moviePlayerViewController.player?.play()
+                        print("t03=\(self.t03)")
+                        self.moviePlayerViewController.player?.play()
+                        if self.t03 <= 0.0 {
+                            self.time3secMediaTime = nil
                         }else {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + t03){
-                                self.moviePlayerViewController.player?.play()
-                            }
+                            self.time3secMediaTime = CACurrentMediaTime()
                         }
                         
                         let screenWidth:CGFloat = self.view.frame.size.width - self.view.safeAreaInsets.left - self.view.safeAreaInsets.right
@@ -882,6 +920,9 @@ class GameView: UIViewController, UITextFieldDelegate {
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "toGameMenu" {
+            
+            //se
+            seSystemAudio.gameMenuSePlay()
             
             if moviePlayerViewController != nil {
                 if moviePlayerViewController.player != nil {

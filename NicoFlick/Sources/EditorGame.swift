@@ -33,6 +33,9 @@ class EditorGame: UIViewController, UITextFieldDelegate {
     @IBOutlet var loadedTimeBarView: UIView!
     @IBOutlet var currentTimeBarView: UIView!
     
+    @IBOutlet weak var rateSlider: VerticalSlider!
+    @IBOutlet weak var rateSliderView: UIView!
+    
     //判定エフェクト用のView
     var greatViews:[UIView] = []
     var greatActionCount = 0
@@ -112,6 +115,7 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         //se対策
         if UIScreen.main.bounds.size.height <= 568 {
             borderMaxView.frame.origin.y = nodeLineFlameOriginY + 42
+            rateSliderView.center.x = editorViewController.movieRateSliderView.center.x
         }
         //ipad対策（対象じゃないけど）
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow(_:)), name: .UIKeyboardDidShow, object: nil)
@@ -159,7 +163,7 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         }
         
         //効果音準備 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-        seAudio.loadGameSE()
+        //seAudio.loadGameSE() //instance時に準備する
         
         //判定エフェクトView下準備。Great等を複製 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         // １つだけだと連続で判定されたとき複数表示されないので複製を作る(ImegeView化)
@@ -367,9 +371,11 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         for note in noteData.notes {
             let x = xps * note.time - offsetX + flickPointX
             //もしオフセット後の表示位置が400(375+25)以内なら動かす
-            if -100<x && x<400 {
-                note.label.frame.origin.x = CGFloat(x)
-                note.label.isHidden = false
+            if -200<x && x<400 {
+                if -100<x {
+                    note.label.frame.origin.x = CGFloat(x)
+                    note.label.isHidden = false
+                }
                 
                 //過ぎ去りBad判定
                 if note.isFlickable && note.flicked==false  {
@@ -590,6 +596,33 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         offsetLabel.text = "Offset: \(Int(sender.value))ms"
         judgeOffset = Double(sender.value) / 1000
         editorViewController.mySpoon.atTag["Offset"] = "\(Int(sender.value ))"
+    }
+    
+    @IBAction func RateSlider(_ sender: UISlider) {
+        let rate = Float(Int(round(sender.value * 10))) / 10
+        sender.value = rate
+        editorViewController.setMovieRate(rate: rate)
+    }
+    @IBAction func RewindButton(_ sender: UIButton) {
+        editorViewController.playerRewind()
+        UndoAllFlickedNote()
+    }
+    
+    @IBAction func ForwardButton(_ sender: UIButton) {
+        editorViewController.playerForward()
+        UndoAllFlickedNote()
+    }
+    
+    private func UndoAllFlickedNote() {
+        noteData.lastFlickedNum = 0
+        for note in noteData.notes {
+            if note.isFlickable && note.flicked {
+                note.flickedTime = -1.0
+                note.flicked = false
+                note.judge = Note.NORMAL
+                note.setFlickableFont()
+            }
+        }
     }
     
     

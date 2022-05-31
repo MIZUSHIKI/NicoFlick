@@ -18,13 +18,16 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     @IBOutlet var maku: UIView!
     @IBOutlet var commentPostButton: UIButton!
     @IBOutlet weak var usernameDownloadProgressLabel: UILabel!
+    @IBOutlet weak var tabBar: UITabBar!
     
-    
+    //効果音プレイヤー(シングルトン)
+    var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
     //遷移時に受け取り
     var selectMusic:musicData!
     var selectLevel:levelData!
     var commentPostable:Bool!
     var resultViewController:ResultView!
+    var rankingViewController:RankingView?
     
     var userNameDatas:userNameDataLists = userNameDataLists.sharedInstance
     var commentData:[commentData] = []
@@ -40,9 +43,15 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         
         musicTitle.text = selectMusic.title
         musicRank.text = selectLevel.getLevelAsString()
+        if musicRank.text != "FULL" {
+            musicRank.font = UIFont.systemFont(ofSize: 17)
+        }
         if userNameDatas.usernameJsonNumCount >= 0 {
             usernameDownloadProgressLabel.text = "ユーザーネームデータ分割\(userNameDatas.usernameJsonNumCount)まで取得済み"
             usernameDownloadProgressLabel.isHidden = false
+        }
+        if UIScreen.main.bounds.size.height <= 667 {
+            tabBar.isHidden = true
         }
         
         //Indicatorを作成
@@ -50,6 +59,30 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         self.view.addSubview(activityIndicator)
         //Indicator くるくる開始
         activityIndicator.startAnimating()
+        
+        //
+        let view = SlashShadeView.init(frame: self.view.frame, color: UIColor.init(red: 204/255, green: 255/255, blue: 102/255, alpha: 1.0), lineWidth: 1, space: 2)
+        self.view.addSubview(view)
+        self.view.sendSubview(toBack: view)
+        
+        //サムネイル
+        if let aiview = rankingViewController?.view.viewWithTag(36){
+            let backThumbView = UIImageView(frame: self.view.frame)
+            let image = (aiview as! UIImageView).image
+            backThumbView.image = image
+            backThumbView.alpha = 0.5
+            self.view.addSubview(backThumbView)
+            self.view.sendSubview(toBack: backThumbView)
+        }else {
+            let backThumbView = AsyncImageView(frame: CGRect(x: 0, y: 0,
+                                                        width: self.view.frame.size.width,
+                                                        height: self.view.frame.size.height))
+            backThumbView.loadImage(urlString: selectMusic.thumbnailURL, contentMode: .scaleAspectFill)
+            backThumbView.alpha = 0.5
+            backThumbView.tag = 36
+            self.view.addSubview(backThumbView)
+            self.view.sendSubview(toBack: backThumbView)
+        }
         
         //テーブルビュー設定
         commentTable.estimatedRowHeight = 50
@@ -105,6 +138,11 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         super.didReceiveMemoryWarning()
     }
     
+    func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+        print("tab select")
+        seSystemAudio.openSePlay()
+    }
+    
     // MARK: - UITableViewDataSource
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -115,7 +153,7 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
             if indexPath.row == 0 {
                 //投稿者コメント
                 //(cell.viewWithTag(1) as! UILabel).text = "\(indexPath.row+1)"
-                cell.contentView.backgroundColor = UIColor.init(red: 0.6, green: 0.9, blue: 0.2, alpha: 1.0)
+                cell.contentView.backgroundColor = UIColor.init(red: 0.6, green: 0.9, blue: 0.2, alpha: 0.5)
                 (cell.viewWithTag(2) as! UILabel).text = selectLevel.creator
                 (cell.viewWithTag(2) as! UILabel).textColor = UIColor.init(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
                 (cell.viewWithTag(3) as! UILabel).text = selectLevel.description
@@ -285,4 +323,14 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
             }
         }
     }
+    
+    //画面遷移処理 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    //遷移の許可
+    override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {
+        print("should comment")
+        print(identifier)
+        seSystemAudio.canselSePlay()
+        return true
+    }
+    //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
 }
