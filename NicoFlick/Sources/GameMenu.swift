@@ -14,6 +14,7 @@ class GameMenu: UIViewController {
     @IBOutlet var judgeOffsetSlider: UISlider!
     @IBOutlet weak var underbar: UIView!
     @IBOutlet weak var overbar: UIView!
+    @IBOutlet weak var overbarButton: UIButton!
     
     //遷移時に受け取り
     var gameViewController:GameView!
@@ -33,6 +34,11 @@ class GameMenu: UIViewController {
         if userData.BorderY > 0 {
             underbar.isHidden = true
             overbar.isHidden = false
+        }
+        if gameViewController.selectLevel.level > 10 {
+            underbar.isHidden = true
+            overbar.isHidden = true
+            overbarButton.isHidden = true
         }
     }
     
@@ -74,9 +80,15 @@ class GameMenu: UIViewController {
         userData.BorderY = 0
     }
     @IBAction func OverbarButton(_ sender: Any) {
-        underbar.isHidden = true
-        overbar.isHidden = false
-        userData.BorderY = overbar.frame.origin.y
+        if userData.BorderY == 0 {
+            underbar.isHidden = true
+            overbar.isHidden = false
+            userData.BorderY = overbar.frame.origin.y
+        }else {
+            underbar.isHidden = false
+            overbar.isHidden = true
+            userData.BorderY = 0
+        }
     }
     
 }

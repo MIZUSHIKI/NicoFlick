@@ -14,6 +14,19 @@ extension String {
         // あらためてパーセントエンコードして返す
         return removed.addingPercentEncoding(withAllowedCharacters: charset) ?? removed
     }
+    var htmlDecoded: String {
+        guard let data = self.data(using: .utf8) else {
+            return self
+        }
+        let options: [NSAttributedString.DocumentReadingOptionKey : Any] = [
+            .documentType : NSAttributedString.DocumentType.html,
+            .characterEncoding : String.Encoding.utf8.rawValue
+        ]
+        guard let attrStr = try? NSAttributedString(data: data, options: options, documentAttributes: nil) else {
+            return self
+        }
+        return attrStr.string
+    }
     
     //正規表現の検索をします
     func pregMatche(pattern: String, options: NSRegularExpression.Options = [NSRegularExpression.Options.dotMatchesLineSeparators,NSRegularExpression.Options.anchorsMatchLines]) -> Bool {

@@ -14,73 +14,138 @@ class MovieAccess{
     
     let session = URLSession(configuration: .default)
     var firstAttack = true
-
-    let ecoThumb: Bool
     
-    init(ecoThumb: Bool = false) {
-        self.ecoThumb = ecoThumb
+    init(){
+        //不要になった
     }
     
     //(ログアウト確認→)ニコページアクセス→再生 処理
     func StreamingUrlNicoAccess(smNum: String, callback: @escaping (String) -> Void ) -> Void {
         
         //先にキャッシュ内にあるか確認。あればもうニコニコの動画ページにすらアクセスしないことにする
-        if !ecoThumb {
-            if CachedMovies.sharedInstance.cachedMovies.contains(where: { $0.smNum == smNum }){
-                callback("cached")
-                return
-            }
-        }else {
-            if CachedThumbMovies.sharedInstance.containsWithinExpiration(smNum: smNum){
-                callback("cached")
-                return
-            }
+        if CachedMovies.sharedInstance.cachedMovies.contains(where: { $0.smNum == smNum }){
+            callback("cached")
+            return
         }
         let strURL = String.init(format: "https://www.nicovideo.jp/watch/%@",smNum);
         let url = URL(string: strURL)
         let task2 = self.session.dataTask(with: url!){  (data, responce, error) in
-            if data != nil{
-                //動画ページにアクセス。動画URLを取得
-                let str:String = String(data: data!, encoding: String.Encoding.utf8)!
-                //ニコニコにログインしてたらログアウトする
-                if self.firstAttack && !str.contains("user.login_status = 'not_login';"){
-                    //ニコニコから強制ログアウト（しないとURLSessionとAVURLAssetとでうまく噛み合わない？）
-                    let url = URL(string:"https://account.nicovideo.jp/logout?site=spniconico&sec=header_spweb&cmnhd_ref=device%3Dsp%26site%3Dspniconico%26pos%3Duserpanel%26page%3Dtop")!
-                    let task = self.session.dataTask(with: url){(data,responce,error) in
-                        print("ログアウト")
-                        //もう一度アクセス
-                        self.StreamingUrlNicoAccess(smNum: smNum, callback: callback)
-                    }
-                    task.resume()
-                    return
+            if error != nil {
+                print("StreamingUrlNicoAccess-error")//エラー。例えばオフラインとか
+                return
+            }
+            guard let data = data else { return }
+            //動画ページにアクセス。動画URLを取得
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
+            //ニコニコにログインしてたらログアウトする
+            if self.firstAttack && !str.contains("user.login_status = 'not_login';"){
+                //ニコニコから強制ログアウト（しないとURLSessionとAVURLAssetとでうまく噛み合わない？）
+                let url = URL(string:"https://account.nicovideo.jp/logout?site=spniconico&sec=header_spweb&cmnhd_ref=device%3Dsp%26site%3Dspniconico%26pos%3Duserpanel%26page%3Dtop")!
+                let task = self.session.dataTask(with: url){(data,responce,error) in
+                    print("ログアウト")
+                    //もう一度アクセス
+                    self.StreamingUrlNicoAccess(smNum: smNum, callback: callback)
                 }
-                self.firstAttack = false
-                var st = str.pregMatche_firstString(pattern: "<div id=\"js-initial-watch-data\" data-api-data=\"(.*?)\" hidden></div>")
-                st.htmlDecode()
-                if let nicoDMC = NicoDmc(smNum: smNum, js_initial_watch_data: st) {
-                    nicoDMC.eco = self.ecoThumb
-                    let session = URLSession(configuration: URLSessionConfiguration.default)
-                    let url = URL(string:"https://api.dmc.nico/api/sessions?_format=json")!
-                    var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-                    let body = nicoDMC.sessionFormatJson
-                    req.httpMethod = "POST"
-                    req.httpBody = body.data(using: String.Encoding.utf8)
-                    let task3 = session.dataTask(with: req){(data,responce,error) in
-                        let str:String = String(data: data!, encoding: String.Encoding.utf8)!
-                        print(str)
-                        nicoDMC.Set_session_metadata(ResponseMetadata: str)
-                        //短く再生するだけの場合はハートビートしない（40秒以内）
-                        if !self.ecoThumb {
-                            nicoDMC.Start_HeartBeat()
-                        }
-                        callback(nicoDMC.content_uri)
+                task.resume()
+                return
+            }
+            self.firstAttack = false
+            var st = str.pregMatche_firstString(pattern: "<div id=\"js-initial-watch-data\" data-api-data=\"(.*?)\" hidden></div>")
+            st.htmlDecode()
+            if let nicoDMC = NicoDmc(smNum: smNum, js_initial_watch_data: st, isThumbMovie: false) {
+                nicoDMC.eco = false
+                let session = URLSession(configuration: URLSessionConfiguration.default)
+                let url = URL(string:"https://api.dmc.nico/api/sessions?_format=json")!
+                var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+                let body = nicoDMC.sessionFormatJson
+                req.httpMethod = "POST"
+                req.httpBody = body.data(using: String.Encoding.utf8)
+                let task3 = session.dataTask(with: req){(data,responce,error) in
+                    if error != nil {
+                        print("NicoDmc-error")//エラー。例えばオフラインとか
+                        //nicoDMC.content_uriは nicoDMC.Set_session_metadata(ResponseMetadata: ) で代入される。
+                        //callbackも返さないので、動画読み込み処理は途中で止まることになる。
+                        return
                     }
-                    task3.resume()
+                    guard let data = data else { return }
+                    let str:String = String(data: data, encoding: String.Encoding.utf8)!
+                    print(str)
+                    nicoDMC.Set_session_metadata(ResponseMetadata: str)
+                    //短く再生するだけの場合はハートビートしない（40秒以内）
+                    //if !self.ecoThumb {
+                        nicoDMC.Start_HeartBeat()
+                    //}
+                    callback(nicoDMC.content_uri)
                 }
+                task3.resume()
+            }
+            
+        }
+        task2.resume()
+    }
+    
+    func StreamingUrlNicoAccessForThumbMovie(smNum: String, callback: @escaping (String,NicoDmc?) -> Void ) -> Void {
+        
+        //先にキャッシュ内にあるか確認。あればもうニコニコの動画ページにすらアクセスしないことにする
+        if CachedThumbMovies.sharedInstance.containsWithinExpiration(smNum: smNum){
+            callback("cached",nil)
+            return
+        }
+        let strURL = String.init(format: "https://www.nicovideo.jp/watch/%@",smNum);
+        let url = URL(string: strURL)
+        let task2 = self.session.dataTask(with: url!){  (data, responce, error) in
+            if error != nil {
+                print("StreamingUrlNicoAccess-error")//エラー。例えばオフラインとか
+                return
+            }
+            guard let data = data else { return }
+            //動画ページにアクセス。動画URLを取得
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
+            //ニコニコにログインしてたらログアウトする
+            if self.firstAttack && !str.contains("user.login_status = 'not_login';"){
+                //ニコニコから強制ログアウト（しないとURLSessionとAVURLAssetとでうまく噛み合わない？）
+                let url = URL(string:"https://account.nicovideo.jp/logout?site=spniconico&sec=header_spweb&cmnhd_ref=device%3Dsp%26site%3Dspniconico%26pos%3Duserpanel%26page%3Dtop")!
+                let task = self.session.dataTask(with: url){(data,responce,error) in
+                    print("ログアウト")
+                    //もう一度アクセス
+                    self.StreamingUrlNicoAccessForThumbMovie(smNum: smNum, callback: callback)
+                }
+                task.resume()
+                return
+            }
+            self.firstAttack = false
+            var st = str.pregMatche_firstString(pattern: "<div id=\"js-initial-watch-data\" data-api-data=\"(.*?)\" hidden></div>")
+            st.htmlDecode()
+            if let nicoDMC = NicoDmc(smNum: smNum, js_initial_watch_data: st, isThumbMovie: true) {
+                //nicoDMC.eco = true
+                let session = URLSession(configuration: URLSessionConfiguration.default)
+                let url = URL(string:"https://api.dmc.nico/api/sessions?_format=json")!
+                var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+                let body = nicoDMC.sessionFormatJson
+                req.httpMethod = "POST"
+                req.httpBody = body.data(using: String.Encoding.utf8)
+                let task3 = session.dataTask(with: req){(data,responce,error) in
+                    if error != nil {
+                        print("NicoDmc-error")//エラー。例えばオフラインとか
+                        //nicoDMC.content_uriは nicoDMC.Set_session_metadata(ResponseMetadata: ) で代入される。
+                        //callbackも返さないので、動画読み込み処理は途中で止まることになる。
+                        return
+                    }
+                    guard let data = data else { return }
+                    let str:String = String(data: data, encoding: String.Encoding.utf8)!
+                    print(str)
+                    nicoDMC.Set_session_metadata(ResponseMetadata: str)
+                    //短く再生するだけの場合はハートビートしない（40秒以内）⇦ただしThumbMovieもSelector内全編再生指定時には後からハートビートすることにした。その為callbackでnicoDMCを返す必要が出てきた。
+                    //if !self.ecoThumb {
+                    //    nicoDMC.Start_HeartBeat()
+                    //}
+                    callback(nicoDMC.content_uri, nicoDMC)
+                }
+                task3.resume()
             }
         }
         task2.resume()
-    }    
+    }
 }
 
 class NicoDmc {
@@ -104,11 +169,13 @@ class NicoDmc {
     private(set) var session_id = ""
     private(set) var content_uri = ""
     
+    let isThumbMovie : Bool
     var eco = false
-    var timer = Timer()
+    private var timer:Timer?
     
-    init?(smNum:String, js_initial_watch_data:String) {
+    init?(smNum:String, js_initial_watch_data:String, isThumbMovie:Bool) {
         self.smNum = smNum
+        self.isThumbMovie = isThumbMovie
         print("DMC")
         //print(js_initial_watch_data)
         // Jsonのマッピング辛すぎるので文字列検索
@@ -162,11 +229,24 @@ class NicoDmc {
     var sessionFormatJson : String {
         get{
             var video_src = videos
-            print("video_src=\(video_src)")
+            print("video_src(raw)=\(video_src)")
             let audio_src = audios
             let reachability = AMReachability()
+            if isThumbMovie && eco == false {
+                if (reachability?.isReachable)! {
+                    print("インターネット接続あり")
+                    if (reachability?.isReachableViaWiFi)!{
+                        print("Wifi接続有り")
+                    }else {
+                        print("Wifi接続なし")
+                        eco = true
+                    }
+                } else {
+                    print("インターネット接続なし")
+                }
+            }
             if eco {
-                //強制eco（曲セレクト画面での30秒プレビューに使用）
+                //強制eco（曲セレクト画面でWifiじゃないときの30秒プレビュー）
                 video_src = video_src.pregReplace(pattern: "^.*,", with: "")
                 print("video_src=\(video_src)")
                 //hls
@@ -177,7 +257,7 @@ class NicoDmc {
                     if (reachability?.isReachableViaWiFi)!{
                         print("Wifi接続有り")
                     }else {
-                        print("Wifi接続なし")
+                        print("Wifi接続なし(eco扱い)")
                         video_src = video_src.pregReplace(pattern: "^.*,", with: "")
                         print("video_src=\(video_src)")
                         //audio_src = audio_src.pregReplace(pattern: "^.*,", with: "")
@@ -203,12 +283,24 @@ class NicoDmc {
         let body = ""
         req.httpMethod = "OPTIONS"
         req.httpBody = body.data(using: String.Encoding.utf8)
+        print("start heartbeat! \(smNum)")
         let task = session.dataTask(with: req){(data,responce,error) in
+            if error != nil {
+                print("Start_HeartBeat-error")//エラー。例えばオフラインとか
+                //ハートビート失敗。Timerも起動させないのでEnd_HeartBeat()も必要なし
+                return
+            }
             self.Post_HeartBeat()
             DispatchQueue.main.async {
                 self.timer = Timer.scheduledTimer(withTimeInterval: 40.0, repeats: true, block: { (Timer) in
                     self.Post_HeartBeat()
-                    if !CachedMovies.sharedInstance.cachedMovies.contains(where: {$0.smNum == self.smNum}) {
+                    var checkSurvival = false
+                    if !self.isThumbMovie {
+                        checkSurvival = CachedMovies.sharedInstance.cachedMovies.contains(where: {$0.smNum == self.smNum})
+                    }else {
+                        checkSurvival = CachedThumbMovies.sharedInstance.cachedMovies.contains(where: {$0.smNum == self.smNum})
+                    }
+                    if checkSurvival == false {
                         print("別のをダウンロードに行ってキャッシュから消されてたら終わり")
                         self.End_HeartBeat()
                     }else {
@@ -241,7 +333,14 @@ class NicoDmc {
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
         let task = session.dataTask(with: req){(data,responce,error) in
-            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            if error != nil {
+                print("Post_HeartBeat-error")//エラー。例えばオフラインとか
+                //ハートビートを一回失敗したぐらいでは止めなくて良いか？
+                //self.End_HeartBeat() //本当は止めないにしてもカウントして連続エラー何回目かで止めるようにした方が良いかも
+                return
+            }
+            guard let data = data else { return }
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
             print("HeatBeat戻り！！")
             print(str)
             self.Set_session_metadata(ResponseMetadata: str)
@@ -249,7 +348,7 @@ class NicoDmc {
         task.resume()
     }
     func End_HeartBeat() {
-        timer.invalidate()
+        timer?.invalidate()
     }
 }
 // Convert a collection of NSValues into an array of CMTimeRanges.

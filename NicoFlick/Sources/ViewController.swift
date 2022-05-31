@@ -16,6 +16,8 @@ class ViewController: UIViewController {
     var musicDatas:MusicDataLists = MusicDataLists.sharedInstance
     //各ユーザーのネームデータ
     var userNameDatas:userNameDataLists = userNameDataLists.sharedInstance
+    //効果音プレイヤー(シングルトン)
+    var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
     
     //遷移中フラグ
     var segueing = false
@@ -52,14 +54,16 @@ class ViewController: UIViewController {
         self.view.addSubview(slashView!)
         self.view.sendSubview(toBack: slashView!)
         
+        UIView.animate(withDuration: 0.75, delay: 0.0, options: [.repeat, .curveLinear], animations: {self.slashView?.frame.origin.y = -15}, completion: {_ in self.slashView?.frame.origin.y = 0})
+        
         NotificationCenter.default.addObserver(self, selector: #selector(self.viewWillEnter), name: .UIApplicationWillEnterForeground, object: nil)
     }
     
     override func viewDidAppear(_ animated: Bool) {
-        UIView.animate(withDuration: 1.0, delay: 0.0, options: [.repeat, .curveLinear], animations: {self.slashView?.frame.origin.y = -15}, completion: {_ in self.slashView?.frame.origin.y = 0})
+        UIView.animate(withDuration: 0.75, delay: 0.0, options: [.repeat, .curveLinear], animations: {self.slashView?.frame.origin.y = -15}, completion: {_ in self.slashView?.frame.origin.y = 0})
     }
     @objc func viewWillEnter(notification: NSNotification){
-        UIView.animate(withDuration: 1.0, delay: 0.0, options: [.repeat, .curveLinear], animations: {self.slashView?.frame.origin.y = -15}, completion: {_ in self.slashView?.frame.origin.y = 0})
+        UIView.animate(withDuration: 0.75, delay: 0.0, options: [.repeat, .curveLinear], animations: {self.slashView?.frame.origin.y = -15}, completion: {_ in self.slashView?.frame.origin.y = 0})
         
     }
 
@@ -121,6 +125,8 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
         }
         
         if identifier == "toSelector" {
+            //se
+            seSystemAudio.start2SePlay()
             //データをロードした後に遷移させるため、一度、遷移キャンセル。
             segueing = true //遷移中であることを記憶。しないと遷移中に連続タップで何回もデータロードされる。
             //Indicator くるくる開始
@@ -152,6 +158,11 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
                 }
             }
             return false
+            
+        }else {
+            //settingsへ
+            //se
+            seSystemAudio.startSePlay()
         }
         return true
     }

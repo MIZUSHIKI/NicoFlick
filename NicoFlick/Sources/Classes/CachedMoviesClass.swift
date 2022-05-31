@@ -80,6 +80,7 @@ class CachedMovies {
         avPlayerViewController.view.isUserInteractionEnabled = false
         
         let cashedMovie = CachedMovie(url: url, smNum: smNum, avPlayerViewController: avPlayerViewController)
+        cashedMovie.avPlayerViewController.player?.volume = userData.SoundVolumeMovie
         cachedMovies.append(cashedMovie)
         
         while cachedMovies.count > userData.cachedMovieNum {
@@ -106,12 +107,14 @@ class CachedThumbMovies {
         let smNum:String
         let avPlayerViewController:AVPlayerViewController
         var check:Int
+        var nicoDMC:NicoDmc?
         var time:Date
-        init(url:URL, smNum:String, avPlayerViewController:AVPlayerViewController, check:Int) {
+        init(url:URL, smNum:String, avPlayerViewController:AVPlayerViewController, check:Int, nicoDMC:NicoDmc?) {
             self.url = url
             self.smNum = smNum
             self.avPlayerViewController = avPlayerViewController
             self.check = check
+            self.nicoDMC = nicoDMC
             self.time = Date()
         }
     }
@@ -122,7 +125,7 @@ class CachedThumbMovies {
     
     var cachedMovies:[CachedMovie] = []
     
-    func access(url:URL,smNum:String) -> AVPlayerViewController {
+    func access(url:URL,smNum:String,nicoDMC:NicoDmc? = nil) -> AVPlayerViewController {
         
         // プレイ指示して、5秒間再生されてない状態が続くとHeartBeat切れとみなしcheck=2になっている(Selectorで)。なのでキャッシュを削除
         // もしくは、もう120秒たったら強制的に読み込みし直しにしてしまう、か。
@@ -174,7 +177,7 @@ class CachedThumbMovies {
         //  viewのタッチアクションを下に透過（スルー）させるようにして、ムービーViewには何も干渉出来ないようにする
         avPlayerViewController.view.isUserInteractionEnabled = false
         
-        let cachedMovie = CachedMovie(url: url, smNum: smNum, avPlayerViewController: avPlayerViewController, check: 0)
+        let cachedMovie = CachedMovie(url: url, smNum: smNum, avPlayerViewController: avPlayerViewController, check: 0, nicoDMC: nicoDMC)
         cachedMovies.append(cachedMovie)
         
         while cachedMovies.count > 20 {

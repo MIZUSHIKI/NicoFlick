@@ -159,5 +159,6 @@ class TableViewForSort: UIViewController, UITableViewDelegate, UITableViewDataSo
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         print("seg")
         userData.SelectedMusicCondition.sortItem = textField.text!
+        SESystemAudio.sharedInstance.openSubSePlay()
     }
 }

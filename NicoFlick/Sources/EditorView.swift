@@ -220,6 +220,10 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                         if self.mySpoon.atTag["Offset"] == nil {
                             self.mySpoon.atTag["Offset"] = "0"
                         }
+                        if self.mySpoon.atTag["OffsetWhenPosted"] != nil {
+                            self.mySpoon.atTag["Offset"] = self.mySpoon.atTag["OffsetWhenPosted"]
+                            self.mySpoon.atTag["OffsetWhenPosted"] = nil
+                        }
                         // ラベル等の画面表示
                         DispatchQueue.main.async {
                             self.activityIndicator.stopAnimating()
@@ -251,6 +255,10 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                             self.mySpoon.atTag["Creator"] = "\(self.selectLevel.creator!)"
                             self.mySpoon.atTag["Speed"] = "\(self.selectLevel.speed!)"
                             self.mySpoon.atTag["Offset"] = "0"
+                            if self.mySpoon.atTag["OffsetWhenPosted"] != nil {
+                                self.mySpoon.atTag["Offset"] = self.mySpoon.atTag["OffsetWhenPosted"]
+                                self.mySpoon.atTag["OffsetWhenPosted"] = nil
+                            }
                             // ラベル等の画面表示
                             DispatchQueue.main.async {
                                 self.activityIndicator.stopAnimating()
@@ -573,7 +581,10 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     }
     @IBAction func movieRateSlider(_ sender: UISlider) {
         let rate = Float(Int(round(sender.value * 10))) / 10
-        sender.value = rate
+        setMovieRate(rate: rate)
+    }
+    func setMovieRate(rate:Float){
+        movieRateSlider.value = rate
         if let playing =  moviePlayerViewController?.player?.isPlaying {
             if playing {
                 moviePlayerViewController?.player?.rate = rate
@@ -867,6 +878,9 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         self.autoSave()
     }
     @IBAction func rewindButton(_ sender: UIButton) {
+        playerRewind()
+    }
+    func playerRewind() {
         if let currentTime = moviePlayerViewController?.player?.currentTime(),
            let rate = moviePlayerViewController?.player?.rate {
             
@@ -883,6 +897,9 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         self.autoSave()
     }
     @IBAction func forwardButton_TouchDown(_ sender: UIButton) {
+        playerForward()
+    }
+    func playerForward() {
         if let currentTime = moviePlayerViewController?.player?.currentTime(),
             let rate = moviePlayerViewController?.player?.rate {
             moviePlayerViewController?.player?.seek(to:

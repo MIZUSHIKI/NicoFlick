@@ -10,7 +10,7 @@ import UIKit
 import AVKit
 import AVFoundation
 
-class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, iCarouselDataSource, iCarouselDelegate {
+class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, iCarouselDataSource, iCarouselDelegate, CAAnimationDelegate {
     
     @IBOutlet var musicTitle: UILabel!
     @IBOutlet var musicArtist: UILabel!
@@ -49,6 +49,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     var musicDatas:MusicDataLists = MusicDataLists.sharedInstance
     let scoreDatas:ScoreDataLists = ScoreDataLists.sharedInstance
     let commentDatas:CommentDataLists = CommentDataLists.sharedInstance
+    //効果音プレイヤー(シングルトン)
+    var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
     
     //表示する楽曲を tag で抽出する
     var currentMusics:[musicData] = [] //tagによって選択されている楽曲
@@ -68,7 +70,18 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     var password = ""
     
     var moviePlayerViewController:AVPlayerViewController?
+    var nowPlayingThumbMovieURL:URL?
+    var nowNicoDMC:NicoDmc?
     var flgThumbMovieStopping = false //曲選択後0.5秒遅延再生にしているためGame遷移後に再生始まったりするのを防ぐフラグ
+    var flgThumbMovieTopMost = false //ムービー再生を薄バックからサムネ全面に移動させたフラグ
+    var volumeForceInResult:Float = 1.0
+    let ReducedVolumeForceInResult:Float = 0.5
+    
+    enum ForceInResultType {
+        case none
+        case play
+        case loadOnly
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -112,12 +125,12 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         //iCarousel再描画
         carousel.reloadData()
 
-        self.SetMusicToCarousel()
+        self.SetMusicToCarousel(thumbMovieForcePlay: true)
         
         //self.showChangeFavoSpecView() //もういいか
         self.showHowToExtendView()
     }
-    func SetMusicToCarousel() {
+    func SetMusicToCarousel(thumbMovieForcePlay:Bool = false) {
         //Indicator くるくる開始
         DispatchQueue.main.async {
             self.activityIndicator.startAnimating()
@@ -135,6 +148,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 //iCarousel再描画
                 self.carousel.reloadData()
                 //前回選択していた曲に飛べれば飛ぶ
+                var sameMovieURLAsMaeMusic = false
                 var selectIndex = 0
                 if self.numberRoll_index == -1 {
                     print("mae \(self.maeMusic?.movieURL)")
@@ -142,6 +156,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                         if let firstIndex = self.currentMusics.firstIndex(where: {$0.movieURL == selectMusic.movieURL}){
                             print("fi \(firstIndex)")
                             selectIndex = firstIndex
+                            sameMovieURLAsMaeMusic = true
                         }
                     }
                 }else {
@@ -152,7 +167,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 //現在選択されている曲を保持する
                 self.setCurrentLevels(index:self.carousel.currentItemIndex)
                 
-                self.ThumbMoviePlay()
+                if thumbMovieForcePlay || sameMovieURLAsMaeMusic == false {
+                    self.ThumbMoviePlay()
+                }
             }
         })
     }
@@ -212,7 +229,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                     }
 
                     self.maeMusic = nil
-                    self.SetMusicToCarousel()
+                    self.SetMusicToCarousel(thumbMovieForcePlay: true)
                 }
             }else {
                 ThumbMoviePlay()
@@ -245,7 +262,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         //    itemView = view
         //} else {
             itemView = AsyncImageView(frame: CGRect(x: 0, y: 0, width: 315, height: 175));
-        itemView.loadImage(urlString: currentMusics[index].thumbnailURL)
+        itemView.loadImage(urlString: currentMusics[index].thumbnailURL, contentMode: .scaleAspectFill)
             itemView.contentMode = .center
         //}
         return itemView
@@ -272,6 +289,11 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         hitRow = -1
         
         ThumbMoviePlay()
+        print("carousel.isDraggingAndThenDecelerating=\(carousel.isDraggingAndThenDecelerating)")
+        if carousel.isDraggingAndThenDecelerating {
+            //se
+            seSystemAudio.shuffleSePlay()
+        }
     }
     func setCurrentLevels(index:Int){
         if index == -1 {
@@ -331,6 +353,114 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             }
         }
         self.levelSelectPicker.reloadAllComponents()
+    }
+    //Add TapGesture
+    func carouselDidTap(_ carousel: iCarousel) {
+        print("did tap!!")
+        if !userData.thumbMoviePlay { return }
+        if flgThumbMovieStopping { return }
+        print("did tap!! st")
+        if flgThumbMovieTopMost { return }
+        print("did tap!! top")
+        guard let view = self.view.viewWithTag(5050) else { return }
+        print("did tap!! 50")
+        guard let carouselView = self.view.viewWithTag(5000) else { return }
+        print("did tap!! 00")
+        flgThumbMovieTopMost = true //thumbMovieを最前面再生しているか
+
+        //ViewのZ位置は入れ替えしかできないからtempViewをinsertする
+        let tempView = UIView()
+        tempView.tag = 5051
+        tempView.isHidden = true
+        self.view.insertSubview(tempView, aboveSubview: carouselView)
+        print(view.frame)
+        var index_thumbMovie = -1
+        var index_tempView = -1
+        for (i,v) in self.view.subviews.enumerated() {
+            if v.tag == 5050 {
+                index_thumbMovie = i
+            }
+            if v.tag == 5051 {
+                index_tempView = i
+            }
+            if index_thumbMovie != -1 && index_tempView != -1 {
+                //ViewのZ位置を入れ替え
+                self.view.exchangeSubview(at: index_thumbMovie, withSubviewAt: index_tempView)
+                break
+            }
+        }
+        tempView.removeFromSuperview() //tempView削除
+
+        //thumbMovieのHeartBeat処理
+        if let nicoDMC = nowNicoDMC {
+            //nicoDMC.SetOriginVideoSrc_session_metadata()
+            nicoDMC.Start_HeartBeat()
+        }
+        /*
+        // UIView.animateだとmoviePlayerViewController.viewのサイズ補間をアニメーションしてくれず瞬時に変わってしまう。
+        let vv = UIView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        vv.backgroundColor = .red
+        self.view.addSubview(vv)
+        self.moviePlayerViewController?.player?.volume = 0.9
+        UIView.animate(withDuration: 3.0, animations: {
+            vv.frame = CGRect(x: 0, y: 0, width: 300, height: 300)
+            view.frame = carouselView.frame
+            view.center = carouselView.center
+            view.alpha = 1.0
+        }, completion: {_ in
+            print(view.frame)
+        })
+         */
+        // CABasicAnimationでアニメーションさせる。ただしLayerでサイズ、位置をアニメーションしてる(?)から元のサイズに戻したい時はframeとかではなくLayerを戻さなくてはならない(?)
+        let animationGroup = CAAnimationGroup()
+        animationGroup.duration = 0.5
+        animationGroup.isRemovedOnCompletion = false
+        animationGroup.fillMode = kCAFillModeForwards
+
+        //大きさ(transform.scale)を1.5倍にする
+        let animation1 = CABasicAnimation(keyPath: "bounds")
+        animation1.fromValue = NSValue(cgRect: view.bounds)
+        animation1.toValue = NSValue(cgRect: carouselView.bounds)
+        animation1.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+        
+        let animation2 = CABasicAnimation(keyPath: "transform.scale")
+        animation2.fromValue = 1.0
+        animation2.toValue = carouselView.frame.width / view.frame.width
+        animation2.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+        let b = carouselView.frame.width / view.frame.width
+        print("carouselView.frame.width / view.frame.width = \(carouselView.frame.width) / \(view.frame.width)")
+        print("b= \(b)")
+
+
+        //位置(position.x)を変更する
+        let animation3 = CABasicAnimation(keyPath: "position")
+        animation3.fromValue = view.center
+        animation3.toValue = carouselView.center
+        animation3.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+
+        //透明度(opacity)を1から0にする
+        let animation4 = CABasicAnimation(keyPath: "opacity")
+        animation4.fromValue = 0.05
+        animation4.toValue = 1.0
+        animation4.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+
+        //アンカーポイントを設定（※viewの位置も変わるため、frameを事前に変数に格納する）
+        //let frm = view.frame
+        //view.layer.anchorPoint = CGPoint(x: 0.0, y: 0.5)
+        //view.frame = frm
+
+        animationGroup.animations = [animation2,animation3,animation4]
+        animationGroup.delegate = self
+        view.layer.add(animationGroup, forKey: nil)
+        
+        self.volumeForceInResult = 1.0
+        self.moviePlayerViewController?.player?.volume = 0.9 * userData.SoundVolumeMovie * self.volumeForceInResult
+    }
+    func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
+        print("did stop")
+        if !flgThumbMovieTopMost { return }
+        guard let view = self.view.viewWithTag(5050) else { return }
+        guard let carouselView = self.view.viewWithTag(5000) else { return }
     }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
     
@@ -432,6 +562,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         let labelView1 = UILabel()
         labelView1.text = currentLevels[row].getLevelAsString()
         labelView1.frame = CGRect(x: 5, y: 10  + 10, width: UIScreen.main.bounds.size.width-10, height: 20)
+        if labelView1.text == "FULL" {
+            labelView1.font = UIFont(name: "NicoKaku", size: 20)
+        }
         labelView1.textAlignment = NSTextAlignment.center
         myView.addSubview(labelView1)
         //製作者
@@ -440,6 +573,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         labelView2.frame = CGRect(x: 5, y: 10+20+5  + 10, width: UIScreen.main.bounds.size.width-10, height: 20)
         labelView2.textColor = UIColor.gray
         labelView2.font = UIFont.systemFont(ofSize:10)
+        //labelView2.font = UIFont(name: "NicoKaku", size: 10)
         labelView2.textAlignment = NSTextAlignment.center
         myView.addSubview(labelView2)
         /*
@@ -479,9 +613,14 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
          */
         let labelView4 = UILabel()
         labelView4.text = rank
-        labelView4.frame = CGRect(x: 10, y: 25, width: 70, height: 30)
+        labelView4.frame = CGRect(x: 10, y: 25, width: 90, height: 30)
         labelView4.textColor = UIColor.black
-        labelView4.font = UIFont.systemFont(ofSize:30)
+        if rank == Score.RankStr[0] {
+            labelView4.textColor = UIColor.red
+        }
+        //labelView4.font = UIFont.systemFont(ofSize:30)
+        //labelView4.font = UIFont(name: "NicoKaku", size: 30)
+        labelView4.font = UIFont(name: "HiraginoSans-W7", size: 30)
         labelView4.adjustsFontSizeToFitWidth = true
         labelView4.textAlignment = NSTextAlignment.center
         myView.addSubview(labelView4)
@@ -490,7 +629,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         labelView5.text = score
         labelView5.frame = CGRect(x: 10, y: 0/*10+20+5+15+5+5*/, width: UIScreen.main.bounds.size.width-10, height: 20)
         labelView5.textColor = UIColor.gray
-        labelView5.font = UIFont.systemFont(ofSize:10)
+        //labelView5.font = UIFont.systemFont(ofSize:10)
+        labelView5.font = UIFont(name: "NicoKaku", size: 10)
         labelView5.textAlignment = NSTextAlignment.left
         myView.addSubview(labelView5)
         //スコアとコメの最新日時
@@ -560,12 +700,16 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         self.TapSortableLabel()
     }
     func TapSortableLabel() {
+        //se
+        seSystemAudio.openSePlay()
         self.performSegue(withIdentifier: "toTableViewForSortFromSelector", sender: self)
     }
     @IBAction func TapMusicNumLabel(_ sender: UITapGestureRecognizer) {
         if currentMusics.count == 0 {
             return
         }
+        //se
+        seSystemAudio.openSePlay()
         let title = "曲の選択"
         let message = "\n\n\n\n\n\n\n\n\n\n" //改行入れないとOKCancelがかぶる
 
@@ -592,6 +736,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         if currentMusics.count == 0 {
             return
         }
+        //se
+        seSystemAudio.openSePlay()
         self.performSegue(withIdentifier: "toTableViewForTagFromSelector", sender: self)
     }
     @IBAction func favoriteButton(_ sender: UIButton) {
@@ -606,6 +752,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         if userData.MyFavorite2.contains(currentLevel.sqlID){
             userData.MyFavorite2.remove(currentLevel.sqlID)
             userData.FavoriteCount.subFavoriteCount(levelID: currentLevel.sqlID)
+            seSystemAudio.openSubSePlay()
         }else {
             if userData.MyFavorite.contains(currentLevel.sqlID){
                 //Ver.1.5未満の互換
@@ -620,6 +767,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 if userData.Score.scores.keys.contains(currentLevel.sqlID){
                     userData.MyFavorite2.insert(currentLevel.sqlID)
                     userData.FavoriteCount.addFavoriteCount(levelID: currentLevel.sqlID)
+                    seSystemAudio.openSePlay()
                 }else{
                     let alert = UIAlertController(title:"ゲームをプレイしたらお気に入りできるようになります", message: "譜面が良かったらお気に入りしよう！", preferredStyle: UIAlertControllerStyle.alert)
                     alert.addAction( UIAlertAction(title: "OK", style: .cancel, handler: nil) )
@@ -647,6 +795,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }) )
         alert.addAction( UIAlertAction(title: "キャンセル", style: .cancel, handler: nil) )
         self.present(alert, animated: true, completion: nil)
+        seSystemAudio.openSubSePlay()
     }
     @IBAction func musicSortButton(_ sender: UIButton) {
         let alert = UIAlertController(title:nil, message: "お気に入りソート", preferredStyle: UIAlertControllerStyle.alert)
@@ -663,6 +812,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }) )
         alert.addAction( UIAlertAction(title: "キャンセル", style: .cancel, handler: nil) )
         self.present(alert, animated: true, completion: nil)
+        seSystemAudio.openSubSePlay()
     }
     @IBAction func ThumbMoviePlayButton(_ sender: UIButton) {
         print("ThumbMoviePlayButton")
@@ -675,28 +825,44 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             ThumbMovieStop()
         }
     }
-    func ThumbMoviePlay(){
-        if !userData.thumbMoviePlay {
+    func ThumbMoviePlay(forceType: ForceInResultType = .none){
+        if forceType == .none && !userData.thumbMoviePlay {
             return
         }
+        var typeLoadOnly = false
+        if !(forceType == .none) {
+            volumeForceInResult = ReducedVolumeForceInResult
+            if forceType == .loadOnly {
+                typeLoadOnly = true
+            }
+        }
         //THumbMovie呼び込み _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+        //ThumbMovieを最前面再生していたら奥に引っ込める
+        self.ThumbMovieReturnToBottom(opacity: 0.25)
         //一度すべて止める
-        ThumbMovieStop()
+        //ThumbMovieStop() //カバーフロー動かしたあとすぐ消さないで次の再生まで遅延させるようにするためコメントアウト
         //裏側で再生
-        ThumbMovieStart(index: self.indexCarousel)
+        ThumbMovieStart(index: self.indexCarousel, loadOnly: typeLoadOnly)
     }
-    private func ThumbMovieStop() {
+    func ThumbMovieStop() {
+        print("ThumbMovieStop")
+        //ThumbMovieを最前面再生していたら奥に引っ込める
+        ThumbMovieReturnToBottom(opacity: 0.01)
         flgThumbMovieStopping = true
         //一度すべて止める
         for avPlayerVC in CachedThumbMovies.sharedInstance.cachedMovies {
             avPlayerVC.avPlayerViewController.player?.pause()
+            avPlayerVC.nicoDMC?.End_HeartBeat() //ThumbMovie拡大時は最後まで再生するのでHeartBeatしている。いったん全て終了させる。
         }
+        //Viewを取り除く
         if let view = self.view.viewWithTag(5050) {
             view.removeFromSuperview()
         }
+        nowNicoDMC = nil
     }
     private func ThumbMovieStart(index:Int, loadOnly:Bool = false) {
         flgThumbMovieStopping = false
+        flgThumbMovieTopMost = false
         if !self.currentMusics.indices.contains(index) {
             return
         }
@@ -711,7 +877,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5){
             //print("\(smNum) => \(index) / \(self.indexCarousel)")
             if index == self.indexCarousel || loadOnly == true {
-                MovieAccess.init(ecoThumb: true).StreamingUrlNicoAccess(smNum: smNum){ nicodougaURL in
+                MovieAccess.init().StreamingUrlNicoAccessForThumbMovie(smNum: smNum){ (nicodougaURL,nicoDMC) in
                 print("smNum=\(smNum), loadOnly=\(loadOnly), nicodougaURL=\(nicodougaURL)")
                     if self.flgThumbMovieStopping == true {
                         print("ThumbMovieStopping")
@@ -729,17 +895,28 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                         guard let nicoUrl = URL(string: nicodougaURL) else {
                             return
                         }
-                        let mpvc = CachedThumbMovies.sharedInstance.access(url: nicoUrl, smNum: smNum)
+                        let mpvc = CachedThumbMovies.sharedInstance.access(url: nicoUrl, smNum: smNum, nicoDMC: nicoDMC)
                         if loadOnly == false {
+                            self.ThumbMovieStop()
+                            self.flgThumbMovieStopping = false
+                            self.flgThumbMovieTopMost = false
+                            
                             self.moviePlayerViewController = mpvc
                             self.moviePlayerViewController?.view.backgroundColor = UIColor.white
                             self.moviePlayerViewController?.view.alpha = 0.01
                             self.moviePlayerViewController?.view.tag = 5050
+                            if let nicodmc = self.nowNicoDMC {
+                                nicodmc.End_HeartBeat()
+                            }
+                            self.nowNicoDMC = CachedThumbMovies.sharedInstance.cachedMovies.last?.nicoDMC
+                            self.nowPlayingThumbMovieURL = CachedThumbMovies.sharedInstance.cachedMovies.last?.url
+                            //cachedMovie.accessで返してもらった直後はソレがcachedMovies配列の末尾になっている
                             //  add
                             self.view.addSubview(self.moviePlayerViewController!.view)
                             self.view.sendSubview(toBack: self.moviePlayerViewController!.view)
                             //  動画Viewの位置
-                            self.moviePlayerViewController?.view.frame.size = CGSize(width: self.view.frame.size.height * 19 / 6, height: self.view.frame.size.height)
+                            self.moviePlayerViewController?.view.frame.size = CGSize(width: self.view.frame.size.height * 16 / 9, height: self.view.frame.size.height)
+                            print("wi = \(self.view.frame.size.height * 16 / 9)")
                             self.moviePlayerViewController!.view.center.x = self.view.center.x
                         }
                         var t30 = self.musicDatas.getNotesFirstTime(movieURL: self.currentMusics[index].movieURL)
@@ -756,12 +933,32 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                         if loadOnly == false{
                             //フェードイン・アウト・ループ設定
                             var firstRun = true
+                            var runed = false
+                            let myMovieURL = self.nowPlayingThumbMovieURL
                             for i in 1 ... 10 {
                                 self.moviePlayerViewController!.player?.addBoundaryTimeObserver(forTimes: [NSValue(time: CMTimeMakeWithSeconds(t30 + 0.05 * Double(i), Int32(NSEC_PER_SEC)))], queue: nil){
-                                    //print("フェードイン \(i)")
-                                    self.moviePlayerViewController?.view.alpha = CGFloat(0.25 *  Double(i) / 10.0)
-                                    self.moviePlayerViewController?.player?.volume = Float(0.6 * Double(i) / 10.0)
-                                    //再生できたらcheckを入れる（キャッシュ分で再生できなくなってニコニコとのHeartBeatも切れるとCachedThumbMovies-avPlayerViewControllerじゃ再生できなくなるからアクセスからやり直させるフラグ）
+                                    if myMovieURL != self.nowPlayingThumbMovieURL {
+                                        //print("私じゃない！！")
+                                        return
+                                    }
+                                    if self.flgThumbMovieTopMost { return }
+                                    //resultで音量下げてたら戻す
+                                    if self.volumeForceInResult > self.ReducedVolumeForceInResult {
+                                        self.volumeForceInResult = 1.0
+                                    }
+                                    if self.volumeForceInResult >= self.ReducedVolumeForceInResult {
+                                        //print("フェードイン \(i)")
+                                        let animation4 = CABasicAnimation(keyPath: "opacity")
+                                        animation4.fromValue = CGFloat(0.25 *  Double(i) / 10.0)
+                                        animation4.toValue = CGFloat(0.25 *  Double(i) / 10.0)
+                                        print("in \(i) alpha")
+                                        animation4.isRemovedOnCompletion = false
+                                        animation4.fillMode = kCAFillModeForwards
+                                        self.moviePlayerViewController?.view.layer.add(animation4, forKey: nil)
+                                        //self.moviePlayerViewController?.view.alpha = CGFloat(0.25 *  Double(i) / 10.0)
+                                        self.moviePlayerViewController?.player?.volume = Float(0.45 * Double(i) / 10.0) * self.userData.SoundVolumeMovie * self.volumeForceInResult
+                                        //再生できたらcheckを入れる（キャッシュ分で再生できなくなってニコニコとのHeartBeatも切れるとCachedThumbMovies-avPlayerViewControllerじゃ再生できなくなるからアクセスからやり直させるフラグ）
+                                    }
                                     if i==1 {
                                         if let a = CachedThumbMovies.sharedInstance.cachedMovies.first(where: {$0.smNum == smNum}){
                                             a.check = 1
@@ -774,14 +971,69 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                                             self.ThumbMovieStart(index: index - 1 ,loadOnly: true)
                                         }
                                     }
+                                    if i==10 { runed = true }
                                 }
                                 self.moviePlayerViewController!.player?.addBoundaryTimeObserver(forTimes: [NSValue(time: CMTimeMakeWithSeconds(t30 + 29.0 + 0.1 * Double(i), Int32(NSEC_PER_SEC)))], queue: nil){
-                                    //print("フェードアウト \(i)")
-                                    self.moviePlayerViewController?.view.alpha = CGFloat(0.25 *  Double(10 - i) / 10.0)
-                                    self.moviePlayerViewController?.player?.volume = Float(0.6 * Double(10 - i) / 10.0)
+                                    if myMovieURL != self.nowPlayingThumbMovieURL {
+                                        //print("私じゃない！！")
+                                        return
+                                    }
+                                    if self.flgThumbMovieTopMost { return }
+                                    //resultで音量下げてたら戻す
+                                    if self.volumeForceInResult > self.ReducedVolumeForceInResult {
+                                        self.volumeForceInResult = 1.0
+                                    }
+                                    if self.volumeForceInResult >= self.ReducedVolumeForceInResult {
+                                        //print("フェードアウト \(i)")
+                                        let animation4 = CABasicAnimation(keyPath: "opacity")
+                                        animation4.fromValue = CGFloat(0.25 *  Double(10 - i) / 10.0)
+                                        animation4.toValue = CGFloat(0.25 *  Double(10 - i) / 10.0)
+                                        animation4.isRemovedOnCompletion = false
+                                        animation4.fillMode = kCAFillModeForwards
+                                        self.moviePlayerViewController?.view.layer.add(animation4, forKey: nil)
+                                        //self.moviePlayerViewController?.view.alpha = CGFloat(0.25 *  Double(10 - i) / 10.0)
+                                        self.moviePlayerViewController?.player?.volume = Float(0.45 * Double(10 - i) / 10.0) * self.userData.SoundVolumeMovie * self.volumeForceInResult
+                                    }
+                                }
+                            }
+                            for i in 1 ... 28 {
+                                self.moviePlayerViewController!.player?.addBoundaryTimeObserver(forTimes: [NSValue(time: CMTimeMakeWithSeconds(t30 +  1.0 * Double(i), Int32(NSEC_PER_SEC)))], queue: nil){
+                                    if runed { return }
+                                    if myMovieURL != self.nowPlayingThumbMovieURL {
+                                        //print("私じゃない！！")
+                                        return
+                                    }
+                                    //resultで音量下げてたら戻す
+                                    if self.volumeForceInResult > self.ReducedVolumeForceInResult {
+                                        self.volumeForceInResult = 1.0
+                                    }
+                                    if self.volumeForceInResult >= self.ReducedVolumeForceInResult {
+                                        //print("フェードアウト \(i)")
+                                        //self.moviePlayerViewController?.view.alpha = 0.25
+                                        if self.flgThumbMovieTopMost {
+                                            self.moviePlayerViewController?.player?.volume = 0.9 * self.userData.SoundVolumeMovie * self.volumeForceInResult
+                                        }else {
+                                            self.moviePlayerViewController?.player?.volume = 0.45 * self.userData.SoundVolumeMovie * self.volumeForceInResult
+                                        }
+                                        runed = true
+                                        if self.flgThumbMovieTopMost { return }
+                                        
+                                        let animation4 = CABasicAnimation(keyPath: "opacity")
+                                        animation4.fromValue = 0.25
+                                        animation4.toValue = 0.25
+                                        print("naka alpha")
+                                        animation4.isRemovedOnCompletion = false
+                                        animation4.fillMode = kCAFillModeForwards
+                                        self.moviePlayerViewController?.view.layer.add(animation4, forKey: nil)
+                                    }
                                 }
                             }
                             self.moviePlayerViewController!.player?.addBoundaryTimeObserver(forTimes: [NSValue(time: CMTimeMakeWithSeconds(t30 + 30.0 + 0.1, Int32(NSEC_PER_SEC)))], queue: nil){
+                                if myMovieURL != self.nowPlayingThumbMovieURL {
+                                    //print("私じゃない！！")
+                                    return
+                                }
+                                if self.flgThumbMovieTopMost { return }
                                 print("30秒でループ")
                                 self.moviePlayerViewController?.player?.seek(to: CMTimeMakeWithSeconds(t30, Int32(NSEC_PER_SEC)) )
                             }
@@ -789,9 +1041,17 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                             NotificationCenter.default.addObserver(forName: NSNotification.Name.AVPlayerItemDidPlayToEndTime, object: nil, queue: nil){ notification in
                                 //もし再生終了したときもループ
                                 print("終了でループ")
+                                if self.flgThumbMovieStopping == true {
+                                    print("ThumbMovieStopping")
+                                    return
+                                }
                                 DispatchQueue.main.async {
                                     //UI処理はメインスレッドの必要あり
+                                    if self.flgThumbMovieTopMost {
+                                        t30 = 0
+                                    }
                                     self.moviePlayerViewController?.player?.seek(to: CMTimeMakeWithSeconds(t30, Int32(NSEC_PER_SEC)) )
+                                    self.moviePlayerViewController?.player?.play()
                                 }
                             }
                             //5秒たって実際ムービー再生できたか確認する
@@ -821,15 +1081,43 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                             }
                         }
                         //  動画再生
-                        mpvc.player?.volume = 0.01
-                        mpvc.player?.seek(to: CMTimeMakeWithSeconds(t30, Int32(NSEC_PER_SEC)) )
+                        mpvc.player?.volume = 0.001
+                        var t30_ = t30 - 0.5
+                        if t30_ < 0 { t30_ = 0.0 }
+                        mpvc.player?.seek(to: CMTimeMakeWithSeconds(t30_, Int32(NSEC_PER_SEC)) )
                         mpvc.player?.play()
                     }
                 }
             }
         }
     }
-    
+    func ThumbMovieReturnToBottom(opacity: Double) {
+        if flgThumbMovieStopping { return }
+        //if !flgThumbMovieTopMost { return }
+        guard let view = self.view.viewWithTag(5050) else { return }
+        
+        let animationGroup = CAAnimationGroup()
+        animationGroup.duration = 0.0
+        animationGroup.isRemovedOnCompletion = false
+        animationGroup.fillMode = kCAFillModeForwards
+        //
+        let animation2 = CABasicAnimation(keyPath: "transform.scale")
+        animation2.fromValue = 1.0
+        animation2.toValue = 1.0
+        //位置(position.x)を変更する
+        let animation3 = CABasicAnimation(keyPath: "position")
+        animation3.fromValue = self.view.center
+        animation3.toValue = self.view.center
+        //透明度(opacity)を1から0にする
+        let animation4 = CABasicAnimation(keyPath: "opacity")
+        animation4.fromValue = opacity
+        animation4.toValue = opacity
+
+        animationGroup.animations = [animation2,animation3,animation4]
+        view.layer.add(animationGroup, forKey: nil)
+        
+        self.view.sendSubview(toBack: view)
+    }
     
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
     func showHowToExtendView() -> Bool{
@@ -873,6 +1161,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         print("returnToMe")
         if segue.identifier == "fromSelectorMenu" {
             print("back from menu")
+            seSystemAudio.canselSePlay()
             //現在設定されているタグで選択された楽曲を保持する
             //currentMusics = musicDatas.getSelectMusics()
             //iCarousel再描画
@@ -904,11 +1193,78 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                     }
                 }
             }
-            self.ThumbMoviePlay()
+            //リザルトで再生したthumbMovieの音量を元に戻す
+            print("確認")
+            if userData.thumbMoviePlay {
+                self.volumeForceInResult += 0.01
+                print(self.volumeForceInResult)
+                if self.volumeForceInResult >= 1.0 {
+                    self.volumeForceInResult = 1.0
+                }
+                print(self.volumeForceInResult)
+                if self.volumeForceInResult != 1.0 {
+                    print("timer")
+                    Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true, block: { timer in
+                        guard let player = self.moviePlayerViewController?.player else {
+                            self.volumeForceInResult = 1.0
+                            timer.invalidate()
+                            return
+                        }
+                        print("self.volumeForceInResult=\(self.volumeForceInResult)")
+                        if self.volumeForceInResult >= 1.0 {
+                            self.volumeForceInResult = 1.0
+                            timer.invalidate()
+                            return
+                        }
+                        self.volumeForceInResult += (1.0 - self.ReducedVolumeForceInResult) / 15 // 1.5秒で戻す
+                        if self.volumeForceInResult >= 1.0 {
+                            self.volumeForceInResult = 1.0
+                        }
+                        player.volume = 0.45 * self.userData.SoundVolumeMovie * self.volumeForceInResult
+                    })
+                }else {
+                    print("play")
+                    self.ThumbMoviePlay()
+                }
+            }else {
+                print("stop")
+                //self.ThumbMovieStop()
+                self.volumeForceInResult -= 0.01
+                print(self.volumeForceInResult)
+                if self.volumeForceInResult >= self.ReducedVolumeForceInResult {
+                    self.volumeForceInResult = 1.0
+                    print(self.volumeForceInResult)
+                }else {
+                    print(self.volumeForceInResult)
+                    
+                    self.ThumbMovieReturnToBottom(opacity: 0.01)
+                    print("timer")
+                    Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true, block: { timer in
+                        guard let player = self.moviePlayerViewController?.player else {
+                            self.volumeForceInResult = 1.0
+                            timer.invalidate()
+                            return
+                        }
+                        print("self.volumeForceInResult=\(self.volumeForceInResult)")
+                        if self.volumeForceInResult <= 0.0 {
+                            self.ThumbMovieStop()
+                            self.volumeForceInResult = 1.0
+                            timer.invalidate()
+                            return
+                        }
+                        self.volumeForceInResult -= self.ReducedVolumeForceInResult / 10 // 1.0秒で戻す
+                        if self.volumeForceInResult <= 0.0 {
+                            self.volumeForceInResult = 0.0
+                        }
+                        player.volume = 0.45 * self.userData.SoundVolumeMovie * self.volumeForceInResult
+                        self.ThumbMovieReturnToBottom(opacity: 0.01)
+                    })
+                }
+            }
             
         }else if segue.identifier == "fromEditView" {
             print("back from editview")
-            self.SetMusicToCarousel()
+            self.SetMusicToCarousel(thumbMovieForcePlay: true)
         }else if segue.identifier == "fromTableViewForTag" {
             print("back from tableView for tag")
             self.SetMusicToCarousel()
@@ -939,10 +1295,12 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             let gameViewController:GameView = segue.destination as! GameView
             gameViewController.selectMusic = currentMusics[indexCarousel]
             gameViewController.selectLevel = currentLevels[levelSelectPicker.selectedRow(inComponent: 0)]
+            gameViewController.selectorController = self
             
             ThumbMovieStop()
             
         }else if segue.identifier == "toRankingTabBar" {
+            seSystemAudio.openSePlay()
             //現在選択中のデータをRankingTabBarに渡す
             /*
             let selectMovieURL:String = currentMusics[indexCarousel].movieURL
@@ -962,8 +1320,11 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             commentViewController.selectMusic = currentMusics[indexCarousel]
             commentViewController.selectLevel = currentLevels[levelSelectPicker.selectedRow(inComponent: 0)]
             commentViewController.commentPostable = false
+            commentViewController.rankingViewController = rankingViewController
+            
             
         }else if segue.identifier == "toSelectorMenu" {
+            seSystemAudio.openSelectorMenuSePlay()
             
             let selectorMenuController:SelectorMenu = segue.destination as! SelectorMenu
             //let selectorMenuController:SelectorMenu = destinationNavigationController.topViewController as! SelectorMenu
@@ -991,9 +1352,11 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             wikipageWibkitController.selectorController = self
             
             ThumbMovieStop()
+            seSystemAudio.openSePlay()
         }else if segue.identifier == "fromSelector" {
-            
+            print("titleへ")
             ThumbMovieStop()
+            seSystemAudio.canselSePlay()
         }
     }
     //遷移の許可
@@ -1008,6 +1371,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 //レベルが一個もなかったら遷移なし
                 return false
             }
+            //se
+            seSystemAudio.goSePlay()
             
             //levels.noteDataにデータが入っているか確認。なければ先に取得する _/_/_/_/_/_/_/_/_/_/_/
             //(ViewControllerの初期データ取得でタイムタグも入手してると通信量大きそうだから個別に取得する)
@@ -1056,7 +1421,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 //print("はいをタップした時の処理")
                 //Indicator くるくる開始
                 self.activityIndicator.startAnimating()
-                ServerDataHandler().checkLevelPassword(id: self.currentLevels[self.levelSelectPicker.selectedRow(inComponent: 0)].sqlID, pass: alert.textFields![0].text!, callback: { (bool) in
+                ServerDataHandler().checkLevelPassword(id: self.currentLevels[self.levelSelectPicker.selectedRow(inComponent: 0)].sqlID, pass: alert.textFields![0].text!, userID: self.userData.UserID, callback: { (bool) in
                     //passCheck
                     DispatchQueue.main.async {
                         //  Indicator隠す

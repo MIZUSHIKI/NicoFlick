@@ -145,8 +145,9 @@ class ServerDataHandler {
                 return
             }
             print("downloaded")
+            guard let data = data else { return }
             //ロードしたmusicデータを処理
-            var htRet = String(data: data!, encoding:.utf8)!
+            var htRet = String(data: data, encoding:.utf8)!
             if htRet.hasPrefix("<!--NicoFlickMessage=") {
                 AppDelegate.ServerErrorMessage = htRet.pregMatche_firstString(pattern: "^<!--NicoFlickMessage=(.*?)-->")
                 htRet = htRet.pregReplace(pattern: "^<!--NicoFlickMessage=.*?-->", with:"" )
@@ -164,7 +165,7 @@ class ServerDataHandler {
                 return
             }
             do {
-                let jsonArray = (try JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
                 for dic in jsonArray {
                     self.musicDatas.setMusic( sqlID: Int(dic["id"]!)!,
                                               movieURL: dic["movieURL"]!,
@@ -202,10 +203,11 @@ class ServerDataHandler {
                 return
             }
             print("downloaded")
+            guard let data = data else { return }
             //ロードしたmusicデータを処理
             //print(String(data: data!, encoding:.utf8)!)
             do {
-                let jsonArray = (try JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
                 for dic in jsonArray {
                     self.musicDatas.setMusic( sqlID: Int(dic["id"]!)!,
                                               movieURL: dic["movieURL"]!,
@@ -245,8 +247,9 @@ class ServerDataHandler {
                 return
             }
             print("downloaded")
+            guard let data = data else { return }
             //ロードしたlevelデータを処理
-            let htRet = String(data: data!, encoding:.utf8)!
+            let htRet = String(data: data, encoding:.utf8)!
             //print(htRet)
             if htRet == "latest" {
                 callback(nil)
@@ -259,7 +262,7 @@ class ServerDataHandler {
                 return
             }
             do {
-                let jsonArray = (try JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
                 for dic in jsonArray {
                     var playCountTime = 0
                     var favoriteCount = 0
@@ -323,10 +326,11 @@ class ServerDataHandler {
                 return
             }
             print("downloaded-fd")
+            guard let data = data else { return }
             //ロードしたmusicデータを処理
             //print(String(data: data!, encoding:.utf8)!)
             do {
-                let jsonArray = (try JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
                 for dic in jsonArray {
                     var playCountTime = 0
                     var favoriteCount = 0
@@ -392,15 +396,16 @@ class ServerDataHandler {
                 return
             }
             print("downloaded")
+            guard let data = data else { return }
             //ロードしたlevelデータを処理
-            let htRet = String(data: data!, encoding:.utf8)!
+            let htRet = String(data: data, encoding:.utf8)!
             //print(htRet)
             if htRet == "latest" {
                 callback(nil)
                 return
             }
             do {
-                let jsonArray = (try JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
                 for dic in jsonArray {
                     self.musicDatas.setLevel_PlaycountFavorite( sqlID: Int(dic["id"]!)!,
                                               playCount: Int(dic["playCount"] ?? "-1")!,
@@ -434,14 +439,22 @@ class ServerDataHandler {
                 callback(error)
                 return
             }
-            let jsonDic = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Dictionary<String,String>
-            //musicDatasに保存（次回からロードしなくなる）
-            level.noteData = jsonDic["notes"]
-            
-            //保存データも更新
-            UserData.sharedInstance.LevelsJson = self.musicDatas.toLevelsJsonString()
-            print("Notes Download")
-            callback(nil)
+            guard let data = data else { return }
+            do {
+                let jsonDic = (try JSONSerialization.jsonObject(with: data, options: [])) as! Dictionary<String,String>
+                //musicDatasに保存（次回からロードしなくなる）
+                level.noteData = jsonDic["notes"]
+                
+                //保存データも更新
+                UserData.sharedInstance.LevelsJson = self.musicDatas.toLevelsJsonString()
+                print("Notes Download")
+                callback(nil)
+                
+            } catch (let e) {
+                print(e)
+                //Jsonではなかった。何か他の結果が帰ってきた
+                callback(e)
+            }
             
         }
         task.resume()
@@ -458,9 +471,10 @@ class ServerDataHandler {
                 return
             }
             print("downloaded")
+            guard let data = data else { return }
             //print(String(data: data!, encoding:.utf8)!)
             do{
-                let jsonArray = (try JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
                 for dic in jsonArray {
                     self.scoreDatas.setScore(sqlID: Int(dic["id"]!)!,
                                              levelID: levelID,
@@ -492,9 +506,10 @@ class ServerDataHandler {
                 return
             }
             print("downloaded")
+            guard let data = data else { return }
             //print(String(data: data!, encoding:.utf8)!)
             do{
-                let jsonArray = (try JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
                 for dic in jsonArray {
                     self.commentDatas.setComment(sqlID: Int(dic["id"]!)!,
                                                  levelID: levelID,
@@ -529,7 +544,8 @@ class ServerDataHandler {
                 return
             }
             print("downloaded")
-            let htRet = String(data: data!, encoding:.utf8)!
+            guard let data = data else { return }
+            let htRet = String(data: data, encoding:.utf8)!
             //print(htRet)
             if htRet == "latest" {
                 callback(nil)
@@ -538,7 +554,7 @@ class ServerDataHandler {
                 
                 //(サブ)サーバにファイルを取りに行く
                 do{
-                    let jsonArray = (try JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+                    let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
                     for dic in jsonArray {
                         let serverURL = dic["server-url"]!
                         let createTime = Int(dic["createTime"]!)!
@@ -562,7 +578,7 @@ class ServerDataHandler {
                 return
             }
             do{
-                let jsonArray = (try JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
                 for dic in jsonArray {
                     self.userNameDatas.setUserName(sqlID: Int(dic["id"]!)!,
                                                    userID: dic["userID"]!,
@@ -661,8 +677,36 @@ class ServerDataHandler {
                 callback(nil)
                 return
             }
-            let scoreData = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
-            callback(scoreData)
+            guard let data = data else { return }
+            do {
+                if let scoreData = (try JSONSerialization.jsonObject(with: data, options: [])) as? Array<Dictionary<String,String>> {
+                    callback(scoreData)
+                }
+            }catch _ {
+                //
+            }
+        }
+        task.resume()
+    }
+    func getMusicScoreData(musicID:Int, userID:String, callback: @escaping (Dictionary<String,String>?) -> Void ) -> Void {
+        //データベース接続
+        let session = URLSession(configuration: URLSessionConfiguration.default)
+        let url = URL(string:AppDelegate.PHPURL+"?req=mscore&musicID=\(musicID)&userID=\(userID)")!
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,responce,error) in
+            if error != nil {
+                print("getScoreData-error")//エラー。例えばオフラインとか
+                callback( nil )
+                return
+            }
+            guard let data = data else { return }
+            do {
+                if let scoreData = (try JSONSerialization.jsonObject(with: data, options: [])) as? Dictionary<String,String> {
+                    callback(scoreData)
+                }
+            }catch _ {
+                callback( [:] )
+            }
         }
         task.resume()
     }
@@ -676,16 +720,22 @@ class ServerDataHandler {
                 callback(nil)
                 return
             }
-            let commentData = (try! JSONSerialization.jsonObject(with: data!, options: [])) as! Array<Dictionary<String,String>>
-            callback(commentData)
+            guard let data = data else { return }
+            do {
+                if let commentData = (try JSONSerialization.jsonObject(with: data, options: [])) as? Array<Dictionary<String,String>> {
+                    callback(commentData)
+                }
+            }catch _ {
+                //
+            }
         }
         task.resume()
     }
     
-    func checkLevelPassword(id:Int, pass:String, callback: @escaping (Bool) -> Void ) -> Void {
+    func checkLevelPassword(id:Int, pass:String, userID:String, callback: @escaping (Bool) -> Void ) -> Void {
         //
         let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL+"?req=level-passCheck&id=\(id)&userPASS=\(pass)")!
+        let url = URL(string:AppDelegate.PHPURL+"?req=level-passCheckz&id=\(id)&userPASS=\(pass)&userID=\(userID)")!
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let task = session.dataTask(with: req){(data,responce,error) in
             if error != nil {
@@ -693,12 +743,14 @@ class ServerDataHandler {
                 callback(false)
                 return
             }
-            callback(String(data: data!, encoding:.utf8)! == "true")
+            guard let data = data else { return }
+            print(String(data: data, encoding:.utf8)!)
+            callback(String(data: data, encoding:.utf8)! == "true")
         }
         task.resume()
     }
     
-    func postUserName(name:String, userID:String, callback: @escaping () -> Void ) -> Void {
+    func postUserName(name:String, userID:String, callback: @escaping (Bool) -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
@@ -706,12 +758,20 @@ class ServerDataHandler {
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
         let task = session.dataTask(with: req){(data,responce,error) in
-            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            if error != nil {
+                print("postUserName-error")//エラー。例えばオフラインとか
+                callback(false)
+                return
+            }
+            guard let data = data else { return }
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
             print(str)
             if str.hasPrefix("success userName-add UserNameSqlID="){ //Ver.1.4〜
                 UserData.sharedInstance.UserNameID = Int(str.pregMatche_firstString(pattern: "UserNameSqlID=(\\d+)")) ?? 0
+                callback(true)
+                return
             }
-            callback()
+            callback(false)
         }
         task.resume()
     }
@@ -732,7 +792,8 @@ class ServerDataHandler {
                 callback()
                 return
             }
-            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
             print(str)
             if str.hasPrefix("success UserNameSqlID="){ //Ver.1.4〜
                 UserData.sharedInstance.UserNameID = Int(str.pregMatche_firstString(pattern: "UserNameSqlID=(\\d+)")) ?? 0
@@ -756,9 +817,14 @@ class ServerDataHandler {
                 callback(false)
                 return
             }
-            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else {
+                callback(false)
+                return
+            }
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
             print(str)
-            if str == "success score-add"{
+            if str.contains("success score-add"){ //php warningが追記されていたとき怖いので「==」じゃなくて「含む」にしとく
+                print("スコア送信成功")
                 callback(true)
             }else {
                 print("スコア送信失敗")
@@ -780,7 +846,8 @@ class ServerDataHandler {
                 callback(false)
                 return
             }
-            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
             print(str)
             if str == "success playcount-add" {
                 callback(true)
@@ -804,7 +871,8 @@ class ServerDataHandler {
                 callback(false)
                 return
             }
-            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
             print(str)
             if str == "success favorite-add" {
                 callback(true)
@@ -828,7 +896,8 @@ class ServerDataHandler {
                 callback(false)
                 return
             }
-            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
             print(str)
             if str == "success PFcount-add" {
                 callback(true)
@@ -867,7 +936,8 @@ class ServerDataHandler {
                 callback("",error)
                 return
             }
-            let retStr:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let retStr:String = String(data: data, encoding: String.Encoding.utf8)!
             //print(retStr)
             callback(retStr, nil)
         }
@@ -887,7 +957,8 @@ class ServerDataHandler {
                 callback(false)
                 return
             }
-            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
             print(str)
             if str == "success musictag-update"{
                 callback(true)
@@ -898,12 +969,12 @@ class ServerDataHandler {
         }
         task.resume()
     }
-    func postLevelInsert(nicoURL:String, level:Int, creator:String, description:String, speed:Int, notes:String, userPASS:String, callback: @escaping (String,Error?) -> Void ) -> Void {
+    func postLevelInsert(nicoURL:String, level:Int, creator:String, description:String, speed:Int, notes:String, userPASS:String, userID:String, callback: @escaping (String,Error?) -> Void ) -> Void {
         // ゲームデータの投稿
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let body = "req=level-insert&movieURL=\(nicoURL)&level=\(level)&creator=\(creator.urlEncoded)&description=\(description.urlEncoded)&speed=\(speed)&notes=\(notes.urlEncoded)&userPASS=\(userPASS)"
+        let body = "req=levelz-insert&movieURL=\(nicoURL)&level=\(level)&creator=\(creator.urlEncoded)&description=\(description.urlEncoded)&speed=\(speed)&notes=\(notes.urlEncoded)&userPASS=\(userPASS)&userID=\(userID)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
         let task = session.dataTask(with: req){(data,responce,error) in
@@ -911,7 +982,8 @@ class ServerDataHandler {
                 callback("",error)
                 return
             }
-            let retStr:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let retStr:String = String(data: data, encoding: String.Encoding.utf8)!
             //print(retStr)
             callback(retStr, nil)
         }
@@ -930,7 +1002,8 @@ class ServerDataHandler {
                 callback("",error)
                 return
             }
-            let retStr:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let retStr:String = String(data: data, encoding: String.Encoding.utf8)!
             //print(retStr)
             callback(retStr, nil)
         }
@@ -949,7 +1022,8 @@ class ServerDataHandler {
                 callback("",error)
                 return
             }
-            let retStr:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let retStr:String = String(data: data, encoding: String.Encoding.utf8)!
             //print(retStr)
             callback(retStr, nil)
         }
@@ -969,7 +1043,13 @@ class ServerDataHandler {
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
         let task = session.dataTask(with: req){(data,responce,error) in
-            let retStr:String = String(data: data!, encoding: String.Encoding.utf8)!
+            if error != nil {
+                print("postReport-error")//エラー。例えばオフラインとか
+                callback(false)
+                return
+            }
+            guard let data = data else { return }
+            let retStr:String = String(data: data, encoding: String.Encoding.utf8)!
             print(retStr)
             if retStr == "success report" {
                 callback(true)
@@ -989,7 +1069,8 @@ class ServerDataHandler {
                 print("getReport-error")//エラー。例えばオフラインとか
                 return
             }
-            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
             print(str)
             if str.hasPrefix("success num="){
                 let num = Int(str.pregMatche_firstString(pattern: "num=(\\d+)&")) ?? -1
@@ -1009,7 +1090,8 @@ class ServerDataHandler {
                 print("postMusicDelete-error")//エラー。例えばオフラインとか
                 return
             }
-            let str:String = String(data: data!, encoding: String.Encoding.utf8)!
+            guard let data = data else { return }
+            let str:String = String(data: data, encoding: String.Encoding.utf8)!
             print(str)
             if str.pregMatche(pattern: "message=Success"){
                 callback()

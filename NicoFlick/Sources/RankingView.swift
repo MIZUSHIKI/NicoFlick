@@ -8,6 +8,22 @@
 
 import Foundation
 
+class RankingCommentTabController: UITabBarController {
+    
+    //効果音プレイヤー(シングルトン)
+    var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
+    
+    var maeTag = 0
+    
+    override func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+        print("tabbar select")
+        if maeTag != item.tag {
+            seSystemAudio.openSubSePlay()
+            maeTag = item.tag
+        }
+    }
+}
+
 class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
     @IBOutlet var musicTitle: UILabel!
@@ -15,7 +31,10 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
     @IBOutlet var rankTable: UITableView!
     @IBOutlet weak var usumaku: UIView!
     @IBOutlet weak var usernameDownloadProgressLabel: UILabel!
+    @IBOutlet weak var tabBar: UITabBar!
     
+    //効果音プレイヤー(シングルトン)
+    var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
     //遷移時に受け取り
     var selectMusic:musicData!
     var selectLevel:levelData!
@@ -24,6 +43,7 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
     var userNameDatas:userNameDataLists = userNameDataLists.sharedInstance
     var rankingData:[scoreData] = []
     var myIndex:Int?
+    var musicScoreMessage = ""
     
     //Indicator
     private var activityIndicator:UIActivityIndicatorView!
@@ -34,9 +54,15 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
         
         musicTitle.text = selectMusic.title
         musicRank.text = selectLevel.getLevelAsString()
+        if musicRank.text != "FULL" {
+            musicRank.font = UIFont.systemFont(ofSize: 17)
+        }
         if userNameDatas.usernameJsonNumCount >= 0 {
             usernameDownloadProgressLabel.text = "ユーザーネームデータ分割\(userNameDatas.usernameJsonNumCount)まで取得済み"
             usernameDownloadProgressLabel.isHidden = false
+        }
+        if UIScreen.main.bounds.size.height <= 667 {
+            tabBar.isHidden = true
         }
         
         //Indicatorを作成
@@ -44,6 +70,22 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
         self.view.addSubview(activityIndicator)
         //Indicator くるくる開始
         activityIndicator.startAnimating()
+        
+        //
+        let view = SlashShadeView.init(frame: self.view.frame, color: UIColor.init(red: 204/255, green: 255/255, blue: 102/255, alpha: 1.0), lineWidth: 1, space: 2)
+        self.view.addSubview(view)
+        self.view.sendSubview(toBack: view)
+        
+        //サムネイル
+        let backThumbView = AsyncImageView(frame: CGRect(x: 0, y: 0,
+                                                    width: self.view.frame.size.width,
+                                                    height: self.view.frame.size.height))
+        backThumbView.loadImage(urlString: selectMusic.thumbnailURL, contentMode: .scaleAspectFill)
+        backThumbView.alpha = 0.5
+        backThumbView.tag = 36
+        self.view.addSubview(backThumbView)
+        self.view.sendSubview(toBack: backThumbView)
+        
         
         //まずユーザーデータの取得
         ServerDataHandler().DownloadUserNameData{ (error) in
@@ -135,22 +177,73 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
     
     
     @IBAction func Go_Top(_ sender: UIButton) {
+        if rankingData.count <= 0 { return }
         rankTable.scrollToRow(at: IndexPath(row: 0, section: 0), at: .top, animated: true)
     }
     @IBAction func Go_My(_ sender: UIButton) {
+        if rankingData.count <= 0 { return }
         if let myIndex = myIndex {
             rankTable.scrollToRow(at: IndexPath(row: myIndex, section: 0), at: .middle, animated: true)
         }
     }
     @IBAction func Go_Bottom(_ sender: Any) {
+        if rankingData.count <= 0 { return }
         rankTable.scrollToRow(at: IndexPath(row: rankingData.count - 1, section: 0), at: .bottom, animated: true)
     }
+    @IBAction func GetDBScoreData(_ sender: UIButton) {
+        print("getDBscore")
+        seSystemAudio.openSePlay()
+        if musicScoreMessage != "" {
+            let alert = UIAlertController(title:"この楽曲の最大スコア", message: musicScoreMessage, preferredStyle: UIAlertControllerStyle.alert)
+            alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: nil))
+            self.present(alert, animated: true, completion: nil)
+            return
+        }
+        //Indicator くるくる開始
+        activityIndicator.startAnimating()
+        
+        ServerDataHandler().getMusicScoreData(musicID: selectMusic.sqlID, userID: UserData.sharedInstance.UserID) { data in
+            print("ret getMscore")
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    self.activityIndicator.stopAnimating()
+                }
+                return
+            }
+            print(data)
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy/M/d"
+            if let unixt = data["updateTime"] {
+                self.musicScoreMessage += "\n全期間：\(data["score"]!) - \(formatter.string(from: Date(timeIntervalSince1970: Double(unixt)!)))"
+            }
+            if let unixt = data["updateTimeYear"] {
+                self.musicScoreMessage += "\n年間：\(data["scoreYear"]!) - \(formatter.string(from: Date(timeIntervalSince1970: Double(unixt)!)))"
+            }
+            if let unixt = data["updateTimeMonth"] {
+                self.musicScoreMessage += "\n月間：\(data["scoreMonth"]!) - \(formatter.string(from: Date(timeIntervalSince1970: Double(unixt)!)))"
+            }
+            if let unixt = data["updateTimeWeek"] {
+                self.musicScoreMessage += "\n週間：\(data["scoreWeek"]!) - \(formatter.string(from: Date(timeIntervalSince1970: Double(unixt)!)))"
+            }
+            print(self.musicScoreMessage)
+            if self.musicScoreMessage == "" { self.musicScoreMessage = "\nあなたの記録はありません" }
+            DispatchQueue.main.async {
+                self.activityIndicator.stopAnimating()
+                let alert = UIAlertController(title:"この楽曲の最大スコア", message: self.musicScoreMessage, preferredStyle: UIAlertControllerStyle.alert)
+                alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: nil))
+                self.present(alert, animated: true, completion: nil)
+            }
+        }
+    }
+    
     
     //画面遷移処理 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     //遷移の許可
     override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {
         print("should")
         print(identifier)
+        
+        seSystemAudio.canselSePlay()
 
         usumaku.isHidden = false
         //Indicator くるくる開始

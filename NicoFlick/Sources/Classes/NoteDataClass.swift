@@ -421,7 +421,7 @@ class Score {
     static let RankE = 6
     static let RankFalse = 7
 
-    static let RankStr = ["Perfect","S","A","B","C","D","E","False"]
+    static let RankStr = ["PERFECT","S","A","B","C","D","E","False"]
     
     var stageRank = 100
     
@@ -492,6 +492,6 @@ class Score {
         if comboMax < comboCounter {
             comboMax = comboCounter
         }
-        print("borderScore=\(borderScore)")
+        //print("borderScore=\(borderScore)")
     }
 }

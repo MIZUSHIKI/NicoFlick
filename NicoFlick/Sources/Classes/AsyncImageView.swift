@@ -15,7 +15,7 @@ class AsyncImageView: UIImageView {
     var resizeY = 175.0
     
     //画像を非同期で読み込む
-    func loadImage(urlString: String){
+    func loadImage(urlString: String, contentMode:UIImageView.ContentMode = .scaleAspectFit){
         var urlString_ = urlString
         var ans:[String]=[]
         var trimRect = CGRect(x: 0, y: 13, width: 130, height: 74)
@@ -46,9 +46,11 @@ class AsyncImageView: UIImageView {
                 if((err) == nil){ //Success
                     let _image = UIImage(data:data!)
                     if _image != nil {
-                       //まずリサイズ。横幅のみ見るだけでOK
-                        let resizeImage = _image?.ResizeUIImage(width: self.frame.size.width, height: self.frame.size.width)
-                        //次にトリミング
+                        //最初にサムネ比率にカット
+                        let __image = _image!.TrimUIImage(width: _image!.size.width, height: _image!.size.width * self.resizeY / self.resizeX )
+                        //次にリサイズ
+                        let resizeImage = __image?.ResizeUIImage(width: self.frame.size.width, height: self.frame.size.height, contentMode: contentMode)
+                        //最後にまたトリミング(Viewサイズにカット)
                         self.image = resizeImage?.TrimUIImage(width: self.frame.size.width, height: self.frame.size.height)
                     }
                     
@@ -63,11 +65,13 @@ class AsyncImageView: UIImageView {
 extension UIImage{
     
     // 画質を担保したままResizeするクラスメソッド.
-    func ResizeUIImage(width : CGFloat, height : CGFloat)-> UIImage!{
+    func ResizeUIImage(width : CGFloat, height : CGFloat, contentMode:UIImageView.ContentMode = .scaleAspectFit)-> UIImage!{
         
         var size = CGSize(width: width, height: height)
         
-        if (width / self.size.width) > (height / self.size.height) {
+        var hikaku = (width / self.size.width) > (height / self.size.height)
+        if contentMode == .scaleAspectFill { hikaku = !hikaku }
+        if hikaku {
             size = CGSize(width: self.size.width * height/self.size.height, height: height)
         }else {
             size = CGSize(width: width, height: self.size.height * width/self.size.width)

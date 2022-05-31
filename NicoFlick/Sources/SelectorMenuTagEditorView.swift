@@ -122,7 +122,7 @@ class TagEditor: UIViewController {
             if resText.pregMatche(pattern: "<nicovideo_thumb_response status=\"ok\">") {
                 DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
                     //self.movieURLTextField.text = resText.pregMatche_firstString(pattern: "<watch_url>(.*?)</watch_url>")
-                    self.nicoTagTextView.text = resText.pregMatche_firstString(pattern: "<tags.*?>(.*?)</tags>").pregReplace(pattern: "</?tag.*?>", with: "").pregReplace(pattern: "\n", with: " ").pregReplace(pattern: " +", with: " ").trimmingCharacters(in: .whitespaces)
+                    self.nicoTagTextView.text = resText.pregMatche_firstString(pattern: "<tags.*?>(.*?)</tags>").pregReplace(pattern: "</?tag.*?>", with: "").pregReplace(pattern: "\n", with: " ").pregReplace(pattern: " +", with: " ").trimmingCharacters(in: .whitespaces).htmlDecoded
                     self.nicoTagTextView.isHidden = false
                 }
             }
