@@ -6,7 +6,7 @@ target 'NicoFlick' do
   use_frameworks!
 
   # Pods for NicoFlick
-  pod 'CryptoSwift'
+  pod 'CryptoSwift', '~> 1.4.1'
   pod 'TwitterKit'
   pod "TouchVisualizer", '~>3.0.0'
 

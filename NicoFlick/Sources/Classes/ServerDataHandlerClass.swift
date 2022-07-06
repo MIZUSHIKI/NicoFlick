@@ -147,7 +147,7 @@ class ServerDataHandler {
             print("downloaded")
             guard let data = data else { return }
             //ロードしたmusicデータを処理
-            var htRet = String(data: data, encoding:.utf8)!
+            guard var htRet = String(data: data, encoding:.utf8) else { return }
             if htRet.hasPrefix("<!--NicoFlickMessage=") {
                 AppDelegate.ServerErrorMessage = htRet.pregMatche_firstString(pattern: "^<!--NicoFlickMessage=(.*?)-->")
                 htRet = htRet.pregReplace(pattern: "^<!--NicoFlickMessage=.*?-->", with:"" )

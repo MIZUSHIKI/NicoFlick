@@ -97,7 +97,6 @@
 		10ED448B1EEB8AD60072FB8B /* MusicDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10ED448A1EEB8AD60072FB8B /* MusicDataClass.swift */; };
 		10ED45141EEBECAF0072FB8B /* iCarousel.m in Sources */ = {isa = PBXBuildFile; fileRef = 10ED45121EEBECAF0072FB8B /* iCarousel.m */; };
 		1572D92DB5EBA5C788A5B2E5 /* Pods_NicoFlickTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84D287F0BE60DD947F2B8391 /* Pods_NicoFlickTests.framework */; };
-		2D2D6033F45C30A274F3D929 /* Pods_NicoFlick.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0127DDC02C08ACEEE322A44F /* Pods_NicoFlick.framework */; };
 		E88D1C83E498B5BE42BAC6EC /* Pods_NicoFlickUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 227C54DEBC0DAFEF735E3C22 /* Pods_NicoFlickUITests.framework */; };
 /* End PBXBuildFile section */
 
@@ -158,7 +157,7 @@
 		106CB24F21C3EB9D00E3BD73 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EditorView.swift; path = Sources/EditorView.swift; sourceTree = "<group>"; };
 		106CB25121C5272F00E3BD73 /* VerticalSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VerticalSlider.swift; path = Sources/Classes/VerticalSlider.swift; sourceTree = "<group>"; };
 		106CB25321C5B97A00E3BD73 /* AVPlayerExt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AVPlayerExt.swift; path = Sources/Classes/AVPlayerExt.swift; sourceTree = "<group>"; };
-		1070F52220C3DA41008A5735 /* CryptoSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CryptoSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		1070F52220C3DA41008A5735 /* CryptoSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; name = CryptoSwift.framework; path = CryptoSwift/CryptoSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1070F52420C412D0008A5735 /* CryptClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CryptClass.swift; path = Sources/Classes/CryptClass.swift; sourceTree = "<group>"; };
 		1070F52620C94E77008A5735 /* CachedMoviesClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CachedMoviesClass.swift; path = Sources/Classes/CachedMoviesClass.swift; sourceTree = "<group>"; };
 		10710D842102C09B00468C6B /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
@@ -235,7 +234,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2D2D6033F45C30A274F3D929 /* Pods_NicoFlick.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -464,8 +462,8 @@
 				10B49C821EB4B4EF000C79D3 /* Sources */,
 				10B49C831EB4B4EF000C79D3 /* Frameworks */,
 				10B49C841EB4B4EF000C79D3 /* Resources */,
-				C146C5EB587DF51004A6F696 /* [CP] Embed Pods Frameworks */,
-				5D18C86D3CC6DD07F27C48D5 /* [CP] Copy Pods Resources */,
+				E229E8DE573E3512268BE62C /* [CP] Embed Pods Frameworks */,
+				C064B2A8A1B2868F1E512277 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -659,7 +657,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		5D18C86D3CC6DD07F27C48D5 /* [CP] Copy Pods Resources */ = {
+		C064B2A8A1B2868F1E512277 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -677,7 +675,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NicoFlick/Pods-NicoFlick-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		C146C5EB587DF51004A6F696 /* [CP] Embed Pods Frameworks */ = {
+		E229E8DE573E3512268BE62C /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -953,13 +951,14 @@
 			baseConfigurationReference = C201050390E3FF9EFDB81101 /* Pods-NicoFlick.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.10.1.0;
+				CURRENT_PROJECT_VERSION = 1.10.2.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				EXCLUDED_ARCHS = "";
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.10.1;
+				MARKETING_VERSION = 1.10.2;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -975,13 +974,13 @@
 			baseConfigurationReference = DD9B574FCC333592F9762ED9 /* Pods-NicoFlick.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1.10.1.0;
+				CURRENT_PROJECT_VERSION = 1.10.2.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				EXCLUDED_ARCHS = "";
 				INFOPLIST_FILE = NicoFlick/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.10.1;
+				MARKETING_VERSION = 1.10.2;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "NicoFlick/Sources/Classes/NicoFlick-Bridging-Header.h";

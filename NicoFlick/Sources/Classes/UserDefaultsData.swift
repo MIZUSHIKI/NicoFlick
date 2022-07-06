@@ -117,6 +117,16 @@ class UserData {
             userDefaults.synchronize()
         }
     }
+    var SavePlayMovie:Bool {
+        get {
+            userDefaults.register(defaults: ["SavePlayMovie":false])
+            return userDefaults.bool(forKey: "SavePlayMovie")
+        }
+        set(b) {
+            userDefaults.set(b, forKey: "SavePlayMovie")
+            userDefaults.synchronize()
+        }
+    }
     
     //Score
     var Score:UserScore {
@@ -346,6 +356,17 @@ class UserData {
         }
         set(x) {
             userDefaults.set(Float(x), forKey: "SoundVolumeSystemSE")
+            userDefaults.synchronize()
+        }
+    }
+    var DrawingUpdateInterval:Float {
+        get {
+            userDefaults.register(defaults: ["DrawingUpdateInterval":Float(0.004)])
+            let x = userDefaults.float(forKey: "DrawingUpdateInterval")
+            return x
+        }
+        set(x) {
+            userDefaults.set(Float(x), forKey: "DrawingUpdateInterval")
             userDefaults.synchronize()
         }
     }

@@ -25,8 +25,14 @@ class Settings: UIViewController {
     @IBOutlet weak var systemSeVolumeLabel: UILabel!
     @IBOutlet weak var gameSeVolumeSlider: UISlider!
     @IBOutlet weak var systemSeVolumeSlider: UISlider!
+    @IBOutlet weak var savePlayMovieSwitch: UISwitch!
+    @IBOutlet weak var drawingUpdateIntervalLabel: UILabel!
+    @IBOutlet weak var drawingUpdateIntervalSlider: UISlider!
+    
     
     @IBOutlet weak var playMovie: UIButton!
+    @IBOutlet weak var scrollView: UIScrollView!
+    @IBOutlet weak var contentsViewInScrollView: UIView!
     
     //効果音プレイヤー(シングルトン)
     var seAudio:SEAudio = SEAudio.sharedInstance
@@ -54,6 +60,9 @@ class Settings: UIViewController {
         movieVolumeSlider.value = userData.SoundVolumeMovie
         gameSeVolumeSlider.value = userData.SoundVolumeGameSE
         systemSeVolumeSlider.value = userData.SoundVolumeSystemSE
+        savePlayMovieSwitch.isOn = userData.SavePlayMovie
+        drawingUpdateIntervalLabel.text = String(format: "%0.3f", userData.DrawingUpdateInterval)
+        drawingUpdateIntervalSlider.value = userData.DrawingUpdateInterval
         
         if #available(iOS 15.0, *){
             playMovie.configuration = nil
@@ -67,9 +76,27 @@ class Settings: UIViewController {
             playMovie.setTitle("  動画再生：キャッシュなし", for: .normal)
         }
         
+        //let view = SlashShadeView.init(frame: contentsViewInScrollView.frame, color: .white, lineWidth: 1, space: 4)
+        //view.frame.origin.x = 0
+        //view.frame.origin.y = 0
+        //contentsViewInScrollView.addSubview(view)
+        //contentsViewInScrollView.sendSubview(toBack: view)
+        //contentsViewInScrollView.layer.borderColor = UIColor.init(red: 0.8, green: 0.8, blue: 0.8, alpha: 1.0).cgColor
+        //contentsViewInScrollView.layer.borderWidth = 1
+        
         //Indicatorを作成
         activityIndicator = Indicator(center: self.view.center).view
         self.view.addSubview(activityIndicator)
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        scrollView.flashScrollIndicators()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            self.scrollView.flashScrollIndicators()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+            self.scrollView.flashScrollIndicators()
+        }
     }
     
     override func didReceiveMemoryWarning() {
@@ -89,6 +116,9 @@ class Settings: UIViewController {
                 object?.resignFirstResponder()
             }
         }
+    }
+    @IBAction func ContentsViewTap(_ sender: UITapGestureRecognizer) {
+        self.CloseKeyboard()
     }
     
     
@@ -167,6 +197,25 @@ class Settings: UIViewController {
         seSystemAudio.volume = userData.SoundVolumeSystemSE
         seSystemAudio.startSePlay()
     }
+    @IBAction func SavePlayMovieSwitch(_ sender: UISwitch) {
+        userData.SavePlayMovie = sender.isOn
+        if sender.isOn {
+            let alert = UIAlertController(title:"プレイムービー保存", message: """
+- 注意点 -
+・純正キーボードしか動画に映りません。
+・ゲームの処理が若干重くなります。
+""",
+                                          preferredStyle: UIAlertControllerStyle.alert)
+            alert.addAction( UIAlertAction(title: "OK", style: .default, handler: nil) )
+            self.present(alert, animated: true, completion: nil)
+        }
+    }
+    @IBAction func DrawingUpdateInterval_ValueChanded(_ sender: UISlider) {
+        userData.DrawingUpdateInterval = Float(Int(sender.value * 1000))/1000
+        print(Float(Int(sender.value * 1000))/1000)
+        drawingUpdateIntervalLabel.text = String(format: "%0.3f", sender.value)
+    }
+    
     
     @IBAction func buttonDeleteLoadData(_ sender: UIButton) {
 

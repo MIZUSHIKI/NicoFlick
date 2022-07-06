@@ -8,8 +8,9 @@
 
 import UIKit
 import TwitterKit
+import ReplayKit
 
-class ResultView: UIViewController {
+class ResultView: UIViewController, RPPreviewViewControllerDelegate {
     
     @IBOutlet var thumbnailView: UIView!
     @IBOutlet var musicTitle: UILabel!
@@ -34,12 +35,16 @@ class ResultView: UIViewController {
     @IBOutlet weak var rankingCommentButton: UIButton!
     @IBOutlet weak var rankingCommentLabel: UILabel!
     @IBOutlet weak var tweetButton: UIButton!
+    @IBOutlet weak var savePlayMovieButton: UIButton!
+    
     
     @IBOutlet weak var usumaku: UIView!
     
     var updatedScore = false
     //効果音プレイヤー(シングルトン)
     var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
+    
+    var playPreviewViewController:RPPreviewViewController?
     
     //遷移時に受け取り
     var gameViewController:GameView!
@@ -90,6 +95,14 @@ class ResultView: UIViewController {
         self.totalScore.text = String(noteData.score.totalScore)
         
         self.rank.text = noteData.getJudgeRankStr()
+        
+        if UserData.sharedInstance.SavePlayMovie {
+            savePlayMovieButton.alpha = 1.0
+            if gameViewController.failedSavePlayMovie {
+                self.savePlayMovieButton.alpha = 0.3
+                self.savePlayMovieButton.isEnabled = false
+            }
+        }
         
         //
         let view = SlashShadeView.init(frame: self.view.frame, color: UIColor.init(red: 199/255, green: 227/255, blue: 255/255, alpha: 1.0), lineWidth: 1, space: 2)
@@ -156,6 +169,12 @@ class ResultView: UIViewController {
                                                     self.rankingCommentLabel.isHidden = false
                                                     self.tweetButton.isHidden = false
                                                     
+                                                    self.savePlayMovieButton.isHidden = false
+                                                    
+                                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                                                        self.endRecording() //録画してたら終了させる
+                                                    }
+                                                    
                                                     if let selector = self.gameViewController.selectorController {
                                                         selector.ThumbMoviePlay(forceType: .play)
                                                     }
@@ -172,7 +191,7 @@ class ResultView: UIViewController {
         }
         
         //【編集中】データの場合、スコア等は保存・送信しないで終わる
-        if selectLevel.isEditing {
+        if selectLevel.isEditing /*|| true*/ {
             self.HiScoreUpdate.text = "編集中データのため保存・送信は行われません。"
             self.HiScoreUpdate.isHidden = false
             return
@@ -263,11 +282,19 @@ class ResultView: UIViewController {
     
     @IBAction func TweetButton(_ sender: UIButton) {
         print("tw")
+        endRecording() //録画してたらtweetボタンでも終了させる
         //ツイート
         let composer = TWTRComposer()
         composer.setText("\n#NicoFlick") //初期テキスト
         //composer.setURL(URL(string: "リンクのURL")) //リンク
+        //
+        tweetButton.isHidden = true
+        savePlayMovieButton.isHidden = true
+        
         composer.setImage(self.view.GetImage()) //画像
+        
+        tweetButton.isHidden = false
+        savePlayMovieButton.isHidden = false
         
         composer.show(from: self) { (result) in
             if result == TWTRComposerResult.done {
@@ -286,6 +313,15 @@ class ResultView: UIViewController {
         
         return
     }
+    @IBAction func SavePlayMovieButton(_ sender: UIButton) {
+        if UserData.sharedInstance.SavePlayMovie {
+            endRecordingAndPresent()
+        }else {
+            let alert = UIAlertController(title:"プレイムービーを保存するには", message: "SETTINGSから「プレイムービー保存」のスイッチを入れておく必要があります。", preferredStyle: UIAlertControllerStyle.alert)
+            alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.cancel, handler: nil))
+            self.present(alert, animated: true, completion: nil)
+        }
+    }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){
@@ -296,6 +332,7 @@ class ResultView: UIViewController {
         //print(segue.identifier)
         if segue.identifier == "toRankingTabBar" {
             print("toRanking")
+            endRecording()
             //現在選択中のデータをRankingTabBarに渡す
             let destinationTabBarController = segue.destination as! UITabBarController
             let rankingViewController:RankingView = destinationTabBarController.viewControllers?.first as! RankingView
@@ -327,6 +364,9 @@ class ResultView: UIViewController {
             totalScore.chainBreak()
             seSystemAudio.drumRollSeStop()
             
+            endRecording()
+            playPreviewViewController = nil
+            
             seSystemAudio.cansel2SePlay()
         }
     }
@@ -337,5 +377,60 @@ class ResultView: UIViewController {
         return true
     }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
-
+    
+    func endRecording() {
+        // 録画中じゃないと終了しない
+        guard RPScreenRecorder.shared().isRecording else { return }
+        // 録画終了
+        RPScreenRecorder.shared().stopRecording(handler: { (previewViewController, error) in
+            guard let previewViewController = previewViewController else { return }
+            previewViewController.previewControllerDelegate = self //delegateを実装しないとdismissされない
+            previewViewController.modalPresentationStyle = .fullScreen
+            self.playPreviewViewController = previewViewController
+            // プレビューの表示
+            //self.present(previewViewController, animated: true, completion: nil)
+        })
+    }
+    func endRecordingAndPresent() {
+        //tweetButtonで既に録画終了しているとき
+        if let playPreviewViewController = playPreviewViewController {
+            // プレビューの表示
+            self.present(playPreviewViewController, animated: true, completion: nil)
+            return
+        }
+        // 録画中じゃないと終了しない
+        guard RPScreenRecorder.shared().isRecording else { return }
+        // 録画終了
+        RPScreenRecorder.shared().stopRecording(handler: { (previewViewController, error) in
+            guard let previewViewController = previewViewController else { return }
+            previewViewController.previewControllerDelegate = self //delegateを実装しないとdismissされない
+            previewViewController.modalPresentationStyle = .fullScreen
+            self.playPreviewViewController = previewViewController
+            // プレビューの表示
+            self.present(previewViewController, animated: true, completion: nil)
+        })
+    }
+    func canselRecording() {
+        guard RPScreenRecorder.shared().isRecording else { return }
+        RPScreenRecorder.shared().stopRecording(handler: nil)
+    }
+    func previewControllerDidFinish(_ previewController: RPPreviewViewController) {
+        DispatchQueue.main.async {
+            previewController.dismiss(animated: true, completion: nil)
+            self.playPreviewViewController = nil
+            let alert = UIAlertController(title:"「保存」した場合、動画はカメラロールに保存されています", message: nil, preferredStyle: UIAlertControllerStyle.alert)
+            alert.addAction( UIAlertAction(title: "OK", style: .default, handler: nil) )
+            self.present(alert, animated: true, completion: nil)
+            self.savePlayMovieButton.alpha = 0.3
+            self.savePlayMovieButton.isEnabled = false
+            //thumbMoviePlay
+            if let selector = self.gameViewController.selectorController {
+                if let isPlay = selector.moviePlayerViewController?.player?.isPlaying {
+                    if isPlay == false {
+                        selector.ThumbMoviePlay(forceType: .play)
+                    }
+                }
+            }
+        }
+    }
 }

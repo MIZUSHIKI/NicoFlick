@@ -22,7 +22,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     //static let NICOFLICK_PATH = "http://192.168.11.7/nicoflick_20201103/"
     
     static let NicoApiURL_GetThumbInfo = "http://ext.nicovideo.jp/api/getthumbinfo/"
-    static let Version = 1907
+    static let Version = 1908
     static var ServerErrorMessage = ""
     static var DidEnterBackgroundTime:Date?
 

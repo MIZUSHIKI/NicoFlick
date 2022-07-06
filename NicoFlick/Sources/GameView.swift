@@ -9,6 +9,7 @@
 import UIKit
 import AVKit
 import AVFoundation
+import ReplayKit
 
 class GameView: UIViewController, UITextFieldDelegate {
     
@@ -32,6 +33,9 @@ class GameView: UIViewController, UITextFieldDelegate {
     @IBOutlet var loadedAndCurrentTimeBarView: UIView!
     @IBOutlet var loadedTimeBarView: UIView!
     @IBOutlet var currentTimeBarView: UIView!
+    
+    @IBOutlet weak var keyboardImageView: UIImageView!
+    @IBOutlet weak var keyboardKeyView: UIView!
     
     //判定エフェクト用のView
     var greatViews:[UIView] = []
@@ -61,6 +65,10 @@ class GameView: UIViewController, UITextFieldDelegate {
     let safeLine:[Double] = [-0.400, 0.300]
     var judgeOffset = 0.0
     var xps:Double = 0.0 //ノートが一秒間に進む距離(あとで計算する)
+    
+    var keyboardRect:CGRect? = nil
+    let savingPlayMovie = UserData.sharedInstance.SavePlayMovie
+    var failedSavePlayMovie = false
     
     //動画
     var cachedMovies:CachedMovies = CachedMovies.sharedInstance
@@ -151,16 +159,6 @@ class GameView: UIViewController, UITextFieldDelegate {
                 //  add
                 self.view.addSubview(self.moviePlayerViewController.view)
                 self.view.sendSubview(toBack: self.moviePlayerViewController.view)
-                //  動画再生
-                self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                
-                print("t03=\(self.t03)")
-                self.moviePlayerViewController.player?.play()
-                if self.t03 <= 0.0 {
-                    self.time3secMediaTime = nil
-                }else {
-                    self.time3secMediaTime = CACurrentMediaTime()
-                }
                 
                 let screenWidth:CGFloat = self.view.frame.size.width - self.view.safeAreaInsets.left - self.view.safeAreaInsets.right
                 let movieHeight = self.judgeOffsetLabel.frame.origin.y + self.judgeOffsetLabel.frame.size.height - self.view.safeAreaInsets.top
@@ -180,6 +178,38 @@ class GameView: UIViewController, UITextFieldDelegate {
                 //ムービーロードbar
                 self.loadedAndCurrentTimeBarView.frame = CGRect(x: 0, y: self.view.safeAreaInsets.top+movieHeight, width: screenWidth, height: self.loadedAndCurrentTimeBarView.frame.size.height)
                 self.loadedAndCurrentTimeBarView.isHidden = false
+                
+                if self.savingPlayMovie {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.maeCount_keyboardBackground = 0 //録画用キーボード背景を描画
+                        self.setKeyboardImage()              //
+                        self.startRecording(){
+                            //  動画再生
+                            self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
+                            
+                            print("t03=\(self.t03)")
+                            self.moviePlayerViewController.player?.play()
+                            if self.t03 <= 0.0 {
+                                self.time3secMediaTime = nil
+                            }else {
+                                self.time3secMediaTime = CACurrentMediaTime()
+                            }
+                        }
+                    }
+                }else {
+                    //  動画再生
+                    self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
+                    
+                    print("t03=\(self.t03)")
+                    self.moviePlayerViewController.player?.play()
+                    if self.t03 <= 0.0 {
+                        self.time3secMediaTime = nil
+                    }else {
+                        self.time3secMediaTime = CACurrentMediaTime()
+                    }
+                }
+
+
             }
         }
         
@@ -254,7 +284,7 @@ class GameView: UIViewController, UITextFieldDelegate {
         }
 
         //タイマー発動 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-        timer = Timer.scheduledTimer(timeInterval: 0.001, target: self, selector: #selector(self.update), userInfo: nil, repeats: true)
+        timer = Timer.scheduledTimer(timeInterval: TimeInterval(userData.DrawingUpdateInterval), target: self, selector: #selector(self.update), userInfo: nil, repeats: true)
         timer.fire()
         firstAttack=true
         
@@ -302,6 +332,7 @@ class GameView: UIViewController, UITextFieldDelegate {
     //フリック判定
     func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
         testLabel.text = string
+        //print("string="+string)
         if string == "\n" {
             //強制終了(ランク算出に難あり)
             //開発者用
@@ -545,8 +576,10 @@ class GameView: UIViewController, UITextFieldDelegate {
                 }
             }*/
         }
-
-        
+        //プレイムービー録画中、キーボードイメージを取得してViewに描画し続ける
+        if savingPlayMovie {
+            self.setKeyboardImage()
+        }
     }
     
     //ゲームの描写 エフェクト処理 関数 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
@@ -706,6 +739,11 @@ class GameView: UIViewController, UITextFieldDelegate {
         if ( (UIApplication.shared.keyWindow?.bounds.height)! - keyboardSize.height ) < ( nodeLineFlameOriginY + nodeLine.bounds.size.height ){
             nodeLine.frame.origin.y = (UIApplication.shared.keyWindow?.bounds.height)! - keyboardSize.height - nodeLine.bounds.size.height
         }
+        //キーボードサイズを取得してキーボードイメージ描画用のViewに反映
+        keyboardRect = keyboardInfo.cgRectValue
+        print("keyboardRect=\(keyboardInfo.cgRectValue)")
+        keyboardImageView.frame = keyboardInfo.cgRectValue
+        keyboardKeyView.frame = keyboardInfo.cgRectValue
     }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
@@ -733,6 +771,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                 self.SetBorderY()
                 break
             case 1:
+                //録画しなおし
+                canselRecording()
                 //se
                 seSystemAudio.canselSePlay()
                 //リトライ
@@ -756,13 +796,28 @@ class GameView: UIViewController, UITextFieldDelegate {
                 
                 if moviePlayerViewController != nil {
                     if moviePlayerViewController.player != nil {
-                        //再生
-                        moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                        self.moviePlayerViewController.player?.play()
-                        if self.t03 <= 0.0 {
-                            self.time3secMediaTime = nil
+                        if self.savingPlayMovie {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                self.startRecording(){
+                                    //再生
+                                    self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
+                                    self.moviePlayerViewController.player?.play()
+                                    if self.t03 <= 0.0 {
+                                        self.time3secMediaTime = nil
+                                    }else {
+                                        self.time3secMediaTime = CACurrentMediaTime()
+                                    }
+                                }
+                            }
                         }else {
-                            self.time3secMediaTime = CACurrentMediaTime()
+                            //再生
+                            self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
+                            self.moviePlayerViewController.player?.play()
+                            if self.t03 <= 0.0 {
+                                self.time3secMediaTime = nil
+                            }else {
+                                self.time3secMediaTime = CACurrentMediaTime()
+                            }
                         }
                     }
                 }
@@ -772,12 +827,14 @@ class GameView: UIViewController, UITextFieldDelegate {
                 //se
                 seSystemAudio.cansel2SePlay()
                 print("戻る")
+                canselRecording()
                 
                 if moviePlayerViewController != nil {
                     if moviePlayerViewController.player != nil {
                         //ムービー状況
                         let duration = CMTimeGetSeconds((moviePlayerViewController.player?.currentItem?.duration)!)
                         let currentTime = CMTimeGetSeconds((moviePlayerViewController.player?.currentTime())!)
+                        self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) ) //時間を戻しておく
                         if currentTime > (duration / 2) {
                             //カウンタを回す
                             print("PlayCount")
@@ -827,6 +884,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                 break
                 
             case 3:
+                //録画しなおし
+                canselRecording()
                 //se
                 seSystemAudio.canselSePlay()
                 //リロード
@@ -870,16 +929,6 @@ class GameView: UIViewController, UITextFieldDelegate {
                         //  add
                         self.view.addSubview(self.moviePlayerViewController.view)
                         self.view.sendSubview(toBack: self.moviePlayerViewController.view)
-                        //  動画再生
-                        self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                        
-                        print("t03=\(self.t03)")
-                        self.moviePlayerViewController.player?.play()
-                        if self.t03 <= 0.0 {
-                            self.time3secMediaTime = nil
-                        }else {
-                            self.time3secMediaTime = CACurrentMediaTime()
-                        }
                         
                         let screenWidth:CGFloat = self.view.frame.size.width - self.view.safeAreaInsets.left - self.view.safeAreaInsets.right
                         let movieHeight = self.judgeOffsetLabel.frame.origin.y + self.judgeOffsetLabel.frame.size.height - self.view.safeAreaInsets.top
@@ -899,6 +948,34 @@ class GameView: UIViewController, UITextFieldDelegate {
                         //ムービーロードbar
                         self.loadedAndCurrentTimeBarView.frame = CGRect(x: 0, y: self.view.safeAreaInsets.top+movieHeight, width: screenWidth, height: self.loadedAndCurrentTimeBarView.frame.size.height)
                         self.loadedAndCurrentTimeBarView.isHidden = false
+                        
+                        if self.savingPlayMovie {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                self.startRecording(){
+                                    //  動画再生
+                                    self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
+                                    
+                                    print("t03=\(self.t03)")
+                                    self.moviePlayerViewController.player?.play()
+                                    if self.t03 <= 0.0 {
+                                        self.time3secMediaTime = nil
+                                    }else {
+                                        self.time3secMediaTime = CACurrentMediaTime()
+                                    }
+                                }
+                            }
+                        }else {
+                            //  動画再生
+                            self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
+                            
+                            print("t03=\(self.t03)")
+                            self.moviePlayerViewController.player?.play()
+                            if self.t03 <= 0.0 {
+                                self.time3secMediaTime = nil
+                            }else {
+                                self.time3secMediaTime = CACurrentMediaTime()
+                            }
+                        }
                     }
                 }
                 
@@ -969,6 +1046,76 @@ class GameView: UIViewController, UITextFieldDelegate {
 
     }
     
+    var maeCount_keyboardBackground = 0
+    var maeSubviewsDescriptions:[String] = []
+    
+    func setKeyboardImage() {
+        guard let keyboardRect = keyboardRect else { return }
+        for window in UIApplication.shared.windows {
+            //print("window.classForCoder.description()=\(window.classForCoder.description())")
+            if window.classForCoder.description() != "UIRemoteKeyboardWindow" { continue }
+            guard let view = window.subviews.first else { break }
+            
+            //background
+            for sv in view.subviews {
+                if sv.classForCoder.description() != "UIInputSetHostView" { continue }
+                let count = sv.recursiveSubviews.count //UIInputSetHostView下ツリーのview総数。前回と異なるときだけキーボード背景をimageViewへ
+                if maeCount_keyboardBackground != count {
+                    maeCount_keyboardBackground = count
+                    keyboardImageView.image = sv.GetImage2()
+                    print("keyboardBackground draw!!")
+                }
+                break
+            }
+            //key
+            var flg = false
+            //subviewの数かsubviewsの中身説明(Description)が前回と異なるときkey部分(のイメージ)をViewに貼り付け
+            if maeSubviewsDescriptions.count != view.subviews.count {
+                flg = true
+            }else {
+                for (index,sv) in view.subviews.enumerated() {
+                    if maeSubviewsDescriptions[index] != sv.description {
+                        flg = true
+                        break
+                    }
+                }
+            }
+            if flg {
+                maeSubviewsDescriptions = []
+                for sv in view.subviews {
+                    maeSubviewsDescriptions.append(sv.description)
+                }
+                for v in keyboardKeyView.subviews {
+                    v.removeFromSuperview()
+                }
+                for sv in view.subviews {
+                    if sv.classForCoder.description() != "UIKBBlurredKeyView" { continue }
+                    let keyView = UIImageView(image: sv.GetImage2())
+                    keyView.frame.origin = CGPoint(x: sv.frame.origin.x - keyboardRect.origin.x, y: sv.frame.origin.y - keyboardRect.origin.y)
+                    keyboardKeyView.addSubview(keyView)
+                }
+            }
+            break
+        }
+
+    }
+    
+    func startRecording(callback :@escaping ()->Void) {
+        // 既に録画中だと何もしない
+        guard !RPScreenRecorder.shared().isRecording else { return }
+        // 録画開始
+        RPScreenRecorder.shared().startRecording { error in
+            if error != nil {
+                print("recording failed")
+                self.failedSavePlayMovie = true
+            }
+            callback()
+        }
+    }
+    func canselRecording() {
+        guard RPScreenRecorder.shared().isRecording else { return }
+        RPScreenRecorder.shared().stopRecording(handler: nil)
+    }
 }
 
 // Convert a collection of NSValues into an array of CMTimeRanges.

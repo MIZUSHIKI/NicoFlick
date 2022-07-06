@@ -4,11 +4,15 @@ extension UIView
 {
     func copyView<T: UIView>() -> T {
         let data = NSKeyedUnarchiver.unarchiveObject(with: NSKeyedArchiver.archivedData(withRootObject: self)) as! T
-        for view in self.subviews{
-            print(view.classForCoder)
-            print(String(describing: view))
-        }
+        //for view in self.subviews{
+        //    print(view.classForCoder)
+        //    print(String(describing: view))
+        //}
         return data
+    }
+    
+    var recursiveSubviews: [UIView] {
+        return subviews + subviews.flatMap { $0.recursiveSubviews }
     }
     
     func GetImage() -> UIImage{
@@ -36,6 +40,12 @@ extension UIView
         self.isHidden = isHide
         
         return capturedImage
+    }
+    func GetImage2() -> UIImage{
+        let imageRederer = UIGraphicsImageRenderer.init(size: bounds.size)
+        return imageRederer.image { context in
+            layer.render(in: context.cgContext)
+        }
     }
     
     func GetImageView() -> UIImageView {
@@ -179,6 +189,36 @@ class UIDecorationLabel: UILabel {
         self.textColor = textColor
         super.drawText(in: rect)
     }
+}
+@IBDesignable
+class UIGradientView: UIView {
+    @IBInspectable var color1: UIColor = UIColor.clear
+    @IBInspectable var color2: UIColor = UIColor.clear
+    @IBInspectable var startPointX: CGFloat = 0
+    @IBInspectable var startPointY: CGFloat = 0
+    @IBInspectable var endPointX: CGFloat = 0
+    @IBInspectable var endPointY: CGFloat = 0
+
+    /*
+    required init?(coder aDecorder: NSCoder) {
+        super.init(coder: aDecorder)
+        setup?()
+    }*/
+    override func awakeFromNib() {
+        super.awakeFromNib()
+ 
+        guard let gradientLayer = self.layer as? CAGradientLayer else {
+            return
+        }
+        gradientLayer.colors = [color1.cgColor, color2.cgColor]
+        gradientLayer.startPoint = CGPoint(x: startPointX, y: startPointY)
+        gradientLayer.endPoint = CGPoint(x: endPointX, y: endPointY)
+    }
+ 
+    override public class var layerClass: Swift.AnyClass {
+        return CAGradientLayer.self
+    }
+    
 }
 class ChainLabel: UILabel {
     private var finished = false

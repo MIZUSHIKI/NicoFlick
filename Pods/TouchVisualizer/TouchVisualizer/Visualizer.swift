@@ -4,6 +4,7 @@
 //
 
 import UIKit
+import AVFoundation
 
 final public class Visualizer:NSObject {
     
@@ -13,6 +14,18 @@ final public class Visualizer:NSObject {
     fileprivate var config: Configuration!
     fileprivate var touchViews = [TouchView]()
     fileprivate var previousLog = ""
+    fileprivate var previousRecLog = ""
+    fileprivate var recLogs = ""
+    fileprivate var countTouchTag = 1
+    fileprivate var player: AVPlayer?
+    fileprivate enum RecordingType {
+        case STOP
+        case RECORDING
+        case PAUSE
+    }
+    fileprivate var recording:RecordingType = .STOP
+    fileprivate var startedSet:Set<Int> = []
+    fileprivate var endedSet:Set<Int> = []
     
     // MARK: - Object life cycle
     private override init() {
@@ -40,6 +53,7 @@ final public class Visualizer:NSObject {
     
     // MARK: - Helper Functions
     @objc internal func applicationDidBecomeActiveNotification(_ notification: Notification) {
+        print("UIApplication.shared.keyWindow? = \(UIApplication.shared.keyWindow?.classForCoder)")
         UIApplication.shared.keyWindow?.swizzle()
     }
     
@@ -85,6 +99,17 @@ extension Visualizer {
 		}
     }
     
+    public class func recStart(config: Configuration = Configuration(), player: AVPlayer?) {
+        let instance = sharedInstance
+        instance.countTouchTag = 1
+        instance.recording = .RECORDING
+        instance.recLogs = ""
+        instance.player = player
+        instance.startedSet = []
+        instance.endedSet = []
+        self.start( config )
+    }
+    
     public class func stop() {
         let instance = sharedInstance
         instance.enabled = false
@@ -93,6 +118,27 @@ extension Visualizer {
             touch.removeFromSuperview()
         }
     }
+    
+    public class func recStop() -> String? {
+        let instance = sharedInstance
+        if instance.recording == .STOP { return nil }
+        instance.recording = .STOP
+        instance.player = nil
+        self.stop()
+        return instance.recLogs
+    }
+    
+    public class func recPause(){
+        let instance = sharedInstance
+        if instance.recording != .RECORDING { return }
+        instance.recording = .PAUSE
+    }
+    public class func recResume(){
+        let instance = sharedInstance
+        if instance.recording != .PAUSE { return }
+        instance.recording = .RECORDING
+    }
+    
     
     public class func getTouches() -> [UITouch] {
         let instance = sharedInstance
@@ -132,6 +178,16 @@ extension Visualizer {
         return nil
     }
     
+    private func findTouchView(tag: Int) -> TouchView? {
+        for view in touchViews {
+            if tag == view.tag {
+                return view
+            }
+        }
+        
+        return nil
+    }
+    
     open func handleEvent(_ event: UIEvent) {
         if event.type != .touches {
             return
@@ -157,11 +213,24 @@ extension Visualizer {
                 view.touch = touch
                 view.beginTouch()
                 view.center = touch.location(in: topWindow)
+                view.tag = countTouchTag
+                countTouchTag += 1
                 topWindow.addSubview(view)
+                if recording == .RECORDING {
+                    if let time = player?.currentTime() {
+                        recLog(touch, tagID: view.tag, time: CMTimeGetSeconds(time))
+                    }
+                }
                 log(touch)
             case .moved:
                 if let view = findTouchView(touch) {
                     view.center = touch.location(in: topWindow)
+                    
+                    if recording == .RECORDING {
+                        if let time = player?.currentTime() {
+                            recLog(touch, tagID: view.tag, time: CMTimeGetSeconds(time))
+                        }
+                    }
                 }
                 
                 log(touch)
@@ -176,12 +245,63 @@ extension Visualizer {
                         view.removeFromSuperview()
                         self.log(touch)
                     })
+                    
+                    if recording == .RECORDING {
+                        if let time = player?.currentTime() {
+                            recLog(touch, tagID: view.tag, time: CMTimeGetSeconds(time))
+                        }
+                    }
                 }
                 
                 log(touch)
             case .regionEntered: break
             case .regionMoved: break
             case .regionExited: break
+            }
+        }
+    }
+    
+    public func playEvent(eventLogs: String) {
+        if eventLogs == "" { return }
+        
+        var topWindow = UIApplication.shared.keyWindow!
+        for window in UIApplication.shared.windows {
+            if window.isHidden == false && window.windowLevel > topWindow.windowLevel {
+                topWindow = window
+            }
+        }
+        
+        let logParams:[String] = eventLogs.components(separatedBy: ",")
+        
+        for i in 0 ..< logParams.count / 4 {
+            
+            let tagID = Int(logParams[i*4 + 0])!
+            let phase = logParams[i*4 + 1]
+            let center = CGPoint(x: Double(logParams[i*4 + 2])!, y: Double(logParams[i*4 + 3])!)
+            switch phase {
+            case "B":
+                let view = dequeueTouchView()
+                view.config = Visualizer.sharedInstance.config
+                //view.touch = touch
+                view.beginTouch()
+                view.center = center
+                view.tag = tagID
+                topWindow.addSubview(view)
+            case "M":
+                if let view = findTouchView(tag: tagID) {
+                    view.center = center
+                }
+            case "S": break
+            case "E", "C":
+                if let view = findTouchView(tag: tagID) {
+                    UIView.animate(withDuration: 0.2, delay: 0.0, options: .allowUserInteraction, animations: { () -> Void  in
+                        view.alpha = 0.0
+                        view.endTouch()
+                    }, completion: { (finished) -> Void in
+                        view.removeFromSuperview()
+                    })
+                }
+            default: break
             }
         }
     }
@@ -248,5 +368,62 @@ extension Visualizer {
         
         previousLog = log
         print(log, terminator: "")
+    }
+}
+
+extension Visualizer {
+    
+    // MARK: - Logging
+    public func recLog(_ touch: UITouch, tagID: Int, time: Float64) {
+        var viewLogs = [[String:String]]()
+        for view in touchViews {
+            if endedSet.contains(view.tag){ continue }
+            var phase: String!
+            switch touch.phase {
+            case .began:
+                if startedSet.contains(view.tag){ continue }
+                phase = "B"
+                startedSet.insert(view.tag)
+            case .moved: phase = "M"
+            case .stationary: phase = "S"
+            case .ended:
+                phase = "E"
+                endedSet.insert(view.tag)
+            case .cancelled: phase = "C"
+            case .regionEntered: break
+            case .regionMoved: break
+            case .regionExited: break
+            }
+            
+            let tagID = "\(view.tag)"
+            let x = String(format: "%.02f", view.center.x)
+            let y = String(format: "%.02f", view.center.y)
+            let center = "\(x),\(y)"
+            let sec = "\(time)"
+            viewLogs.append(["tagID": tagID, "center": center, "phase": phase, "time": sec])
+        }
+        
+        var log = ""
+        
+        for viewLog in viewLogs {
+            
+            if (viewLog["tagID"]!).count == 0 {
+                continue
+            }
+            
+            let tagID = viewLog["tagID"]!
+            let center = viewLog["center"]!
+            let phase = viewLog["phase"]!
+            let time = viewLog["time"]!
+            log += "[\(time);\(tagID),\(phase),\(center)]"
+        }
+        
+        if log == previousRecLog {
+            return
+        }
+        
+        previousRecLog = log
+        //print(log, terminator: "")
+        recLogs += log
     }
 }

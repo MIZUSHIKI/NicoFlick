@@ -101,6 +101,10 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         speedLabel.text = "Speed: \(Int(speedSlider.value))"
         offsetLabel.text = "Offset: \(Int(offsetSlider.value))ms"
         
+        if let rate = editorViewController.moviePlayerViewController?.player?.rate {
+            rateSlider.value = rate
+        }
+        
         xps = (gameviewWidth-flickPointX)*Double(speedSlider.value)/300 //一秒で進む距離
        
         //初期位置設定修正
@@ -183,7 +187,7 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         }
         
         //タイマー発動 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-        timer = Timer.scheduledTimer(timeInterval: 0.001, target: self, selector: #selector(self.update), userInfo: nil, repeats: true)
+        timer = Timer.scheduledTimer(timeInterval: TimeInterval(UserData.sharedInstance.DrawingUpdateInterval), target: self, selector: #selector(self.update), userInfo: nil, repeats: true)
         timer.fire()
         
         //キーボードを開く _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
