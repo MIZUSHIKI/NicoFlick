@@ -719,7 +719,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         alert.addAction((UIAlertAction(title: "キャンセル", style: UIAlertActionStyle.cancel, handler: nil)))
         //textfiledの追加
         alert.addTextField(configurationHandler: {(textField: UITextField!) in
-            textField.text = "https://www5.atwiki.jp/hmiku/pages/"
+            textField.text = "https://w.atwiki.jp/hmiku/pages/"
         })
         self.present(alert, animated: true, completion: nil)
     }

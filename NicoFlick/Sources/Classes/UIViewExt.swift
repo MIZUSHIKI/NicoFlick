@@ -107,7 +107,7 @@ class NicokakuMixFixLabel:UILabel {
                         }
                     }
                     if !check {
-                        attrText.addAttribute(.font, value: UIFont.systemFont(ofSize: self.font.pointSize, weight: .bold), range: NSMakeRange(i, 1))
+                        attrText.addAttribute(.font, value: UIFont.systemFont(ofSize: self.font.pointSize, weight: .bold), range: NSMakeRange(i, word.utf16.count))
                     }
                     //print("\(word)[\(code),\(check)]",terminator: "")
                 }
@@ -295,6 +295,41 @@ class ChainLabel: UILabel {
 
 @IBDesignable
 class UICustomButton: UIButton {
+    @IBInspectable var _backgroundColor: UIColor = .clear
+    @IBInspectable var borderColor: UIColor = .clear
+    @IBInspectable var borderWidth: CGFloat = 0
+    @IBInspectable var cornerRadius: CGFloat = 0
+    @IBInspectable var shadowColor: UIColor = .clear
+    @IBInspectable var shadowOffset: CGFloat = 0
+    @IBInspectable var shadowOpacity: Float = 0
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        self.backgroundColor = .clear
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        self.backgroundColor = .clear
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        
+        self.layer.backgroundColor = self._backgroundColor.cgColor
+        self.layer.borderWidth = self.borderWidth
+        self.layer.borderColor = self.borderColor.cgColor
+        
+        self.layer.cornerRadius = self.cornerRadius
+        
+        self.layer.shadowColor = self.shadowColor.cgColor
+        self.layer.shadowRadius = 1
+        self.layer.shadowOffset = CGSize(width: self.shadowOffset, height: self.shadowOffset)
+        self.layer.shadowOpacity = self.shadowOpacity
+    }
+}
+@IBDesignable
+class UICustomView: UIView {
     @IBInspectable var _backgroundColor: UIColor = .clear
     @IBInspectable var borderColor: UIColor = .clear
     @IBInspectable var borderWidth: CGFloat = 0

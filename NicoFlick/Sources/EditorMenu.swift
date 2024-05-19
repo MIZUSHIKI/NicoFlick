@@ -72,6 +72,20 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
         self.view.addSubview(activityIndicator)
     }
     
+    var first_attack = true
+    override func viewDidLayoutSubviews() {
+        if !first_attack {
+            return
+        }
+        first_attack = false
+        //iOS16以降?
+        if let oyaView = levelPicker.superview {
+            print("kitayo")
+            levelPicker.frame = oyaView.bounds
+        }
+        
+    }
+    
     // UIPickerViewの列の数
     func numberOfComponents(in pickerView: UIPickerView) -> Int {
         return 1

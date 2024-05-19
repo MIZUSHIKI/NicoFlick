@@ -7,22 +7,21 @@
 //
 
 import UIKit
-import TwitterKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     
-    static let PHPURL = "http://timetag.main.jp/nicoflick/nicoflick.php"
+    static let PHPURL = "https://timetag.main.jp/nicoflick/nicoflick.php"
     //static let PHPURL = "http://192.168.11.7/nicoflick_20201103/nicoflick.php" //windows xampp
     //static let PHPURL = "http://127.0.0.1:8888/nicoflick.php" //mac mamp PC
     //static let PHPURL = "http://MacBook.local:8000/nicoflick.php" //mac mamp スマホ
     
-    static let NICOFLICK_PATH = "https://main-timetag.ssl-lolipop.jp/nicoflick/"
+    static let NICOFLICK_PATH = "https://timetag.main.jp/nicoflick/"
     //static let NICOFLICK_PATH = "http://192.168.11.7/nicoflick_20201103/"
     
-    static let NicoApiURL_GetThumbInfo = "http://ext.nicovideo.jp/api/getthumbinfo/"
-    static let Version = 1908
+    static let NicoApiURL_GetThumbInfo = "https://ext.nicovideo.jp/api/getthumbinfo/"
+    static let Version = 1909
     static var ServerErrorMessage = ""
     static var DidEnterBackgroundTime:Date?
 
@@ -30,13 +29,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
-        TWTRTwitter.sharedInstance().start(withConsumerKey:"XrswCPUMoXr3EZUk22mJmCWKx",consumerSecret:"hrTsCmcBBEVdOLphMHTK0fgsKr2CJ6Hk5jEIeRCpB6bLHC8U1S")
         return true
     }
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        if TWTRTwitter.sharedInstance().application(app, open: url, options: options) {
-            return true
-        }
         print(app)
         print(url)
         print(options)

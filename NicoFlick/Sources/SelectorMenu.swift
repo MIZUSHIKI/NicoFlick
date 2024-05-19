@@ -63,11 +63,6 @@ class SelectorMenu: UIViewController {
                 let selectLevel = selectLevels[selectorController.indexPicker]
                 if let mid = music.sqlID, let gid = selectLevel.sqlID {
                     idLabel.text = "musicID=\(mid), gameID=\(gid)"
-                    //開発者用
-                    if userData.UserIDxxx == AppDelegate.MIZUSHIKI_IDxxx {
-                        let eco = (self.selectorController.nowNicoDMC?.eco ?? false) ? "eco" : "normal"
-                        idLabel.text! +=  " - \(eco)"
-                    }
                 }
             }
             //開発者用 通報数、コメント確認。
@@ -184,7 +179,7 @@ class SelectorMenu: UIViewController {
         let alert = UIAlertController(title:nil, message: "Safariで開く", preferredStyle: UIAlertControllerStyle.alert)
         
         alert.addAction( UIAlertAction(title: "NicoFlickデータベース", style: .default, handler: {_ in
-            guard let url = URL(string: "http://timetag.main.jp/nicoflick/index.php") else { return }
+            guard let url = URL(string: "https://timetag.main.jp/nicoflick/index.php") else { return }
             UIApplication.shared.open(url)
         }) )
         alert.addAction( UIAlertAction(title: "NicoFlick紹介 動画", style: .default, handler: {_ in

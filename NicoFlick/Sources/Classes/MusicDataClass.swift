@@ -30,7 +30,15 @@ import Foundation
 class musicData {
     var sqlID:Int!
     var movieURL:String!
-    var thumbnailURL:String!
+    internal var _thumbnailURL:String!
+    var thumbnailURL:String! {
+        get{
+            return _thumbnailURL
+        }
+        set(str){
+            self._thumbnailURL = str.pregReplace(pattern: "http://", with: "https://")
+        }
+    }
     var title:String!
     var artist:String!
     var movieLength:String!
@@ -161,6 +169,7 @@ class MusicDataLists{
         musicdata.sqlUpdateTime = updateTime
         musicdata.sqlCreateTime = createTime
         //print(String(format: "musicsCount=%d", musics.count))
+        //print(String(format: "update music=%d, %@, %@, %@", sqlID, title, musicdata.thumbnailURL, musicdata.movieURL))
         musics.append(musicdata)
     }
     
@@ -370,6 +379,19 @@ class MusicDataLists{
             }
         }
         return -0.01
+    }
+    
+    func getGameLevel(levelID:Int) -> Double {
+        guard let movieURL = levelsSqlIDtoMovieURL[levelID] else { return 0.0 }
+        if let levelm = levels[movieURL] {
+            for levelData in levelm {
+                if levelData.sqlID != levelID { continue }
+                // 現状 levelから
+                if levelData.level > 10 { return 10.0 }
+                return Double(levelData.level)
+            }
+        }
+        return 0.0
     }
     
     //selectConditionsによって抽出、ソートされるmusicを取得

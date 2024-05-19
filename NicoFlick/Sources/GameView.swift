@@ -69,6 +69,8 @@ class GameView: UIViewController, UITextFieldDelegate {
     var keyboardRect:CGRect? = nil
     let savingPlayMovie = UserData.sharedInstance.SavePlayMovie
     var failedSavePlayMovie = false
+    var Window_UIRemoteKeyboard:UIView?
+    
     
     //動画
     var cachedMovies:CachedMovies = CachedMovies.sharedInstance
@@ -132,7 +134,10 @@ class GameView: UIViewController, UITextFieldDelegate {
         }
         //ipad対策（対象じゃないけど）
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow(_:)), name: .UIKeyboardDidShow, object: nil)
-    
+        
+        // iOS16以降のキーボード画面取得用
+        NotificationCenter.default.addObserver(self, selector: #selector(windowDidBecomeVisible(_:)), name: .UIWindowDidBecomeVisible, object: nil)
+        
         //計算しておく
         xps = (gameviewWidth-flickPointX)*Double(selectLevel.speed)/300 //ノートが一秒間に進む距離
         let timetag = selectLevel.noteData.pregMatche_firstString(pattern: "(\\[\\d\\d\\:\\d\\d[\\:|\\.]\\d\\d\\])")
@@ -193,6 +198,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                                 self.time3secMediaTime = nil
                             }else {
                                 self.time3secMediaTime = CACurrentMediaTime()
+                                self.moviePlayerViewController.player?.pause()
+                                self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
                             }
                         }
                     }
@@ -206,6 +213,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                         self.time3secMediaTime = nil
                     }else {
                         self.time3secMediaTime = CACurrentMediaTime()
+                        self.moviePlayerViewController.player?.pause()
+                        self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
                     }
                 }
 
@@ -517,10 +526,10 @@ class GameView: UIViewController, UITextFieldDelegate {
             let time3sec = -t03 + time3secMediaTime!.distance(to: CACurrentMediaTime())
             //print("time3sec=\(time3sec)")
             //print("userData.Time3secExitZureTime=\(userData.Time3secExitZureTime)")
-            if time3sec < -0.275 + userData.Time3secExitZureTime {
-                self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
+            if time3sec < userData.Time3secExitZureTime {
                 time = time3sec
             }else {
+                self.moviePlayerViewController.player?.play()
                 if time == 0.0 {
                     time = time3sec
                 }else {
@@ -745,6 +754,13 @@ class GameView: UIViewController, UITextFieldDelegate {
         keyboardImageView.frame = keyboardInfo.cgRectValue
         keyboardKeyView.frame = keyboardInfo.cgRectValue
     }
+    @objc private func windowDidBecomeVisible(_ info: Notification) {
+        let type = String(describing: info.object)
+        if type.range(of: "UIRemoteKeyboardWindow") != nil {
+            print("That's UIRemoteKeyboardWindow")
+            Window_UIRemoteKeyboard = info.object as? UIView
+        }
+    }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){
@@ -806,6 +822,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                                         self.time3secMediaTime = nil
                                     }else {
                                         self.time3secMediaTime = CACurrentMediaTime()
+                                        self.moviePlayerViewController.player?.pause()
+                                        self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
                                     }
                                 }
                             }
@@ -817,6 +835,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                                 self.time3secMediaTime = nil
                             }else {
                                 self.time3secMediaTime = CACurrentMediaTime()
+                                self.moviePlayerViewController.player?.pause()
+                                self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
                             }
                         }
                     }
@@ -961,6 +981,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                                         self.time3secMediaTime = nil
                                     }else {
                                         self.time3secMediaTime = CACurrentMediaTime()
+                                        self.moviePlayerViewController.player?.pause()
+                                        self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
                                     }
                                 }
                             }
@@ -974,6 +996,8 @@ class GameView: UIViewController, UITextFieldDelegate {
                                 self.time3secMediaTime = nil
                             }else {
                                 self.time3secMediaTime = CACurrentMediaTime()
+                                self.moviePlayerViewController.player?.pause()
+                                self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
                             }
                         }
                     }
@@ -1051,7 +1075,15 @@ class GameView: UIViewController, UITextFieldDelegate {
     
     func setKeyboardImage() {
         guard let keyboardRect = keyboardRect else { return }
-        for window in UIApplication.shared.windows {
+        var windows:[UIView]
+        if #available(iOS 16.0, *) {
+            guard let window = Window_UIRemoteKeyboard else { return }
+            windows = [window]
+        }
+        else {
+            windows = UIApplication.shared.windows
+        }
+        for window in windows {
             //print("window.classForCoder.description()=\(window.classForCoder.description())")
             if window.classForCoder.description() != "UIRemoteKeyboardWindow" { continue }
             guard let view = window.subviews.first else { break }

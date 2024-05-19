@@ -145,15 +145,22 @@ class ServerDataHandler {
                 return
             }
             print("downloaded")
-            guard let data = data else { return }
+            guard var data = data else { return }
             //ロードしたmusicデータを処理
             guard var htRet = String(data: data, encoding:.utf8) else { return }
+            // ロードの先頭であるmusicXのみNicoFlickMessageを受信する可能性がある
             if htRet.hasPrefix("<!--NicoFlickMessage=") {
                 AppDelegate.ServerErrorMessage = htRet.pregMatche_firstString(pattern: "^<!--NicoFlickMessage=(.*?)-->")
                 htRet = htRet.pregReplace(pattern: "^<!--NicoFlickMessage=.*?-->", with:"" )
+                let res = AppDelegate.ServerErrorMessage.pregMatche_strings(pattern: "\\[([Android,iOS ]+)\\]")
+                if !res.isEmpty && !res.last!.pregMatche(pattern: "iOS") {
+                    AppDelegate.ServerErrorMessage = ""
+                }
                 print(AppDelegate.ServerErrorMessage)
+                data = htRet.pregReplace(pattern: "^<!--NicoFlickMessage=.*?-->", with:"" ).data(using: .utf8)!
             }
-            //print(htRet)
+//            print("update music!")
+//            print(htRet)
             if htRet == "latest" {
                 callback(nil)
                 return
@@ -440,6 +447,7 @@ class ServerDataHandler {
                 return
             }
             guard let data = data else { return }
+            
             do {
                 let jsonDic = (try JSONSerialization.jsonObject(with: data, options: [])) as! Dictionary<String,String>
                 //musicDatasに保存（次回からロードしなくなる）

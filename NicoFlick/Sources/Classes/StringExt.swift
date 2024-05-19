@@ -73,6 +73,22 @@ extension String {
         }
         return matches[1]
     }
+    //正規表現の検索結果を利用できます
+    func pregMatche_strings(pattern: String, options: NSRegularExpression.Options = [NSRegularExpression.Options.dotMatchesLineSeparators,NSRegularExpression.Options.anchorsMatchLines]) -> [String] {
+        var matches:[String] = []
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
+            return matches
+        }
+        let targetStringRange = NSRange(location: 0, length: self.count)
+        let results = regex.matches(in: self, options: [], range: targetStringRange)
+        for i in 0 ..< results.count {
+            for j in 0 ..< results[i].numberOfRanges {
+                let range = results[i].range(at: j)
+                matches.append((self as NSString).substring(with: range))
+            }
+        }
+        return matches
+    }
     
     //正規表現の置換をします
     func pregReplace(pattern: String, with: String, options: NSRegularExpression.Options = [NSRegularExpression.Options.dotMatchesLineSeparators,NSRegularExpression.Options.anchorsMatchLines]) -> String {

@@ -7,7 +7,6 @@
 //
 
 import UIKit
-import TwitterKit
 import ReplayKit
 
 class ResultView: UIViewController, RPPreviewViewControllerDelegate {
@@ -283,34 +282,27 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
     @IBAction func TweetButton(_ sender: UIButton) {
         print("tw")
         endRecording() //録画してたらtweetボタンでも終了させる
-        //ツイート
-        let composer = TWTRComposer()
-        composer.setText("\n#NicoFlick") //初期テキスト
-        //composer.setURL(URL(string: "リンクのURL")) //リンク
-        //
+        
+        //if !UIApplication.shared.canOpenURL(URL(string: "twitter://")!){ return }
+        let tweetButton_isHidden = tweetButton.isHidden
+        let savePlayMovieButton_isHidden = savePlayMovieButton.isHidden
         tweetButton.isHidden = true
         savePlayMovieButton.isHidden = true
-        
-        composer.setImage(self.view.GetImage()) //画像
-        
-        tweetButton.isHidden = false
-        savePlayMovieButton.isHidden = false
-        
-        composer.show(from: self) { (result) in
-            if result == TWTRComposerResult.done {
-                print("ツイートされた")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5){
-                    //UI処理はメインスレッドの必要あり
-                    print("al")
-                    let alert = UIAlertController(title:nil, message: "ツイートしました。", preferredStyle: UIAlertControllerStyle.alert)
-                    alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.cancel, handler: nil))
-                    self.present(alert, animated: true, completion: nil)
-                }
-            } else {
-                print("ツイートできんかった")
-            }
+        let image = self.view.GetImage()
+        tweetButton.isHidden = tweetButton_isHidden
+        savePlayMovieButton.isHidden = savePlayMovieButton_isHidden
+        guard
+            let data = UIImagePNGRepresentation(image) ,
+            let url = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("result.png")
+        else {return}
+        do{
+            try data.write(to: url, options: .atomic)
+        }catch{
+            print("error")
+            return
         }
-        
+        let vc = UIActivityViewController(activityItems: [url, "\n#NicoFlick "], applicationActivities: nil)
+        present(vc, animated: true, completion: nil)
         return
     }
     @IBAction func SavePlayMovieButton(_ sender: UIButton) {

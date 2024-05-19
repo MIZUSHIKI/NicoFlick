@@ -27,16 +27,64 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
     var numberRoll_index2_m = 0
     var numberRoll_index2_s = 0
     
+    var editingText = ""
+    
     //遷移時に受け取り
     var selectorMenuController:SelectorMenu!
     var list:[String] = []
+    var _list:[String] = []
     var currentMusic:musicData! = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
         print(list)
+        _list = list
         textField.text = userData.SelectedMusicCondition.tags
+        textField.addTarget(self, action: #selector(self.textFieldDidChange(textFiled:)), for: .editingChanged)
+
         editMaruButton.isHidden = ( currentMusic == nil )
+    }
+    @objc func textFieldDidChange(textFiled: UITextField) {
+        let text = textField.text ?? ""
+        print(text)
+        
+        //テキストフィールド内に既にあるか確認 //タグ文字列を空白で分割
+        
+        //時間指定が含まれていたら一度削除
+        guard var array = textField.text?.pregReplace(pattern: "@初期楽曲", with: "").pregReplace(pattern: "\\s?@t:(\\d+:\\d+)?-?(\\d+:\\d+)?", with: "").pregReplace(pattern: " +", with: " ").trimmingCharacters(in: .whitespaces).components(separatedBy: " ")
+        else { return }
+        
+        var arrayInList:[String] = []
+        
+        let count = array.count
+        for i in 0..<count {
+            if _list.contains(array[count-1-i]){
+                arrayInList.append(array[count-1-i])
+                array.remove(at: count-1-i)
+            }
+        }
+
+        print(array.count)
+        
+        if array.isEmpty {
+            if list != _list {
+                list = _list
+                tableView.reloadData()
+            }
+            return
+        }
+
+        list = _list.filter({ _listStr in
+            if arrayInList.contains(_listStr) { return true }
+            for a in array {
+                if _listStr.lowercased().contains(a.lowercased()) {
+                    return true
+                }
+            }
+            return false
+        })
+        //dump(list)
+        tableView.reloadData()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -99,12 +147,23 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
         
         //時間指定が含まれていたら一度削除
         print(jikanSitei)
+        print(textField.text)
+        if list != _list {
+            print(textField.text!.pregMatche_firstString(pattern: "\\s(\\S+?)$"))
+            textField.text = textField.text!.pregReplace(pattern: "\\s?\\S+?$", with: "")
+            print(textField.text)
+        }
         if textField.text != "" && !(textField.text?.hasSuffix("-"))! {
             //空欄じゃなかったら空白を足す。
             textField.text = textField.text! + " "
         }
+        
         textField.text = textField.text! + list[indexPath.row] + jikanSitei
         
+        if list != _list {
+            list = _list
+            tableView.reloadData()
+        }
         
     }
     
@@ -185,9 +244,17 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
     
     @IBAction func xButton(_ sender: UIButton) {
         textField.text = ""
+        if list != _list {
+            list = _list
+            tableView.reloadData()
+        }
     }
     @IBAction func atSyokiGakkyoku(_ sender: UIButton) {
         textField.text = "@初期楽曲"
+        if list != _list {
+            list = _list
+            tableView.reloadData()
+        }
     }
     
     @IBAction func TimeFilter(_ sender: UIBarButtonItem) {

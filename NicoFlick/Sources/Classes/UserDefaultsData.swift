@@ -590,6 +590,8 @@ class UserScore {
     private let SCORE = 0
     private let RANK = 1
     private let FLG = 2
+    //private let RankStr = ["PERFECT","S","A","B","C","D","E","False"]
+    private let RankOdds:[Double] = [1.10, 1.05, 1.00, 0.975, 0.95, 0.925, 0.90, 0.00]
     
     func setScore(levelID:Int, score:Int, rank:Int) -> Bool{
         var sup = false
@@ -652,6 +654,115 @@ class UserScore {
     }
     func getRank(levelID:Int) -> Int{
         return (scores[levelID]?[RANK])!
+    }
+    func getPlayedMusicNum() -> Int {
+        var set: Set = Set<Int>()
+        for (levelID,_) in scores {
+            let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+            if musicID == 0 { continue }
+            set.insert(musicID)
+        }
+        return set.count
+    }
+    func getPlayedAllScore() -> Int {
+        var score = 0
+        for (levelID,us) in scores {
+            let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+            if musicID == 0 { continue }
+            score += us[SCORE]
+        }
+        return score
+    }
+    func getClearedMusicNum() -> Int {
+        var set: Set = Set<Int>()
+        for (levelID,us) in scores {
+            if us[RANK] < 7 {
+                let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+                if musicID == 0 { continue }
+                set.insert(musicID)
+            }
+        }
+        return set.count
+    }
+    func getClearedAllMusicScore() -> Int {
+        var musicScores:[Int:Int] = [:]
+        for (levelID,us) in scores {
+            if us[RANK] < 7 {
+                let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+                if musicID == 0 { continue }
+                // print("\(levelID), \(us[RANK]), \(us[SCORE])")
+                if let sc = musicScores[musicID] {
+                    if sc >= us[SCORE] { continue }
+                }
+                musicScores[musicID] = us[SCORE]
+            }
+        }
+        var score = 0
+        for (_,mScore) in musicScores {
+            score += mScore
+        }
+        return score
+    }
+    func getClearedAverageMusicScore() -> Int {
+        var musicScores:[Int:Int] = [:]
+        for (levelID,us) in scores {
+            if us[RANK] < 7 {
+                let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+                if musicID == 0 { continue }
+                if let sc = musicScores[musicID] {
+                    if sc >= us[SCORE] { continue }
+                }
+                musicScores[musicID] = us[SCORE]
+            }
+        }
+        var score = 0
+        for (_,mScore) in musicScores {
+            score += mScore
+        }
+        return Int(score / max(musicScores.count,1))
+    }
+    func getClearedAverageStar() -> Int {
+        var musicLevels:[Int:Double] = [:]
+        var tes:[Int:Double] = [:]
+        for (levelID,us) in scores {
+            if us[RANK] < 7 {
+                let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+                if musicID == 0 { continue }
+                let levelLevel = MusicDataLists.sharedInstance.getGameLevel(levelID: levelID)
+                if levelLevel == 0.0 { continue }
+                if levelLevel >= 10.0 && us[RANK] == 6 { continue }
+                if let lv = musicLevels[musicID] {
+                    if lv >= levelLevel { continue }
+                }
+                
+                musicLevels[musicID] = levelLevel //* RankOdds[us[RANK]]
+                tes[musicID] = RankOdds[us[RANK]]
+            }
+        }
+        if musicLevels.count == 0 { return 0 }
+        var level:Double = 0.0
+        var count = 0
+        for (mID,mLevel) in musicLevels {
+            level += mLevel    * Double(tes[mID]!)
+            count += 1
+            print("\(mLevel)) * \(tes[mID]) = \(mLevel * tes[mID]!) :: \((level / Double(count)))")
+
+        }
+        return Int((level / Double(musicLevels.count)))
+    }
+    func getClearedMaxStar() -> Int {
+        var level:Double = 0.0
+        for (levelID,us) in scores {
+            if us[RANK] < 7 {
+                let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+                if musicID == 0 { continue }
+                let levelLevel = MusicDataLists.sharedInstance.getGameLevel(levelID: levelID)
+                if levelLevel == 0.0 { continue }
+                if level >= levelLevel { continue }
+                level = levelLevel
+            }
+        }
+        return Int(level.rounded(.toNearestOrAwayFromZero))
     }
 }
 //ちょっと酷いが仕方ない

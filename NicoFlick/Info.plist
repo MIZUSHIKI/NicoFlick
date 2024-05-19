@@ -24,17 +24,11 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>nicoflick</string>
-				<string>twitterkit-XrswCPUMoXr3EZUk22mJmCWKx</string>
 			</array>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>twitter</string>
-		<string>twitterauth</string>
-	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>

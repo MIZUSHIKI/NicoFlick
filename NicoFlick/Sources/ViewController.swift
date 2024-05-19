@@ -73,15 +73,13 @@ class ViewController: UIViewController {
     }
     
     @IBAction func infoButton(_ sender: UIButton) {
-        let alert = UIAlertController(title:nil, message: """
-NicoFlickはフリック入力リズムゲーである 故「ミクフリック」の パクリ、オマージュ、リスペクト、難民先 作品です。
-
+        let alert = UIAlertController(title:"NicoFlickはフリック入力リズムゲーである 故「ミクフリック」の パクリ、オマージュ、リスペクト、難民先 作品です。", message: """
 
 −2016年7月19日−
-　ミクフリック/02 サービス終了
+ミクフリック/02 サービス終了
 
 −2017年9月29日−
-　ミクフリック(初代) サービス終了
+ミクフリック(初代) サービス終了
 
 −2017年9月20日−
 　iOS11リリース（32bitアプリなので両方起動できなくなる）
@@ -124,7 +122,7 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
             return false
         }
         
-        if identifier == "toSelector" {
+        if identifier == "toSelector" || identifier == "toUserCard" {
             //se
             seSystemAudio.start2SePlay()
             //データをロードした後に遷移させるため、一度、遷移キャンセル。
@@ -147,13 +145,13 @@ NicoFlickはフリック入力リズムゲーである 故「ミクフリック�
                             AppDelegate.ServerErrorMessage = ""
                             //エラーメッセージ確認後、遷移指示
                             self.segueing = false
-                            self.performSegue(withIdentifier: "toSelector", sender: self)
+                            self.performSegue(withIdentifier: identifier, sender: self)
                         }) )
                         self.present(alert, animated: true, completion: nil)
                     }else {
                         //特にエラーなし遷移指示
                         self.segueing = false
-                        self.performSegue(withIdentifier: "toSelector", sender: self)
+                        self.performSegue(withIdentifier: identifier, sender: self)
                     }
                 }
             }

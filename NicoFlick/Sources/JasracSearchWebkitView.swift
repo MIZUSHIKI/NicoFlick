@@ -17,7 +17,7 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
     
     var backButton: UIButton!
     var forwadButton: UIButton!
-    var targetUrl = "http://www2.jasrac.or.jp/eJwid/main?trxID=F00100"
+    var targetUrl = "https://www2.jasrac.or.jp/eJwid/main?trxID=F00100"
     var titleText = ""
     var artistText = ""
     var firstAttack = true

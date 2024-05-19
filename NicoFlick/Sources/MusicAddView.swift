@@ -299,7 +299,7 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
     
     @IBAction func AboutCopyrightButton(_ sender: UIButton) {
         
-        let url = URL(string: "http://timetag.main.jp/nicoflick/music_copyright.html")
+        let url = URL(string: "https://timetag.main.jp/nicoflick/music_copyright.html")
         if UIApplication.shared.canOpenURL(url!) {
             UIApplication.shared.open(url!, options: [:], completionHandler: nil)
         }

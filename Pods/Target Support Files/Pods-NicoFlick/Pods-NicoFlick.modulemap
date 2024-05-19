@@ -1,6 +1,0 @@
-framework module Pods_NicoFlick {
-  umbrella header "Pods-NicoFlick-umbrella.h"
-
-  export *
-  module * { export * }
-}

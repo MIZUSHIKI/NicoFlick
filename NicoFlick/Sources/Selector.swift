@@ -71,7 +71,6 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     
     var moviePlayerViewController:AVPlayerViewController?
     var nowPlayingThumbMovieURL:URL?
-    var nowNicoDMC:NicoDmc?
     var flgThumbMovieStopping = false //曲選択後0.5秒遅延再生にしているためGame遷移後に再生始まったりするのを防ぐフラグ
     var flgThumbMovieTopMost = false //ムービー再生を薄バックからサムネ全面に移動させたフラグ
     var volumeForceInResult:Float = 1.0
@@ -176,12 +175,12 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     
     var first_attack = true
     override func viewDidLayoutSubviews() {
+        if !first_attack {
+            return
+        }
+        first_attack = false
         //iOS14用
         if #available(iOS 14.0, *) {
-            if !first_attack {
-                return
-            }
-            first_attack = false
             let pickerSubView = self.levelSelectPicker.subviews[1]
             pickerSubView.backgroundColor = UIColor.clear
             let borderTop = CALayer()
@@ -193,6 +192,12 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             borderBottom.backgroundColor = UIColor.init(red: 0, green: 0, blue: 0, alpha: 0.1).cgColor
             pickerSubView.layer.addSublayer(borderBottom)
         }
+        //iOS16以降?
+        if let oyaView = levelSelectPicker.superview {
+            print("kitayo")
+            levelSelectPicker.frame = oyaView.bounds
+        }
+        
     }
     override func viewDidAppear(_ animated: Bool) {
         if timer == nil {
@@ -391,26 +396,6 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }
         tempView.removeFromSuperview() //tempView削除
 
-        //thumbMovieのHeartBeat処理
-        if let nicoDMC = nowNicoDMC {
-            //nicoDMC.SetOriginVideoSrc_session_metadata()
-            nicoDMC.Start_HeartBeat()
-        }
-        /*
-        // UIView.animateだとmoviePlayerViewController.viewのサイズ補間をアニメーションしてくれず瞬時に変わってしまう。
-        let vv = UIView(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
-        vv.backgroundColor = .red
-        self.view.addSubview(vv)
-        self.moviePlayerViewController?.player?.volume = 0.9
-        UIView.animate(withDuration: 3.0, animations: {
-            vv.frame = CGRect(x: 0, y: 0, width: 300, height: 300)
-            view.frame = carouselView.frame
-            view.center = carouselView.center
-            view.alpha = 1.0
-        }, completion: {_ in
-            print(view.frame)
-        })
-         */
         // CABasicAnimationでアニメーションさせる。ただしLayerでサイズ、位置をアニメーションしてる(?)から元のサイズに戻したい時はframeとかではなくLayerを戻さなくてはならない(?)
         let animationGroup = CAAnimationGroup()
         animationGroup.duration = 0.5
@@ -852,13 +837,11 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         //一度すべて止める
         for avPlayerVC in CachedThumbMovies.sharedInstance.cachedMovies {
             avPlayerVC.avPlayerViewController.player?.pause()
-            avPlayerVC.nicoDMC?.End_HeartBeat() //ThumbMovie拡大時は最後まで再生するのでHeartBeatしている。いったん全て終了させる。
         }
         //Viewを取り除く
         if let view = self.view.viewWithTag(5050) {
             view.removeFromSuperview()
         }
-        nowNicoDMC = nil
     }
     private func ThumbMovieStart(index:Int, loadOnly:Bool = false) {
         flgThumbMovieStopping = false
@@ -877,7 +860,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5){
             //print("\(smNum) => \(index) / \(self.indexCarousel)")
             if index == self.indexCarousel || loadOnly == true {
-                MovieAccess.init().StreamingUrlNicoAccessForThumbMovie(smNum: smNum){ (nicodougaURL,nicoDMC) in
+                MovieAccess.init().StreamingUrlNicoAccessForThumbMovie(smNum: smNum){ (nicodougaURL) in
                 print("smNum=\(smNum), loadOnly=\(loadOnly), nicodougaURL=\(nicodougaURL)")
                     if self.flgThumbMovieStopping == true {
                         print("ThumbMovieStopping")
@@ -895,7 +878,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                         guard let nicoUrl = URL(string: nicodougaURL) else {
                             return
                         }
-                        let mpvc = CachedThumbMovies.sharedInstance.access(url: nicoUrl, smNum: smNum, nicoDMC: nicoDMC)
+                        let mpvc = CachedThumbMovies.sharedInstance.access(url: nicoUrl, smNum: smNum)
                         if loadOnly == false {
                             self.ThumbMovieStop()
                             self.flgThumbMovieStopping = false
@@ -905,10 +888,6 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                             self.moviePlayerViewController?.view.backgroundColor = UIColor.white
                             self.moviePlayerViewController?.view.alpha = 0.01
                             self.moviePlayerViewController?.view.tag = 5050
-                            if let nicodmc = self.nowNicoDMC {
-                                nicodmc.End_HeartBeat()
-                            }
-                            self.nowNicoDMC = CachedThumbMovies.sharedInstance.cachedMovies.last?.nicoDMC
                             self.nowPlayingThumbMovieURL = CachedThumbMovies.sharedInstance.cachedMovies.last?.url
                             //cachedMovie.accessで返してもらった直後はソレがcachedMovies配列の末尾になっている
                             //  add
@@ -1121,7 +1100,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
     func showHowToExtendView() -> Bool{
-        // ５曲以上プレイしたら初期楽曲以外のプレイ方法を表示する
+        // 3曲以上プレイしたら初期楽曲以外のプレイ方法を表示する
         if userData.lookedExtend == false {
             var musicIDSet:Set<Int> = []
             // スコアデータからプレイしたlevelIDを取得
@@ -1133,7 +1112,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                     }
                 }
             }
-            if  musicIDSet.count >= 5 {
+            if  musicIDSet.count >= 3 {
                 userData.lookedExtend = true
                 DispatchQueue.main.async {
                     //UI処理はメインスレッドの必要あり
