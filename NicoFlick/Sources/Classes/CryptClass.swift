@@ -30,7 +30,8 @@ class Crypt {
             //print(encrypted)
             
             // バイト列（[UInt8]）をNSDataに変換し、Base64文字列にエンコード
-            var strEnc = Data(bytes: (("Saltedx_" + random_salt).data(using: .utf8)?.bytes)! + encrypted).base64EncodedString(options: .lineLength64Characters) //妥協してるからSaltedx_にした
+            let saltedBytes = Array(("Saltedx_" + random_salt).utf8)
+            var strEnc = Data(saltedBytes + encrypted).base64EncodedString(options: .lineLength64Characters) //妥協してるからSaltedx_にした
             strEnc = strEnc.replacingOccurrences(of: "+", with: "_")
             strEnc = strEnc.replacingOccurrences(of: "/", with: "-")
             strEnc = strEnc.replacingOccurrences(of: "=", with: ".")

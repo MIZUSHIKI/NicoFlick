@@ -7,6 +7,7 @@
 //
 
 import Foundation
+
 /*
  //変数が書き換わるとUserDefaultsに保存してアプリを落としても残るようにしている
  class UserData {
@@ -27,7 +28,48 @@ class UserData {
     static let sharedInstance = UserData()
     
     let userDefaults = UserDefaults.standard
-    
+
+    @discardableResult
+    func migratePersistentStorageV2000() -> Bool {
+        if PersistentStore.shared.isMigrated {
+            userDefaults.removeObject(forKey: "MusicsJson")
+            userDefaults.removeObject(forKey: "LevelsJson")
+            userDefaults.removeObject(forKey: "UserNamesJson")
+            return true
+        }
+
+        let legacyScores = Score.scores
+        let legacyScoreLevels = ScoreLevel
+        let legacyPendingScores = JustPlayedScore.scores
+        let legacyPendingScoreLevels = JustPlayedScoreLevel
+        let legacyHistories = LevelPlayHistories
+        let legacyPlayCounts = PlayCount.counter
+        let legacyUserNames = userDefaults.string(forKey: "UserNamesJson") ?? ""
+
+        // Music and level catalogs are deliberately reset for this release.
+        guard LargeValueStore.write("", key: "MusicsJson"),
+              LargeValueStore.write("", key: "LevelsJson"),
+              LargeValueStore.write(legacyUserNames, key: "UserNamesJson"),
+              PersistentStore.shared.migrate(
+                scores: legacyScores,
+                scoreLevels: legacyScoreLevels,
+                pendingScores: legacyPendingScores,
+                pendingScoreLevels: legacyPendingScoreLevels,
+                histories: legacyHistories,
+                playCounts: legacyPlayCounts
+              ) else {
+            return false
+        }
+
+        // Keep user-specific legacy values as a recovery copy. Remove only the large
+        // caches after every new store has been written and verified successfully.
+        userDefaults.removeObject(forKey: "MusicsJson")
+        userDefaults.removeObject(forKey: "LevelsJson")
+        userDefaults.removeObject(forKey: "UserNamesJson")
+        return true
+    }
+
+// システムとユーザーデータ
     //MyVersion
     //  バージョンアップ時に必要な処理があれば実行するため
     var MyVersion:Int {
@@ -41,16 +83,27 @@ class UserData {
             userDefaults.synchronize()
         }
     }
+    // v2000の永続ストレージ移行が完了しているか
+    // 新規ユーザーは移行不要なのでデフォルトをtrueにする。
+    var donePersistentStorageMigrationV2000: Bool {
+        get {
+            userDefaults.register(defaults: ["donePersistentStorageMigrationV2000": true])
+            return userDefaults.bool(forKey: "donePersistentStorageMigrationV2000")
+        }
+        set {
+            userDefaults.set(newValue, forKey: "donePersistentStorageMigrationV2000")
+        }
+    }
     //ユニークユーザーID
     var UserID:String {
         get {
             //  ユニークユーザーIDを作り、以降忘れないように保存する
             if let uuid = userDefaults.string(forKey: "UniqueUserID") {
-                print("already:"+uuid)
+                // print("already:"+uuid)
                 return uuid
             }else {
                 let uuid = NSUUID().uuidString
-                print("new:"+uuid)
+                // print("new:"+uuid)
                 userDefaults.set(uuid, forKey: "UniqueUserID")
                 userDefaults.synchronize()
                 return uuid
@@ -63,7 +116,7 @@ class UserData {
             //  ユニークユーザーIDを作り、以降忘れないように保存する
             if let uuid = userDefaults.string(forKey: "UniqueUserID") {
                 let uuidxxx:String = uuid.prefix(24)+"************"
-                print("already:"+uuidxxx)
+                // print("already:"+uuidxxx)
                 return uuidxxx
             }
             return ""
@@ -127,42 +180,128 @@ class UserData {
             userDefaults.synchronize()
         }
     }
-    
+    var maeKeyboardRect: CGRect {
+        get {
+            userDefaults.register(defaults: [
+                "maeKeyboardRect": NSStringFromCGRect(.zero)
+            ])
+
+            let string = userDefaults.string(forKey: "maeKeyboardRect") ?? NSStringFromCGRect(.zero)
+            return CGRectFromString(string)
+        }
+        set {
+            userDefaults.set(NSStringFromCGRect(newValue), forKey: "maeKeyboardRect")
+            userDefaults.synchronize()
+        }
+    }
+
+// ゲームプレイユーザーデータ : 永続してデータを集計保存
     //Score
     var Score:UserScore {
         get {
-            let userScore = UserScore()
-            if let us = userDefaults.object(forKey: "UserScore") as? NSData {
-                //print("スコア 読み込み")
-                userScore.scores = NSKeyedUnarchiver.unarchiveObject(with: us as Data) as! [Int:[Int]]
+            if PersistentStore.shared.isMigrated {
+                let userScore = UserScore()
+                userScore.scores = PersistentStore.shared.scores(pending: false).0
+                return userScore
             }
-            return userScore
+            let load = {
+                let userScore = UserScore()
+                if let us = self.userDefaults.object(forKey: "UserScore") as? NSData {
+                    //print("スコア 読み込み")
+                    userScore.scores = NSKeyedUnarchiver.unarchiveObject(with: us as Data) as! [Int:[Int]]
+                }
+                return userScore
+            }
+            return load()
+
         }
         set(userScore) {
-            let data = NSKeyedArchiver.archivedData(withRootObject: userScore.scores)
-            userDefaults.set(data, forKey: "UserScore")
-            userDefaults.synchronize()
+            if PersistentStore.shared.isMigrated {
+                let levels = PersistentStore.shared.scores(pending: false).1
+                PersistentStore.shared.replaceScores(userScore.scores, levels: levels, pending: false)
+                return
+            }
+            let save = {
+                let data = NSKeyedArchiver.archivedData(withRootObject: userScore.scores)
+                self.userDefaults.set(data, forKey: "UserScore")
+                self.userDefaults.synchronize()
+                return data.count
+            }
+            _ = save()
+
             //print("Score set")
         }
     }
-    //Score
-    var JustPlayedScore:UserJustPlayedScore {
+
+    // ハイスコアを記録した時点の譜面難易度 [levelID: level]
+    var ScoreLevel:[Int:Int] {
         get {
-            let userScore = UserJustPlayedScore()
-            if let us = userDefaults.object(forKey: "JustPlayedUserScore") as? NSData {
-                //print("スコア 読み込み")
-                userScore.scores = NSKeyedUnarchiver.unarchiveObject(with: us as Data) as! [Int:[Int]]
+            if PersistentStore.shared.isMigrated {
+                return PersistentStore.shared.scores(pending: false).1
             }
-            return userScore
+            let data = userDefaults.data(forKey: "ScoreLevel")
+            let load = {
+                guard let data,
+                      let scoreLevels = try? JSONDecoder().decode([Int:Int].self, from: data) else {
+                    return [Int:Int]()
+                }
+                return scoreLevels
+            }
+            return load()
+
         }
-        set(userScore) {
-            let data = NSKeyedArchiver.archivedData(withRootObject: userScore.scores)
-            userDefaults.set(data, forKey: "JustPlayedUserScore")
-            userDefaults.synchronize()
-            print("JustPlayedScore set")
+        set(scoreLevels) {
+            if PersistentStore.shared.isMigrated {
+                let scores = PersistentStore.shared.scores(pending: false).0
+                PersistentStore.shared.replaceScores(scores, levels: scoreLevels, pending: false)
+                return
+            }
+            let save = {
+                guard let data = try? JSONEncoder().encode(scoreLevels) else { return 0 }
+                self.userDefaults.set(data, forKey: "ScoreLevel")
+                self.userDefaults.synchronize()
+                return data.count
+            }
+            _ = save()
+
         }
     }
-    //MyFavorite
+
+    // JustPlayedScoreに記録した時点の譜面難易度 [levelID: level]
+    var JustPlayedScoreLevel:[Int:Int] {
+        get {
+            if PersistentStore.shared.isMigrated {
+                return PersistentStore.shared.scores(pending: true).1
+            }
+            let data = userDefaults.data(forKey: "JustPlayedScoreLevel")
+            let load = {
+                guard let data,
+                      let scoreLevels = try? JSONDecoder().decode([Int:Int].self, from: data) else {
+                    return [Int:Int]()
+                }
+                return scoreLevels
+            }
+            return load()
+
+        }
+        set(scoreLevels) {
+            if PersistentStore.shared.isMigrated {
+                let scores = PersistentStore.shared.scores(pending: true).0
+                PersistentStore.shared.replaceScores(scores, levels: scoreLevels, pending: true)
+                return
+            }
+            let save = {
+                guard let data = try? JSONEncoder().encode(scoreLevels) else { return 0 }
+                self.userDefaults.set(data, forKey: "JustPlayedScoreLevel")
+                self.userDefaults.synchronize()
+                return data.count
+            }
+            _ = save()
+
+        }
+    }
+    
+    //MyFavorite : ver.1500からお気に入りの仕様が変わった ので昔の名残り。今は使っていない。[levelをお気に入り:プレイしていないものもお気に入りできた]
     var MyFavorite:Set<Int> {
         get {
             if let ids = userDefaults.string(forKey: "MyFavorite") {
@@ -175,12 +314,12 @@ class UserData {
             return Set()
         }
         set(value) {
-            print("myfavorite set")
+            // print("myfavorite set")
             userDefaults.set(value.map{String($0)}.joined(separator: ","), forKey: "MyFavorite")
             userDefaults.synchronize()
         }
     }
-    //MyFavorite
+    //MyFavorite : ver.1500からお気に入りの仕様が変わった [levelをお気に入り]
     var MyFavorite2:Set<Int> {
         get {
             if let ids = userDefaults.string(forKey: "MyFavorite2") {
@@ -193,55 +332,224 @@ class UserData {
             return Set()
         }
         set(value) {
-            print("myfavorite set")
+            // print("myfavorite set")
             userDefaults.set(value.map{String($0)}.joined(separator: ","), forKey: "MyFavorite2")
             userDefaults.synchronize()
         }
     }
-    var MyFavoriteAll:Set<Int> {
+    //MyFavorite : ver.2000からお気に入りの仕様が変わった [musicをお気に入り]
+    var MyFavorite3:Set<Int> {
+        get {
+            if let ids = userDefaults.string(forKey: "MyFavorite3") {
+                //print(ids)
+                if ids == "" {
+                    return Set()
+                }
+                return Set( ids.components(separatedBy: ",").map { Int($0)! } )
+            }
+            return Set()
+        }
+        set(value) {
+            // print("myfavorite set")
+            userDefaults.set(value.map{String($0)}.joined(separator: ","), forKey: "MyFavorite3")
+            userDefaults.synchronize()
+        }
+    }
+    var MyFavoriteAll_v1500:Set<Int> {
         return self.MyFavorite.union(self.MyFavorite2)
     }
     
+    //MyLike
+    var MyLike:[Int:Int] {
+        get{
+            if let us = userDefaults.object(forKey: "MyLike") as? NSData {
+                //print("MyLike 読み込み")
+                return NSKeyedUnarchiver.unarchiveObject(with: us as Data) as! [Int:Int]
+            }
+            let MyLike:[Int:Int] = [:]
+            return MyLike
+        }
+        set(MyLike){
+            let data = NSKeyedArchiver.archivedData(withRootObject: MyLike)
+            userDefaults.set(data, forKey: "MyLike")
+            userDefaults.synchronize()
+            //print("MyLike set")
+        }
+    }
+    
+    // レベルごとの端末内プレイ履歴。サーバー送信用のPlayCountとは別に保持する。
+    var LevelPlayHistories:[Int:LevelPlayHistory] {
+        get {
+            if PersistentStore.shared.isMigrated {
+                return PersistentStore.shared.histories()
+            }
+            let data = userDefaults.data(forKey: "LevelPlayHistories")
+            let load = {
+                guard let data,
+                      let histories = try? JSONDecoder().decode([Int:LevelPlayHistory].self, from: data) else {
+                    return [Int:LevelPlayHistory]()
+                }
+                return histories
+            }
+            return load()
+
+        }
+        set(value) {
+            if PersistentStore.shared.isMigrated {
+                PersistentStore.shared.replaceHistories(value)
+                return
+            }
+            let save = {
+                guard let data = try? JSONEncoder().encode(value) else { return 0 }
+                self.userDefaults.set(data, forKey: "LevelPlayHistories")
+                return data.count
+            }
+            _ = save()
+
+        }
+    }
+
+    func recordLevelPlay(levelID:Int, at date:Date = Date()) {
+        if PersistentStore.shared.isMigrated {
+            PersistentStore.shared.recordPlay(levelID: levelID, at: date)
+            return
+        }
+        var histories = LevelPlayHistories
+        var history = histories[levelID] ?? LevelPlayHistory(playCount: 0, lastPlayedAt: 0)
+        history.playCount += 1
+        history.lastPlayedAt = date.timeIntervalSince1970
+        histories[levelID] = history
+        LevelPlayHistories = histories
+    }
+
+    
+//　カウンタ系データ : ここのカウンタはデータベースに送信したら初期化してカウントをゼロにする
+    //Score
+    var JustPlayedScore:UserJustPlayedScore {
+        get {
+            if PersistentStore.shared.isMigrated {
+                let userScore = UserJustPlayedScore()
+                userScore.scores = PersistentStore.shared.scores(pending: true).0
+                return userScore
+            }
+            let load = {
+                let userScore = UserJustPlayedScore()
+                if let us = self.userDefaults.object(forKey: "JustPlayedUserScore") as? NSData {
+                    //print("スコア 読み込み")
+                    userScore.scores = NSKeyedUnarchiver.unarchiveObject(with: us as Data) as! [Int:[Int]]
+                }
+                return userScore
+            }
+            return load()
+
+        }
+        set(userScore) {
+            if PersistentStore.shared.isMigrated {
+                let levels = PersistentStore.shared.scores(pending: true).1
+                PersistentStore.shared.replaceScores(userScore.scores, levels: levels, pending: true)
+                return
+            }
+            let save = {
+                let data = NSKeyedArchiver.archivedData(withRootObject: userScore.scores)
+                self.userDefaults.set(data, forKey: "JustPlayedUserScore")
+                self.userDefaults.synchronize()
+                return data.count
+            }
+            _ = save()
+
+            // print("JustPlayedScore set")
+        }
+    }
     //PlayCounter
     var PlayCount:PlayCounter {
         get {
-            let playCounter = PlayCounter()
-            if let pc = userDefaults.object(forKey: "PlayCount") as? NSData {
-                //print("プレイ回数 読み込み")
-                playCounter.counter = NSKeyedUnarchiver.unarchiveObject(with: pc as Data) as! [Int:Int]
+            if PersistentStore.shared.isMigrated {
+                let playCounter = PlayCounter()
+                playCounter.counter = PersistentStore.shared.playCounts()
+                return playCounter
             }
-            return playCounter
+            let load = {
+                let playCounter = PlayCounter()
+                if let pc = self.userDefaults.object(forKey: "PlayCount") as? NSData {
+                    //print("プレイ回数 読み込み")
+                    playCounter.counter = NSKeyedUnarchiver.unarchiveObject(with: pc as Data) as! [Int:Int]
+                }
+                return playCounter
+            }
+            return load()
+
         }
         set(playCounter){
-            let data = NSKeyedArchiver.archivedData(withRootObject: playCounter.counter)
-            userDefaults.set(data, forKey: "PlayCount")
+            if PersistentStore.shared.isMigrated {
+                PersistentStore.shared.replacePlayCounts(playCounter.counter)
+                return
+            }
+            let save = {
+                let data = NSKeyedArchiver.archivedData(withRootObject: playCounter.counter)
+                self.userDefaults.set(data, forKey: "PlayCount")
+                self.userDefaults.synchronize()
+                return data.count
+            }
+            _ = save()
+
+        }
+    }
+    //MusicFavoriteCounter
+    var MusicFavoriteCount:MusicFavoriteCounter {
+        get {
+            let musicFavoriteCounter = MusicFavoriteCounter()
+            if let pc = userDefaults.object(forKey: "MusicFavoriteCount") as? NSData {
+                //print("プレイ回数 読み込み")
+                musicFavoriteCounter.counter = NSKeyedUnarchiver.unarchiveObject(with: pc as Data) as! [Int:Int]
+            }
+            return musicFavoriteCounter
+        }
+        set(musicFavoriteCounter){
+            let data = NSKeyedArchiver.archivedData(withRootObject: musicFavoriteCounter.counter)
+            userDefaults.set(data, forKey: "MusicFavoriteCount")
             userDefaults.synchronize()
         }
     }
-    //FavoriteCounter
-    var FavoriteCount:FavoriteCounter {
+    //LikeCounter
+    var LikeCount:LikeCounter {
         get {
-            let favoriteCounter = FavoriteCounter()
-            if let pc = userDefaults.object(forKey: "FavoriteCount") as? NSData {
+            let likeCounter = LikeCounter(storage: .like)
+            if let pc = userDefaults.object(forKey: "LikeCount") as? NSData {
                 //print("プレイ回数 読み込み")
-                favoriteCounter.counter = NSKeyedUnarchiver.unarchiveObject(with: pc as Data) as! [Int:Int]
+                likeCounter.counter = NSKeyedUnarchiver.unarchiveObject(with: pc as Data) as! [Int:Int]
             }
-            return favoriteCounter
+            return likeCounter
         }
-        set(favoriteCounter){
-            let data = NSKeyedArchiver.archivedData(withRootObject: favoriteCounter.counter)
-            userDefaults.set(data, forKey: "FavoriteCount")
+        set(likeCounter){
+            let data = NSKeyedArchiver.archivedData(withRootObject: likeCounter.counter)
+            userDefaults.set(data, forKey: "LikeCount")
+            userDefaults.synchronize()
+        }
+    }
+    //DislikeCounter
+    var DislikeCount:LikeCounter {
+        get {
+            let dislikeCounter = LikeCounter(storage: .dislike)
+            if let pc = userDefaults.object(forKey: "DislikeCount") as? NSData {
+                //print("プレイ回数 読み込み")
+                dislikeCounter.counter = NSKeyedUnarchiver.unarchiveObject(with: pc as Data) as! [Int:Int]
+            }
+            return dislikeCounter
+        }
+        set(dislikeCounter){
+            let data = NSKeyedArchiver.archivedData(withRootObject: dislikeCounter.counter)
+            userDefaults.set(data, forKey: "DislikeCount")
             userDefaults.synchronize()
         }
     }
     
-    //tagやソートの設定
+// tagやsort系の設定 : タグ、ミュージックソート、レベルソート
     var _SelectedMusicCondition:SelectConditions?
     var SelectedMusicCondition:SelectConditions {
         get {
             if _SelectedMusicCondition == nil {
                 var tags = "@初期楽曲"
-                var sortItem = "曲の投稿が古い順"
+                var sortItem = "曲の投稿日時 昇順"
                 if let tags_ = userDefaults.string(forKey: "SelectConditionsTags") {
                     tags = tags_
                 }
@@ -283,7 +591,29 @@ class UserData {
             userDefaults.synchronize()
         }
     }
+    var LevelHiddenDislikeCondition:Int {
+        get {
+            userDefaults.register(defaults: ["LevelSortCondition":0])
+            let num = userDefaults.integer(forKey: "LevelSortCondition")
+            return num
+        }
+        set(num) {
+            userDefaults.set(num, forKey: "LevelSortCondition")
+            userDefaults.synchronize()
+        }
+    }
     
+// ゲーム設定
+    var ShowGameSettings:Bool {
+        get {
+            userDefaults.register(defaults: ["ShowGameSettings":false])
+            return userDefaults.bool(forKey: "ShowGameSettings")
+        }
+        set(b) {
+            userDefaults.set(b, forKey: "ShowGameSettings")
+            userDefaults.synchronize()
+        }
+    }
     var JudgeOffset:[Int:Float] {
         get{
             if let us = userDefaults.object(forKey: "JudgeOffset") as? NSData {
@@ -308,6 +638,26 @@ class UserData {
         }
         set(x) {
             userDefaults.set(Float(x), forKey: "BorderY")
+            userDefaults.synchronize()
+        }
+    }
+    var fitsMovieToKeyboardHeight:Bool {
+        get {
+            userDefaults.register(defaults: ["fitsMovieToKeyboardHeight":true])
+            return userDefaults.bool(forKey: "fitsMovieToKeyboardHeight")
+        }
+        set(b) {
+            userDefaults.set(b, forKey: "fitsMovieToKeyboardHeight")
+            userDefaults.synchronize()
+        }
+    }
+    var showOffsetLabel:Bool {
+        get {
+            userDefaults.register(defaults: ["showOffsetLabel":false])
+            return userDefaults.bool(forKey: "showOffsetLabel")
+        }
+        set(b) {
+            userDefaults.set(b, forKey: "showOffsetLabel")
             userDefaults.synchronize()
         }
     }
@@ -359,7 +709,34 @@ class UserData {
             userDefaults.synchronize()
         }
     }
-    var DrawingUpdateInterval:Float {
+    var timetagOffsetMs:Int {
+        get {
+            userDefaults.register(defaults: ["TimetagOffsetMs":-115])
+            return userDefaults.integer(forKey: "TimetagOffsetMs")
+        }
+        set {
+            userDefaults.set(newValue, forKey: "TimetagOffsetMs")
+        }
+    }
+    var timetagRateFactor:Double {
+        get {
+            userDefaults.register(defaults: ["TimetagRateFactor":0.07])
+            return userDefaults.double(forKey: "TimetagRateFactor")
+        }
+        set {
+            userDefaults.set(newValue, forKey: "TimetagRateFactor")
+        }
+    }
+    var playingNoteSelectionOffsetMs:Int {
+        get {
+            userDefaults.register(defaults: ["PlayingNoteSelectionOffsetMs":50])
+            return userDefaults.integer(forKey: "PlayingNoteSelectionOffsetMs")
+        }
+        set {
+            userDefaults.set(newValue, forKey: "PlayingNoteSelectionOffsetMs")
+        }
+    }
+    var DrawingUpdateInterval:Float {  // ver.2.0で廃止
         get {
             userDefaults.register(defaults: ["DrawingUpdateInterval":Float(0.004)])
             let x = userDefaults.float(forKey: "DrawingUpdateInterval")
@@ -396,6 +773,7 @@ class UserData {
         }
     }
     
+// Looked
     //プレイ方法、本体キーボード設定のヘルプを見たかどうか
     var lookedHelp:Bool {
         get {
@@ -458,7 +836,7 @@ class UserData {
     }
     var lookedDesignCoop_v1900:Bool {
         get {
-            userDefaults.register(defaults: ["lookedDesignCoop_v1900":false])
+            userDefaults.register(defaults: ["lookedDesignCoop_v1900":true])
             let le = userDefaults.bool(forKey: "lookedDesignCoop_v1900")
             return le
         }
@@ -467,7 +845,56 @@ class UserData {
             userDefaults.synchronize()
         }
     }
+    // JustPlayedScoreLevelの初期データ作成をselectorに入ってから処理させるためのフラグ
+    var doneJustPlayedScoreLevelMigration:Bool {
+        get {
+            userDefaults.register(defaults: ["doneJustPlayedScoreLevelMigration":true])
+            return userDefaults.bool(forKey: "doneJustPlayedScoreLevelMigration")
+        }
+        set(done) {
+            userDefaults.set(done, forKey: "doneJustPlayedScoreLevelMigration")
+            userDefaults.synchronize()
+        }
+    }
+
+    // ScoreLevelの初期データ作成をselectorに入ってから処理させるためのフラグ
+    var doneScoreLevelMigration:Bool {
+        get {
+            userDefaults.register(defaults: ["doneScoreLevelMigration":true])
+            return userDefaults.bool(forKey: "doneScoreLevelMigration")
+        }
+        set(done) {
+            userDefaults.set(done, forKey: "doneScoreLevelMigration")
+            userDefaults.synchronize()
+        }
+    }
+
+    // ver.2.0でのお気に入りの仕様変更処理をselectorに入ってから処理させるためのフラグ
+    var doneFavoriteUpdate_v2000:Bool {
+        get {
+            userDefaults.register(defaults: ["doneFavoriteUpdate_v2000":true])
+            let le = userDefaults.bool(forKey: "doneFavoriteUpdate_v2000")
+            return le
+        }
+        set(lh) {
+            userDefaults.set(lh, forKey: "doneFavoriteUpdate_v2000")
+            userDefaults.synchronize()
+        }
+    }
+    // ver.2.0でNO_NAMEのままだと１回名付けを提案する
+    var lookedNameRegistrationIfNoName_v2000:Bool {
+        get {
+            userDefaults.register(defaults: ["lookedNameRegistrationIfNoName_v2000":false])
+            let le = userDefaults.bool(forKey: "lookedNameRegistrationIfNoName_v2000")
+            return le
+        }
+        set(lh) {
+            userDefaults.set(lh, forKey: "lookedNameRegistrationIfNoName_v2000")
+            userDefaults.synchronize()
+        }
+    }
     
+// ゲームデータ作成編集
     var MySpoonSet:[Int:String] {
         get {
             if let us = userDefaults.object(forKey: "MySpoonSet") as? NSData {
@@ -484,42 +911,75 @@ class UserData {
         }
     }
 
-    //
+// データセット
     var MusicsJson:String {
         get {
-            if let str = userDefaults.string(forKey: "MusicsJson") {
-                return str
+            if PersistentStore.shared.isMigrated {
+                return LargeValueStore.read("MusicsJson") ?? ""
             }
-            return ""
+            let load = { self.userDefaults.string(forKey: "MusicsJson") ?? "" }
+            return load()
+
         }
         set(value) {
-            userDefaults.set(value, forKey: "MusicsJson")
-            userDefaults.synchronize()
+            if PersistentStore.shared.isMigrated {
+                _ = LargeValueStore.write(value, key: "MusicsJson")
+                return
+            }
+            let save = {
+                self.userDefaults.set(value, forKey: "MusicsJson")
+                self.userDefaults.synchronize()
+                return value.lengthOfBytes(using: .utf8)
+            }
+            _ = save()
+
         }
     }
     var LevelsJson:String {
         get {
-            if let str = userDefaults.string(forKey: "LevelsJson") {
-                return str
+            if PersistentStore.shared.isMigrated {
+                return LargeValueStore.read("LevelsJson") ?? ""
             }
-            return ""
+            let load = { self.userDefaults.string(forKey: "LevelsJson") ?? "" }
+            return load()
+
         }
         set(value) {
-            userDefaults.set(value, forKey: "LevelsJson")
-            userDefaults.synchronize()
+            if PersistentStore.shared.isMigrated {
+                _ = LargeValueStore.write(value, key: "LevelsJson")
+                return
+            }
+            let save = {
+                self.userDefaults.set(value, forKey: "LevelsJson")
+                self.userDefaults.synchronize()
+                return value.lengthOfBytes(using: .utf8)
+            }
+            _ = save()
+
         }
     }
     
     var UserNamesJson:String {
         get {
-            if let str = userDefaults.string(forKey: "UserNamesJson") {
-                return str
+            if PersistentStore.shared.isMigrated {
+                return LargeValueStore.read("UserNamesJson") ?? ""
             }
-            return ""
+            let load = { self.userDefaults.string(forKey: "UserNamesJson") ?? "" }
+            return load()
+
         }
         set(value) {
-            userDefaults.set(value, forKey: "UserNamesJson")
-            userDefaults.synchronize()
+            if PersistentStore.shared.isMigrated {
+                _ = LargeValueStore.write(value, key: "UserNamesJson")
+                return
+            }
+            let save = {
+                self.userDefaults.set(value, forKey: "UserNamesJson")
+                self.userDefaults.synchronize()
+                return value.lengthOfBytes(using: .utf8)
+            }
+            _ = save()
+
         }
     }
     var UserNamesServerJsonNumCount:Int {
@@ -578,7 +1038,7 @@ class UserData {
             return []
         }
         set(value) {
-            print("report set")
+            // print("report set")
             userDefaults.set(value.joined(separator: ","), forKey: "ReportedMusicID")
             userDefaults.synchronize()
         }
@@ -593,7 +1053,7 @@ class UserScore {
     //private let RankStr = ["PERFECT","S","A","B","C","D","E","False"]
     private let RankOdds:[Double] = [1.10, 1.05, 1.00, 0.975, 0.95, 0.925, 0.90, 0.00]
     
-    func setScore(levelID:Int, score:Int, rank:Int) -> Bool{
+    func setScore(levelID:Int, score:Int, rank:Int, level:Int) -> Bool{
         var sup = false
         if let us = scores[levelID] {
             //あった
@@ -614,7 +1074,8 @@ class UserScore {
             }
         }else {
             //なかった
-            //FalseはHighScoreを保存するけどデータベースには送信しない
+
+            //False(ゲームクリアできなかった)はHighScoreを保存するけどデータベースには送信しない
             if rank < Score.RankFalse {
                 scores[levelID] = [score, rank, 0]
             }else {
@@ -625,15 +1086,22 @@ class UserScore {
         //保存
         let userData = UserData.sharedInstance
         userData.Score = self
+        if sup {
+            var scoreLevels = userData.ScoreLevel
+            scoreLevels[levelID] = level
+            userData.ScoreLevel = scoreLevels
+        }
         return sup
     }
     //データベースに送るスコアセット文字列
     func getSendScoresStr() -> String {
         var scoreset = ""
+        let scoreLevels = UserData.sharedInstance.ScoreLevel
         for (levelID,us) in scores {
             if us[FLG] == 0 {
                 let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
-                scoreset += "<\(levelID),\(musicID),\(us[SCORE])>"
+                let level = scoreLevels[levelID] ?? 0
+                scoreset += "<\(levelID),\(musicID),\(us[SCORE]),\(level),\(us[RANK])>"
             }
         }
         return scoreset
@@ -673,6 +1141,49 @@ class UserScore {
         }
         return score
     }
+    // よく見ると、False(ゲームクリアできなかった)はスコアをデータベースに送信しないみたいだからPlayedいらなくてClearedだけで良かったかも...
+    // - なぜかというと、将来的にユーザーアカウントにパスワードつけて、アプリをアンインストールしてもアカウント復活させる機能をつけるかもしれない。
+    //   そのとき、ユーザーの記録(スコア)をデータベースから受け取ることになるが、送信されていないFalse(ゲームクリアできなかった)分は回収できないので、
+    //   総スコアデータの表示が前より低くなってる！と言われかねないので。。。
+    // - データベースに記録されているスコア : score(levelID,score,userID), musicScore(musicID,score,userID)
+    func getPlayedAllMusicScore() -> Int {
+        var musicScores:[Int:Int] = [:]
+        for (levelID,us) in scores {
+//            if us[RANK] < 7 {
+                let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+                if musicID == 0 { continue }
+                // print("\(levelID), \(us[RANK]), \(us[SCORE])")
+                if let sc = musicScores[musicID] {
+                    if sc >= us[SCORE] { continue }
+                }
+                musicScores[musicID] = us[SCORE]
+//            }
+        }
+        var score = 0
+        for (_,mScore) in musicScores {
+            score += mScore
+        }
+        return score
+    }
+    func getPlayedAverageMusicScore() -> Int {
+        var musicScores:[Int:Int] = [:]
+        for (levelID,us) in scores {
+//            if us[RANK] < 7 {
+                let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
+                if musicID == 0 { continue }
+                if let sc = musicScores[musicID] {
+                    if sc >= us[SCORE] { continue }
+                }
+                musicScores[musicID] = us[SCORE]
+//            }
+        }
+        var score = 0
+        for (_,mScore) in musicScores {
+            score += mScore
+        }
+        return Int(score / max(musicScores.count,1))
+    }
+    
     func getClearedMusicNum() -> Int {
         var set: Set = Set<Int>()
         for (levelID,us) in scores {
@@ -730,7 +1241,7 @@ class UserScore {
                 if musicID == 0 { continue }
                 let levelLevel = MusicDataLists.sharedInstance.getGameLevel(levelID: levelID)
                 if levelLevel == 0.0 { continue }
-                if levelLevel >= 10.0 && us[RANK] == 6 { continue }
+                if levelLevel > 10.0 && us[RANK] == 6 { continue }
                 if let lv = musicLevels[musicID] {
                     if lv >= levelLevel { continue }
                 }
@@ -745,7 +1256,7 @@ class UserScore {
         for (mID,mLevel) in musicLevels {
             level += mLevel    * Double(tes[mID]!)
             count += 1
-            print("\(mLevel)) * \(tes[mID]) = \(mLevel * tes[mID]!) :: \((level / Double(count)))")
+            // print("\(mLevel)) * \(tes[mID]) = \(mLevel * tes[mID]!) :: \((level / Double(count)))")
 
         }
         return Int((level / Double(musicLevels.count)))
@@ -772,11 +1283,13 @@ class UserJustPlayedScore {
     private let RANK = 1
     private let FLG = 2
     
-    func setScore(levelID:Int, score:Int, rank:Int){
+    func setScore(levelID:Int, score:Int, rank:Int, level:Int){
+        var updatedScoreLevel = false
         if let us = scores[levelID] {
             //あった
             if us[SCORE] < score {
                 scores[levelID]?[SCORE] = score
+                updatedScoreLevel = true
                 //FalseはHighScoreを保存するけどデータベースには送信しない
                 if rank < Score.RankFalse {
                     scores[levelID]?[FLG] = 0 //スコア投稿済みかのフラグ
@@ -796,10 +1309,16 @@ class UserJustPlayedScore {
             }else {
                 scores[levelID] = [score, rank, 1]
             }
+            updatedScoreLevel = true
         }
         //保存
         let userData = UserData.sharedInstance
         userData.JustPlayedScore = self
+        if updatedScoreLevel {
+            var scoreLevels = userData.JustPlayedScoreLevel
+            scoreLevels[levelID] = level
+            userData.JustPlayedScoreLevel = scoreLevels
+        }
         return
     }
     //データベースに送るスコアセット文字列
@@ -807,29 +1326,32 @@ class UserJustPlayedScore {
         var scoreset = scoreset
         var ans:[String]=[]
         var scoresetIDs:[Int] = []
-        print("append - scoreset= \(scoreset)")
-        if (scoreset.pregMatche(pattern: "<(\\d+),\\d+,\\d+>", matches: &ans)) {
+        // print("append - scoreset= \(scoreset)")
+        if (scoreset.pregMatche(pattern: "<(\\d+),\\d+,\\d+,-?\\d+,-?\\d+>", matches: &ans)) {
             for i in 0 ..< (ans.count / 2) {
                 guard let n = Int(ans[i*2+1]) else { continue }
                 scoresetIDs.append( n )
-                print("scoresetIDs:\(n)")
+                // print("scoresetIDs:\(n)")
             }
         }
+        let scoreLevels = UserData.sharedInstance.JustPlayedScoreLevel
         for (levelID,us) in scores {
             if us[FLG] == 0 {
                 if scoresetIDs.contains(levelID){ continue }
                 let musicID = MusicDataLists.sharedInstance.getLevelIDtoMusicID(levelID: levelID)
-                scoreset += "<\(levelID),\(musicID),\(us[SCORE])>"
+                let level = scoreLevels[levelID] ?? 0
+                scoreset += "<\(levelID),\(musicID),\(us[SCORE]),\(level),\(us[RANK])>"
             }
         }
-        print("scoreset(appended)= \(scoreset)")
+        // print("scoreset(appended)= \(scoreset)")
         return scoreset
     }
     func clearSendedData() {
-        print("clearSendedData")
+        // print("clearSendedData")
         //初期化
         let userData = UserData.sharedInstance
         userData.JustPlayedScore = UserJustPlayedScore()
+        userData.JustPlayedScoreLevel = [:]
     }
     func getScore(levelID:Int) -> Int{
         return (scores[levelID]?[SCORE])!
@@ -872,85 +1394,105 @@ class PlayCounter {
     }
 }
 
-class FavoriteCounter {
+class MusicFavoriteCounter {
     var counter:[Int:Int] = [:]
+    // [musicSqlID: お気に入りデータ送信値]
+    // - 送信値: マイナスになることもある。自分のデータでプラスしていたら、やめたとき引かないといけない。
+    // - 送信に成功したら、このcounterデータを初期化してもう送らないようにする。
     
-    func addFavoriteCount(levelID:Int){
-        if let fc = counter[levelID] {
-            //あった
-            if fc == -1 {
-                //けど引こうとしていた
-                counter[levelID] = nil
-            }else {
-                return
-            }
-        }else {
-            //なかった
-            counter[levelID] = 1
+    func addMusicFavoriteCount(sqlID:Int){
+        let change = 1
+        if let currentCount = counter[sqlID] {
+            let newCount = currentCount + change
+            counter[sqlID] = newCount == 0 ? nil : newCount
+        } else {
+            //登録されてなかった
+            counter[sqlID] = change
         }
-        
         //保存
         let userData = UserData.sharedInstance
-        userData.FavoriteCount = self
+        userData.MusicFavoriteCount = self
     }
-    func subFavoriteCount(levelID:Int){
-        if let fc = counter[levelID] {
-            //あった
-            if fc == 1 {
-                //足そうとしていた
-                counter[levelID] = nil
-            }else {
-                return
-            }
-        }else {
-            //なかった
-            counter[levelID] = -1
+    func subMusicFavoriteCount(sqlID:Int){
+        let change = -1
+        if let currentCount = counter[sqlID] {
+            let newCount = currentCount + change
+            counter[sqlID] = newCount == 0 ? nil : newCount
+        } else {
+            //登録されてなかった
+            counter[sqlID] = change
         }
         //保存
         let userData = UserData.sharedInstance
-        userData.FavoriteCount = self
+        userData.MusicFavoriteCount = self
     }
     //データベースに送るプレイ回数セット文字列
-    func getSendFavoriteCountStr() -> String {
-        var favoritecountset = ""
-        for (levelID,pc) in counter {
-            favoritecountset += "<\(levelID),\(pc)>"
+    func getSendMusicFavoriteCountStr() -> String {
+        var musicFavoritecountset = ""
+        for (sqlID,pc) in counter {
+            musicFavoritecountset += "<\(sqlID),\(pc)>"
         }
-        return favoritecountset
+        return musicFavoritecountset
     }
     //スコア送信後、FLGを送信済みにする
     func setSended() {
         counter = [:] //初期化
         //保存
         let userData = UserData.sharedInstance
-        userData.FavoriteCount = self
+        userData.MusicFavoriteCount = self
     }
 }
 
-class PFCounter {
-    let userData = UserData.sharedInstance
-    let playCounter:[Int:Int]
-    let favoriteCounter:[Int:Int]
-    init() {
-        playCounter = userData.PlayCount.counter
-        favoriteCounter = userData.FavoriteCount.counter
+class LikeCounter {
+    enum Storage {
+        case like
+        case dislike
     }
-    func getSendPlayFavoriteCountStr() -> String {
-        
-        let sets = Set( Array(playCounter.keys) + Array(favoriteCounter.keys) )
-        
-        if sets.count == (playCounter.count + favoriteCounter.count){
-            //pfで重複してないなら片方だけで送るようにする
-            return ""
+    
+    private let storage: Storage
+    var counter:[Int:Int] = [:]
+    // [levelSqlID: いいねデータ送信値]
+    // - 送信値: マイナスになることもある。自分のデータでプラスしていたら、やめたとき引かないといけない。
+    // - 送信に成功したら、このcounterデータを初期化してもう送らないようにする。
+    
+    init(storage: Storage = .like) {
+        self.storage = storage
+    }
+    
+    func changeLikeCount(sqlID:Int, change:Int){
+        if let currentCount = counter[sqlID] {
+            let newCount = currentCount + change
+            counter[sqlID] = newCount == 0 ? nil : newCount
+        } else {
+            //登録されてなかった
+            counter[sqlID] = change
         }
-        
-        var pfcountset = ""
-        for levelID in sets {
-            let pc = playCounter[levelID] ?? 0
-            let fc = favoriteCounter[levelID] ?? 0
-            pfcountset += "<\(levelID),\(pc),\(fc)>"
+        //保存
+        save()
+    }
+    //データベースに送るプレイ回数セット文字列
+    func getSendLikeCountStr() -> String {
+        var musicFavoritecountset = ""
+        for (sqlID,pc) in counter {
+            musicFavoritecountset += "<\(sqlID),\(pc)>"
         }
-        return pfcountset
+        return musicFavoritecountset
+    }
+    //スコア送信後、FLGを送信済みにする
+    func setSended() {
+        counter = [:] //初期化
+        //保存
+        save()
+    }
+    
+    private func save() {
+        let userData = UserData.sharedInstance
+        switch storage {
+        case .like:
+            userData.LikeCount = self
+        case .dislike:
+            userData.DislikeCount = self
+        }
     }
 }
 
@@ -1029,18 +1571,20 @@ class SelectConditions {
     }
     
     static let SortItems = [
-        "曲の投稿が新しい順",
-        "曲の投稿が古い順",
-        "ゲームの投稿が新しい曲順",
-        "ゲームの投稿が古い曲順",
-        "ゲームプレイ回数が多い曲順",
-        "ゲームプレイ回数が少ない曲順",
+        "曲の投稿日時 昇順",
+        "曲の投稿日時 降順",
+        "ゲームの投稿日時 昇順",
+        "ゲームの投稿日時 降順",
+        "みんなのプレイ回数が多い曲順",
+        "みんなのプレイ回数が少ない曲順",
         "お気に入り数が多い曲順",
         "お気に入り数が少ない曲順",
-        "動画IDが大きい順",
-        "動画IDが小さい順",
+        "動画ID 昇順",
+        "動画ID 降順",
         "最近ハイスコアが更新された曲順",
-        "最近コメントされた曲順"
+        "最近コメントされた曲順",
+        "最近プレイした曲順",
+        "あなたのプレイ回数が多い曲順"
     ]
     
     //タグとタイプのセット
@@ -1056,7 +1600,7 @@ class SelectConditions {
     //複数タグの平文。セット時にタグを分割して保持する -> tag:[tagp]
     var tags:String {
         didSet {
-            print("didset")
+            // print("didset")
             tag = [] //初期化
             if tags == "" {
                 //保存
@@ -1093,3 +1637,7 @@ class SelectConditions {
     
 }
 
+struct LevelPlayHistory: Codable {
+    var playCount: Int
+    var lastPlayedAt: TimeInterval
+}

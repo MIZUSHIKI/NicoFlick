@@ -12,6 +12,13 @@ import AVFoundation
 import ReplayKit
 
 class GameView: UIViewController, UITextFieldDelegate {
+    private static var hasWarmedUpKeyboardInput = false
+
+    private var isWaitingForKeyboardWarmUp = false
+    private var pendingInitialGameStart: (() -> Void)?
+    private var keyboardWarmUpOverlay: UIView?
+    private var keyboardWarmUpLabel: UILabel?
+    private var keyboardWarmUpLabelCenterYConstraint: NSLayoutConstraint?
     
     @IBOutlet var textField: UITextField!
     @IBOutlet var testLabel: UILabel!
@@ -23,7 +30,7 @@ class GameView: UIViewController, UITextFieldDelegate {
     @IBOutlet var flickView: UIView!
     @IBOutlet var scoreLabel: UILabel!
     @IBOutlet var comboView: UIView!
-    @IBOutlet var comboLabel: UIDecorationLabel!
+    @IBOutlet var comboLabel: OutlinedLabel!
     @IBOutlet var highScoreLabel: UILabel!
     @IBOutlet var judgeOffsetLabel: UILabel!
     
@@ -36,6 +43,12 @@ class GameView: UIViewController, UITextFieldDelegate {
     
     @IBOutlet weak var keyboardImageView: UIImageView!
     @IBOutlet weak var keyboardKeyView: UIView!
+    
+    @IBOutlet weak var practiceSeekbar: UISlider!
+    @IBOutlet weak var practiceRatebar: UISlider!
+    @IBOutlet weak var practiceRateLabel: OutlinedLabel!
+    @IBOutlet weak var practiceAutoPlaySwitch: UISwitch!
+    @IBOutlet weak var practiceAutoPlayLabel: OutlinedLabel!
     
     //判定エフェクト用のView
     var greatViews:[UIView] = []
@@ -50,34 +63,64 @@ class GameView: UIViewController, UITextFieldDelegate {
     var missActionCount = 0
     var flickViews:[UIView] = []
     var flickActionCount = 0
+    private weak var previousFlickView: UIView?
+    var effectViewsNum = 10
+    private var nextEffectZPosition: CGFloat = 1
     var comboFrameOriginY:CGFloat = 360.0
 
     //ゲーム  表示,判定 定数データ
     @IBOutlet var nodeLine: UIView!
+    @IBOutlet private weak var dotCircleView: UIView!
     var nodeLineFlameOriginY:CGFloat = 345.0
     static let GameViewWidth = 375.0 //
     static let FlickPointX = 50.0
-    let gameviewWidth = GameViewWidth
-    let flickPointX = FlickPointX
+    private var gameviewWidth = GameViewWidth
+    private var flickPointX = FlickPointX
+    private var lastDisplayedNoteTime: Double?
+    // iPhone 12 miniの標準幅375ptで、時刻一致位置70pt。
+    private let visualFlickCenterRatio: CGFloat = 70.0 / 375.0
     let nodeSize = CGSize(width: 40, height: 40)
     let greatLine:[Double] = [-0.080, 0.080]
     let goodLine:[Double] = [-0.200, 0.200]
     let safeLine:[Double] = [-0.400, 0.300]
     var judgeOffset = 0.0
     var xps:Double = 0.0 //ノートが一秒間に進む距離(あとで計算する)
+    var practiceMode = false
+    var practice_movieTimeSliding = false
+    var practice_waitingForFlickAfterMovieTimeSlide = false
+    var timetagRateFactor = 0.07
     
     var keyboardRect:CGRect? = nil
     let savingPlayMovie = UserData.sharedInstance.SavePlayMovie
     var failedSavePlayMovie = false
     var Window_UIRemoteKeyboard:UIView?
     
-    
+    var hasPassedFirstNote = false
+    private var hasRecordedPlayHistory = false
+
+    func recordPlayHistoryIfNeeded() {
+        guard hasPassedFirstNote,
+              !hasRecordedPlayHistory,
+              !selectLevel.isEditing else { return }
+        hasRecordedPlayHistory = true
+        userData.recordLevelPlay(levelID: selectLevel.sqlID)
+    }
+
     //動画
     var cachedMovies:CachedMovies = CachedMovies.sharedInstance
     var moviePlayerViewController:AVPlayerViewController!
-    var timer:Timer!
+    var fitsMovieToKeyboardHeight = false
+    private var presentationSizeObservation: NSKeyValueObservation?
+    private var displayLink: CADisplayLink?
+    private var autoPlayTimeObserver: Any?
+    private weak var autoPlayObserverPlayer: AVPlayer?
+    private var isGameMenuPresented = false
+    private var gameMenuPresentedMediaTime: CFTimeInterval?
+    private var nextAutoPlayIndex = 0
+    private var nextMissCheckIndex = 0
     var t03 = 3.0
     var time3secMediaTime:CFTimeInterval?
+    private var isWaitingForMovieLoad = false
     //効果音プレイヤー(シングルトン)
     var seAudio:SEAudio = SEAudio.sharedInstance
     var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
@@ -106,7 +149,7 @@ class GameView: UIViewController, UITextFieldDelegate {
             userData.lookedHelp = true
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
-                print("HowToを表示")
+                // print("HowToを表示")
                 self.performSegue(withIdentifier: "toHelpView", sender: self)
             }
         }else {
@@ -114,11 +157,20 @@ class GameView: UIViewController, UITextFieldDelegate {
         }
     }
     func viewDidLoad2() {
+        // 設定値取得
+        fitsMovieToKeyboardHeight = userData.fitsMovieToKeyboardHeight
+        keyboardRect = userData.maeKeyboardRect
+        judgeOffsetLabel.isHidden = !userData.showOffsetLabel
+        
         //初期位置設定修正
         nodeLineFlameOriginY = nodeLine.frame.origin.y
         comboFrameOriginY = comboView.frame.origin.y
         
         textField.delegate = self
+        isWaitingForKeyboardWarmUp = !Self.hasWarmedUpKeyboardInput
+        if isWaitingForKeyboardWarmUp {
+            showKeyboardWarmUpOverlay()
+        }
         //textField.returnKeyType = .done
         if selectLevel.level>10 {
             borderMaxView.isHidden = true
@@ -129,8 +181,8 @@ class GameView: UIViewController, UITextFieldDelegate {
             borderMaxView.frame.origin.y = nodeLineFlameOriginY + 41
             comboFrameOriginY = comboView.frame.origin.y - 50
             comboLabel.textColor = UIColor.white
-            comboLabel.strokeSize = 3
-            comboLabel.strokeColor = UIColor.darkGray
+            comboLabel.outlineWidth = 3
+            comboLabel.outlineColor = UIColor.darkGray
         }
         //ipad対策（対象じゃないけど）
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow(_:)), name: .UIKeyboardDidShow, object: nil)
@@ -139,7 +191,7 @@ class GameView: UIViewController, UITextFieldDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(windowDidBecomeVisible(_:)), name: .UIWindowDidBecomeVisible, object: nil)
         
         //計算しておく
-        xps = (gameviewWidth-flickPointX)*Double(selectLevel.speed)/300 //ノートが一秒間に進む距離
+        updateNoteLaneLayout()
         let timetag = selectLevel.noteData.pregMatche_firstString(pattern: "(\\[\\d\\d\\:\\d\\d[\\:|\\.]\\d\\d\\])")
         if timetag != "" {
             t03 = 3.0 - timetag.timetagToSeconds()
@@ -155,68 +207,30 @@ class GameView: UIViewController, UITextFieldDelegate {
             smNum = ans[1]
         }
         MovieAccess.init().StreamingUrlNicoAccess(smNum: smNum){ nicodougaURL in
-            print(nicodougaURL)
+            // print(nicodougaURL)
             //session.dataTas後のサブスレッド内でviewを処理させると表示関連が後回しになるので、メインスレッドでaddSubviewする。
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
-                self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!, smNum: smNum)
+                guard let videoURL = URL(string: nicodougaURL) else { return }
+                self.moviePlayerViewController = self.cachedMovies.access(url: videoURL, smNum: smNum)
                 self.moviePlayerViewController?.view.tag = 5050
                 //  add
                 self.view.addSubview(self.moviePlayerViewController.view)
                 self.view.sendSubview(toBack: self.moviePlayerViewController.view)
                 
-                let screenWidth:CGFloat = self.view.frame.size.width - self.view.safeAreaInsets.left - self.view.safeAreaInsets.right
-                let movieHeight = self.judgeOffsetLabel.frame.origin.y + self.judgeOffsetLabel.frame.size.height - self.view.safeAreaInsets.top
-                //let screenHeight:CGFloat = self.view.frame.size.height - self.view.safeAreaInsets.top - self.view.safeAreaInsets.bottom
-                print("\(screenWidth)x\(movieHeight)")
-                //  動画Viewの位置
-                self.moviePlayerViewController.view.frame = CGRect(x: 0, y: self.view.safeAreaInsets.top, width: screenWidth, height: movieHeight)
+                self.observeMoviePresentationSize()
                 // 動画が終了した時に呼ばれるnotificationを登録
                 NotificationCenter.default.addObserver(forName: NSNotification.Name.AVPlayerItemDidPlayToEndTime, object: nil, queue: nil){ notification in
                     //再生終了したとき
-                    print("終了")
+                    // print("終了")
                     DispatchQueue.main.async {
                         //UI処理はメインスレッドの必要あり
                         self.performSegue(withIdentifier: "toResultView", sender: self)
                     }
                 }
-                //ムービーロードbar
-                self.loadedAndCurrentTimeBarView.frame = CGRect(x: 0, y: self.view.safeAreaInsets.top+movieHeight, width: screenWidth, height: self.loadedAndCurrentTimeBarView.frame.size.height)
                 self.loadedAndCurrentTimeBarView.isHidden = false
                 
-                if self.savingPlayMovie {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self.maeCount_keyboardBackground = 0 //録画用キーボード背景を描画
-                        self.setKeyboardImage()              //
-                        self.startRecording(){
-                            //  動画再生
-                            self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                            
-                            print("t03=\(self.t03)")
-                            self.moviePlayerViewController.player?.play()
-                            if self.t03 <= 0.0 {
-                                self.time3secMediaTime = nil
-                            }else {
-                                self.time3secMediaTime = CACurrentMediaTime()
-                                self.moviePlayerViewController.player?.pause()
-                                self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                            }
-                        }
-                    }
-                }else {
-                    //  動画再生
-                    self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                    
-                    print("t03=\(self.t03)")
-                    self.moviePlayerViewController.player?.play()
-                    if self.t03 <= 0.0 {
-                        self.time3secMediaTime = nil
-                    }else {
-                        self.time3secMediaTime = CACurrentMediaTime()
-                        self.moviePlayerViewController.player?.pause()
-                        self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                    }
-                }
+                self.requestInitialGameStart()
 
 
             }
@@ -263,21 +277,20 @@ class GameView: UIViewController, UITextFieldDelegate {
         //保存データ取得 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         //  スコアデータの読み込み
         userScore = userData.Score
-        if let us = userScore.scores[selectLevel.sqlID] {
-            highScoreLabel.text = "High Score: "+String(us[0])+" "
+        if let score = userScore.scores[selectLevel.sqlID]?.first, score > 0 {
+            highScoreLabel.text = "High Score: \(score) "
+            highScoreLabel.isHidden = false
+        } else {
+            highScoreLabel.isHidden = true
         }
-        //  ジャッジオフセットの取得
-        if let jo = userData.JudgeOffset[selectLevel.sqlID] {
-            judgeOffset = Double(jo)
-        }
-        judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset)) "
+        SetJudgeOffset()
 
         //効果音準備 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         //seAudio.loadGameSE() //instance時に準備する
         
         //判定エフェクトView下準備。Great等を複製 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         // １つだけだと連続で判定されたとき複数表示されないので複製を作る(ImegeView化)
-        for i in (0 ..< 5) {
+        for i in (0 ..< effectViewsNum) {
             greatViews.append(self.greatView.GetImageView())
             self.nodeLine.addSubview(greatViews[i])
             goodViews.append(self.goodView.GetImageView())
@@ -292,36 +305,95 @@ class GameView: UIViewController, UITextFieldDelegate {
             self.nodeLine.addSubview(flickViews[i])
         }
 
-        //タイマー発動 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-        timer = Timer.scheduledTimer(timeInterval: TimeInterval(userData.DrawingUpdateInterval), target: self, selector: #selector(self.update), userInfo: nil, repeats: true)
-        timer.fire()
+        updateNoteLaneLayout()
+
+        // 動画の0秒シークが完了してから画面更新と判定を開始する
         firstAttack=true
         
         //キーボードを開く _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         textField.becomeFirstResponder()
     }
     override func viewDidLayoutSubviews() {
-        if borderOriginRect != nil{
-            return
+        super.viewDidLayoutSubviews()
+        if borderOriginRect == nil {
+            borderOriginRect = borderMaxView.frame
         }
-        borderOriginRect = borderMaxView.frame
+        updateMovieLayout()
+        updateKeyboardWarmUpLabelPosition()
+        updateNoteLaneLayout()
     }
+    // ノーツの移動計算と独立した、操作感に合わせた比率で目印とエフェクトを配置する。
+    private func updateNoteLaneLayout() {
+        guard let nodeLine, let selectLevel, nodeLine.bounds.width > 0 else { return }
+
+        let width = Double(nodeLine.bounds.width)
+        let widthChanged = gameviewWidth != width
+        gameviewWidth = width
+        flickPointX = width * Self.FlickPointX / Self.GameViewWidth
+        xps = (width - flickPointX) * Double(selectLevel.speed) / 300
+
+        let centerX = nodeLine.bounds.width * visualFlickCenterRatio
+        let originals: [UIView?] = [
+            dotCircleView, greatView, goodView, safeView, badView, missView, flickView, comboView
+        ]
+        let effects = greatViews + goodViews + safeViews + badViews + missViews + flickViews
+        for effect in originals.compactMap({ $0 }) + effects {
+            guard let parent = effect.superview else { continue }
+            let x = parent.convert(CGPoint(x: centerX, y: 0), from: nodeLine).x
+            // 拡縮アニメーション中も大きさと縦位置は維持する。
+            if effect.center.x != x {
+                effect.center.x = x
+            }
+        }
+
+        if widthChanged, let time = lastDisplayedNoteTime {
+            updateNotePositions(at: time)
+        }
+    }
+
+    private func updateNotePositions(at time: Double) {
+        guard let noteData else { return }
+        lastDisplayedNoteTime = time
+        for note in noteData.notes {
+            // 保存済みposXは基準幅で計算されているため、現在の幅と時刻から直接求める。
+            let x = (note.time - time) * xps + flickPointX
+            let shouldBeVisible = -100 < x && x < gameviewWidth + 25
+            if shouldBeVisible {
+                note.label.frame.origin.x = CGFloat(x)
+            }
+            if note.label.isHidden == shouldBeVisible {
+                note.label.isHidden = !shouldBeVisible
+            }
+        }
+    }
+
     override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
         self.SetBorderY()
+        observeMoviePresentationSize()
+    }
+    func SetJudgeOffset(){
+        //  ジャッジオフセットの取得
+        if let jo = userData.JudgeOffset[selectLevel.sqlID] {
+            judgeOffset = Double(jo)
+        }
+        judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset)) "
     }
     func SetBorderY(){
         if let rect = borderOriginRect {
             if userData.BorderY > 0 {
-                borderMaxView.frame = CGRect(x: rect.origin.x + rect.width/6 , y: userData.BorderY, width: rect.width * 2/3, height: rect.height)
+                borderMaxView.frame = CGRect(x: rect.origin.x + rect.width/4 , y: userData.BorderY, width: rect.width * 1/2, height: rect.height)
             }else{
                 borderMaxView.frame = rect
             }
         }
     }
     override func viewWillDisappear(_ animated: Bool) {
-        if (timer != nil) {
-            timer.invalidate()
-        }
+        super.viewWillDisappear(animated)
+        stopDisplayLink()
+        removeAutoPlayObserver()
+        presentationSizeObservation?.invalidate()
+        presentationSizeObservation = nil
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -340,6 +412,13 @@ class GameView: UIViewController, UITextFieldDelegate {
     
     //フリック判定
     func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        if isWaitingForKeyboardWarmUp {
+            if !string.isEmpty && string != "\n" {
+                finishKeyboardWarmUp()
+            }
+            return false
+        }
+
         testLabel.text = string
         //print("string="+string)
         if string == "\n" {
@@ -349,13 +428,16 @@ class GameView: UIViewController, UITextFieldDelegate {
             //    performSegue(withIdentifier: "toResultView", sender: self)
             //}
         }
-        //フリックアクション
-        self.FlickAction()
         
         var flickTime = -1.0
         if moviePlayerViewController != nil {
             if moviePlayerViewController.player != nil {
                 flickTime = CMTimeGetSeconds((moviePlayerViewController.player?.currentTime())!)+judgeOffset//キー打ち定量ズレ
+                if practiceMode {
+                    if let rate = moviePlayerViewController?.player?.rate {
+                        flickTime -= timetagRateFactor * (1.0 - Double(rate))
+                    }
+                }
             }
         }
         //着目ノートを決定 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
@@ -372,127 +454,136 @@ class GameView: UIViewController, UITextFieldDelegate {
                         noteData.lastFlickedNum = i + 1
                     }
                 }
+                if diffTime > 1.0 { break }
             }
         }
-        //着目noteがあったとき
-        if flickedNote != nil {
-            
-            //まずフリックした文字とnoteの文字があっているか判定して次にタイミング判定
-            let judge=(flickedNote?.judgeWord(flickWord: string))!
-            if judge == Note.BAD{
-                //Bad
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.BAD
-                noteData.score.addScore(judge: Note.BAD)
-                //print("Bad")
-                //ゲージ
-                borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore/100)
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.BadAction()
-                //se
-                seAudio.badJinglePlay()
-                
-            }else if judge == Note.SAFE{
-                //Safe
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.SAFE
-                noteData.score.addScore(judge: Note.SAFE)
-                //print("Safe")
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.SafeAction()
-                //se
-                seAudio.safeJinglePlay()
-                
-            }else if greatLine[0]<=minDiffTime && minDiffTime<=greatLine[1] {
-                //Great!!
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.GREAT
-                noteData.score.addScore(judge: Note.GREAT)
-                //print("Great!!")
-                //let ft = flickTime - judgeOffset
-                //print("\(ft) / \(flickedNote?.time) : \(flickedNote?.word) ")
-                //ゲージ
-                borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore/100)
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.GreatAction()
-                //se
-                seAudio.okJinglePlay()
-                
-            }else if goodLine[0]<=minDiffTime && minDiffTime<=goodLine[1]{
-                //Good!
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.GOOD
-                noteData.score.addScore(judge: Note.GOOD)
-                //print("Good!")
-                //ゲージ
-                borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore/100)
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.GoodAction()
-                //se
-                seAudio.okJinglePlay()
-                
-            }else if safeLine[0]<=minDiffTime && minDiffTime<=safeLine[1]{
-                //Safe
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.SAFE
-                noteData.score.addScore(judge: Note.SAFE)
-                //print("Safe")
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.SafeAction()
-                //se
-                seAudio.safeJinglePlay()
-                
-            }else {
-                //何かしらには入ったはずだが、一応BAD
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.BAD
-                noteData.score.addScore(judge: Note.BAD)
-                //print("Bad")
-                //ゲージ
-                borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore/100)
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.BadAction()
-                //se
-                seAudio.badJinglePlay()
-            }
-            //print(String.init(format: "time(%f,%f) word(%@,%@) diff(%.3f)", (flickedNote?.time)!, flickTime,(flickedNote?.word)!,string, minDiffTime))
+        // 着目noteがあったとき
+        if let flickedNote {
+            JudgeFlick(flickedNote: flickedNote, flickWord: string, flickTime: flickTime, diffTime: minDiffTime)
         }
+        //フリックアクション
+        self.FlickAction()
+        //スコア更新
         self.scoreLabel.text = "Score: "+String(noteData.score.totalScore)+" "
-        //if (noteData.score.comboCounter % 10) == 0 && noteData.score.comboCounter > 0 {
-            self.ComboAction()
-        //}
+        
+        // 練習モードでシークバー離した後フラグが立ちフリックするまで保持 (過ぎ去りMISSが誤爆しないように)
+        if practice_waitingForFlickAfterMovieTimeSlide {
+            practice_waitingForFlickAfterMovieTimeSlide = false
+
+            for note in noteData.notes {
+                if !note.isFlickable { continue }
+                if note.flicked { continue }
+                // 再生開始位置より前のものは打てないNoteにする(シークバー離した時も設定しているが、その後のフリックまでの間の分)
+                if note.time <= flickTime {
+                    note.flicked = true
+                    note.setUnFlickableFont()
+                }else {
+                    break
+                }
+            }
+        }
         return false
     }
     
-    //タイマー（ノート進行表示） _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-    @objc func update(tm: Timer) {
+    func JudgeFlick(flickedNote: Note, flickWord:String, flickTime:Double, diffTime: Double, updatesBorderView: Bool = true){
+        hasPassedFirstNote = true
+        let wordJudge = flickedNote.judgeWord(flickWord: flickWord)
+        // 文字判定を優先し、文字が合っていればタイミングで判定
+        let judge: Int
+        if flickTime == -1.0 {  // −1.0指定時は強制MISS
+            judge = Note.MISS
+        } else if wordJudge == Note.BAD {
+            judge = Note.BAD
+        } else if wordJudge == Note.SAFE {
+            judge = Note.SAFE
+        } else if greatLine[0] <= diffTime && diffTime <= greatLine[1] {
+            judge = Note.GREAT
+        } else if goodLine[0] <= diffTime && diffTime <= goodLine[1] {
+            judge = Note.GOOD
+        } else if safeLine[0] <= diffTime && diffTime <= safeLine[1] {
+            judge = Note.SAFE
+        } else {
+            judge = Note.BAD
+        }
+
+        if practiceMode {
+            // 戻って再フリックしたとき用に前回取得した点数を引く
+            noteData.score.subScore(maeJudge: flickedNote.judge, maeComboCount: flickedNote.comboCount)
+        }
+        flickedNote.flickedTime = flickTime
+        flickedNote.flicked = true
+        flickedNote.judge = judge
+        noteData.score.addScore(judge: judge)
+        flickedNote.comboCount = noteData.score.comboCounter
+        if updatesBorderView && judge != Note.SAFE {  // SAFEの場合はボーダーがかわらない
+            borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore / 100)
+        }
+
+        switch judge {
+        case Note.GREAT:
+            flickedNote.setUnFlickableFont()
+            GreatAction()
+            seAudio.okJinglePlay()
+        case Note.GOOD:
+            flickedNote.setUnFlickableFont()
+            GoodAction()
+            seAudio.okJinglePlay()
+        case Note.SAFE:
+            flickedNote.setUnFlickableFont()
+            SafeAction()
+            seAudio.safeJinglePlay()
+        case Note.BAD:
+            flickedNote.setUnFlickableFont()
+            BadAction()
+            seAudio.badJinglePlay()
+        case Note.MISS:
+            //Fullバージョンのときはエフェクトしない（MISSとしてカウント。但しリザルトも表示は0にする。）
+            if selectLevel.level <= 10 {
+                flickedNote.setUnFlickableFont()
+                MissAction()
+            }
+        default: break
+        }
+        self.ComboAction()
+    }
+    
+    private func startDisplayLink() {
+        guard displayLink == nil else { return }
+
+        let displayLink = CADisplayLink(target: self, selector: #selector(updateFrame(_:)))
+        if #available(iOS 15.0, *) {
+            displayLink.preferredFrameRateRange = CAFrameRateRange(
+                minimum: 60,
+                maximum: 60,
+                preferred: 60
+            )
+        } else {
+            displayLink.preferredFramesPerSecond = 60
+        }
+        displayLink.add(to: .main, forMode: RunLoopMode.commonModes)
+        self.displayLink = displayLink
+    }
+
+    private func stopDisplayLink() {
+        displayLink?.invalidate()
+        displayLink = nil
+    }
+
+    //画面更新と、表示フレーム単位で十分なMISS確定を行う
+    @objc private func updateFrame(_ displayLink: CADisplayLink) {
         if firstAttack { //なんか前のが勝手に再利用される？ので苦肉の策
+            lastDisplayedNoteTime = nil
             for note in noteData.notes {
                 note.label.frame.origin.x = -200
                 note.label.isHidden = true
             }
+            firstAttack = false
         }
         if selectLevel.level<=10 && noteData.score.borderScore <= 0 {
-            //強制終了(ランク算出に難あり)
-            performSegue(withIdentifier: "toResultView", sender: self)
+            if !practiceMode {
+                //強制終了(ランク算出に難あり)
+                performSegue(withIdentifier: "toResultView", sender: self)
+            }
         }
         if moviePlayerViewController == nil {
             return
@@ -515,6 +606,27 @@ class GameView: UIViewController, UITextFieldDelegate {
             
             currentTimeBarView.frame.size.width = loadedAndCurrentTimeBarView.frame.size.width * CGFloat(CMTimeGetSeconds(currentTime!)/CMTimeGetSeconds(duration!))
         }
+
+        if isWaitingForMovieLoad {
+            guard let loadedTime, CMTimeGetSeconds(loadedTime) > 0 else {
+                return
+            }
+
+            isWaitingForMovieLoad = false
+            moviePlayerViewController.player?.pause()
+            moviePlayerViewController.player?.seek(
+                to: CMTime(seconds: 0, preferredTimescale: Int32(NSEC_PER_SEC)),
+                toleranceBefore: kCMTimeZero,
+                toleranceAfter: kCMTimeZero
+            )
+
+            if t03 <= 0 {
+                time3secMediaTime = nil
+                beginMoviePlayback()
+            } else {
+                time3secMediaTime = CACurrentMediaTime()
+            }
+        }
         
         if time3secMediaTime == nil && moviePlayerViewController.player?.isPlaying == false {
             return
@@ -529,7 +641,9 @@ class GameView: UIViewController, UITextFieldDelegate {
             if time3sec < userData.Time3secExitZureTime {
                 time = time3sec
             }else {
-                self.moviePlayerViewController.player?.play()
+                if !isGameMenuPresented {
+                    beginMoviePlayback()
+                }
                 if time == 0.0 {
                     time = time3sec
                 }else {
@@ -538,62 +652,155 @@ class GameView: UIViewController, UITextFieldDelegate {
                 }
             }
         }
-
-        //xps = (gameviewWidth-flickPointX)*Double(selectLevel.speed)/300 //ノートが一秒間に進む距離（View作成時に計算済み）
-        // speed=300が出現してから打つまでの時間が１秒。つまりspeed=100は出現してから打つまでの時間が３秒。
-        let offsetX:Double = time * xps
-        //ノートをゾロ動かす
-        for note in noteData.notes {
-            let x = note.posX - offsetX + flickPointX
-            //もしオフセット後の表示位置が400(375+25)以内なら動かす
-            if -200<x && x<400 {
-                if -100<x {
-                    note.label.frame.origin.x = CGFloat(x)
-                    note.label.isHidden = false
-                }
-                
-                //過ぎ去りBad判定
-                if note.isFlickable && note.flicked==false  {
-                    let diffTime = note.time-(time+judgeOffset)
-                    if diffTime < safeLine[0]{
-                        //print("x=\(x) \(note.word)")
-                        //Miss
-                        note.flickedTime = -1.0
-                        note.flicked = true
-                        note.judge = Note.MISS
-                        noteData.score.addScore(judge: Note.MISS)
-                        //print("Miss")
-                        //ゲージ
-                        borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore/100)
-                        if selectLevel.level<=10 {
-                            //フリック済みフォントに設定
-                            note.setUnFlickableFont()
-                            //エフェクト
-                            self.MissAction()
-                        }//Fullバージョンのときはエフェクトしない（MISSとしてカウント。但しリザルトも表示は0にする。）
-                        
-                        self.ComboAction()
-                    }
-                }
-                //左に消えたらビューも消す
-                if x <= -50 {
-                    note.label.isHidden = true
-                }
-            }/*else {
-                if note.label.isHidden == false {
-                    note.label.isHidden = true
-                }
-            }*/
+        
+        // practiceMode
+        if practiceMode {
+            if !practice_movieTimeSliding {
+                practiceSeekbar.value = Float(CGFloat(CMTimeGetSeconds(currentTime!)/CMTimeGetSeconds(duration!)))
+            }else {
+                time = CMTimeGetSeconds(duration!) * Double(practiceSeekbar.value)
+            }
         }
+
+        processMissedNotes(at: time)
+        updateNotePositions(at: time)
         //プレイムービー録画中、キーボードイメージを取得してViewに描画し続ける
         if savingPlayMovie {
             self.setKeyboardImage()
         }
     }
+
+    private func processMissedNotes(at currentTime: Double) {
+        guard !practice_movieTimeSliding, !practice_waitingForFlickAfterMovieTimeSlide else {
+            return
+        }
+
+        while nextMissCheckIndex < noteData.notes.count {
+            let note = noteData.notes[nextMissCheckIndex]
+
+            guard note.isFlickable else {
+                nextMissCheckIndex += 1
+                continue
+            }
+            guard !note.flicked else {
+                nextMissCheckIndex += 1
+                continue
+            }
+
+            let diffTime = note.time - (currentTime + judgeOffset)
+            guard diffTime < safeLine[0] else { break }
+
+            JudgeFlick(
+                flickedNote: note,
+                flickWord: note.word,
+                flickTime: -1.0,
+                diffTime: diffTime
+            )
+            nextMissCheckIndex += 1
+            
+            // lastFlickedNum にも反映 (lastFlickedというかnextFlickだけど)
+            if noteData.lastFlickedNum < nextMissCheckIndex {
+                noteData.lastFlickedNum = nextMissCheckIndex
+            }
+
+            if practiceMode {
+                scoreLabel.text = "Score: " + String(noteData.score.totalScore) + " "
+            }
+        }
+    }
+
+    private func configureAutoPlayObserver(from requestedStartTime: Double? = nil) {
+        removeAutoPlayObserver()
+
+        guard
+            practiceMode,
+            practiceAutoPlaySwitch.isOn,
+            !practice_movieTimeSliding,
+            let player = moviePlayerViewController?.player
+        else {
+            return
+        }
+
+        let currentTime = requestedStartTime ?? CMTimeGetSeconds(player.currentTime())
+        resetTimelineCursors(at: currentTime)
+        processAutoPlayNotes(at: currentTime)
+
+        guard nextAutoPlayIndex < noteData.notes.count else { return }
+        let times = noteData.notes[nextAutoPlayIndex...].compactMap { note -> NSValue? in
+            guard note.isFlickable, !note.flicked, note.time > currentTime else { return nil }
+            return NSValue(time: CMTime(seconds: note.time, preferredTimescale: 600))
+        }
+        guard !times.isEmpty else { return }
+
+        autoPlayObserverPlayer = player
+        autoPlayTimeObserver = player.addBoundaryTimeObserver(forTimes: times, queue: .main) { [weak self, weak player] in
+            guard let self, let player else { return }
+            self.processAutoPlayNotes(at: CMTimeGetSeconds(player.currentTime()))
+        }
+    }
+
+    private func removeAutoPlayObserver() {
+        if let autoPlayTimeObserver, let autoPlayObserverPlayer {
+            autoPlayObserverPlayer.removeTimeObserver(autoPlayTimeObserver)
+        }
+        autoPlayTimeObserver = nil
+        autoPlayObserverPlayer = nil
+    }
+
+    private func processAutoPlayNotes(at currentTime: Double) {
+        guard practiceMode, practiceAutoPlaySwitch.isOn else { return }
+
+        let boundaryTolerance = 0.02
+        var processedNote = false
+
+        while nextAutoPlayIndex < noteData.notes.count {
+            let note = noteData.notes[nextAutoPlayIndex]
+
+            guard note.isFlickable else {
+                nextAutoPlayIndex += 1
+                continue
+            }
+            guard !note.flicked else {
+                nextAutoPlayIndex += 1
+                continue
+            }
+            guard note.time <= currentTime + boundaryTolerance else { break }
+
+            practice_waitingForFlickAfterMovieTimeSlide = false
+            JudgeFlick(
+                flickedNote: note,
+                flickWord: note.judgeWorder(noteWord: note.word, level: 1),
+                flickTime: note.time,
+                diffTime: 0,
+                updatesBorderView: false
+            )
+            processedNote = true
+            nextAutoPlayIndex += 1
+        }
+
+        if processedNote {
+            borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore / 100)
+            scoreLabel.text = "Score: " + String(noteData.score.totalScore) + " "
+        }
+    }
+
+    private func resetTimelineCursors(at _: Double) {
+        let firstPendingIndex = noteData.notes.firstIndex {
+            $0.isFlickable && !$0.flicked
+        } ?? noteData.notes.count
+        nextAutoPlayIndex = firstPendingIndex
+        nextMissCheckIndex = firstPendingIndex
+    }
     
     //ゲームの描写 エフェクト処理 関数 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    private func prepareEffectView(_ view: UIView) {
+        view.layer.zPosition = nextEffectZPosition
+        nextEffectZPosition += 1
+    }
+
     func GreatAction(){
         let view = greatViews[greatActionCount]
+        prepareEffectView(view)
         view.frame.origin.y = greatView.frame.origin.y
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
@@ -606,10 +813,11 @@ class GameView: UIViewController, UITextFieldDelegate {
             })
         })
         greatActionCount += 1
-        greatActionCount = greatActionCount % 5
+        greatActionCount = greatActionCount % effectViewsNum
     }
     func GoodAction(){
         let view = goodViews[goodActionCount]
+        prepareEffectView(view)
         view.frame.origin.y = goodView.frame.origin.y
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
@@ -622,10 +830,11 @@ class GameView: UIViewController, UITextFieldDelegate {
             })
         })
         goodActionCount += 1
-        goodActionCount = goodActionCount % 5
+        goodActionCount = goodActionCount % effectViewsNum
     }
     func SafeAction(){
         let view = safeViews[safeActionCount]
+        prepareEffectView(view)
         view.frame.origin.y = safeView.frame.origin.y
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
@@ -638,10 +847,11 @@ class GameView: UIViewController, UITextFieldDelegate {
             })
         })
         safeActionCount += 1
-        safeActionCount = safeActionCount % 5
+        safeActionCount = safeActionCount % effectViewsNum
     }
     func BadAction(){
         let view = badViews[badActionCount]
+        prepareEffectView(view)
         view.frame.origin.y = badView.frame.origin.y
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
@@ -655,10 +865,11 @@ class GameView: UIViewController, UITextFieldDelegate {
             })
         })
         badActionCount += 1
-        badActionCount = badActionCount % 5
+        badActionCount = badActionCount % effectViewsNum
     }
     func MissAction(){
         let view = missViews[missActionCount]
+        prepareEffectView(view)
         view.frame.origin.y = missView.frame.origin.y
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
@@ -671,14 +882,14 @@ class GameView: UIViewController, UITextFieldDelegate {
             })
         })
         missActionCount += 1
-        missActionCount = missActionCount % 5
+        missActionCount = missActionCount % effectViewsNum
     }
     func FlickAction(){
-        for view in flickViews {
-            //全部非表示にしてアクションが重ならないようにする
-            view.isHidden = true
-        }
+        //直前のViewだけを非表示にしてアクションが重ならないようにする
+        previousFlickView?.isHidden = true
+
         let view = flickViews[flickActionCount]
+        previousFlickView = view
         view.alpha = 0.0
         view.isHidden = false
         
@@ -707,7 +918,7 @@ class GameView: UIViewController, UITextFieldDelegate {
             
         })
         flickActionCount += 1
-        flickActionCount = flickActionCount % 5
+        flickActionCount = flickActionCount % effectViewsNum
     }
     func ComboAction(){
         let view = self.comboView!
@@ -750,45 +961,297 @@ class GameView: UIViewController, UITextFieldDelegate {
         }
         //キーボードサイズを取得してキーボードイメージ描画用のViewに反映
         keyboardRect = keyboardInfo.cgRectValue
-        print("keyboardRect=\(keyboardInfo.cgRectValue)")
+        if let rect = keyboardRect {
+            userData.maeKeyboardRect = rect
+        }
         keyboardImageView.frame = keyboardInfo.cgRectValue
         keyboardKeyView.frame = keyboardInfo.cgRectValue
+        updateKeyboardWarmUpLabelPosition()
+        updateMovieLayout()
+        if let label = keyboardWarmUpLabel, label.isHidden {
+            // 正しい位置のレイアウトを完了してから文字を表示する。
+            UIView.performWithoutAnimation {
+                view.layoutIfNeeded()
+                label.isHidden = false
+            }
+        }
     }
+
+    private func updateMovieLayout() {
+        guard let movieView = moviePlayerViewController?.view else {
+            return
+        }
+
+        let topY = view.safeAreaInsets.top
+        let safeWidth = view.bounds.width - view.safeAreaInsets.left - view.safeAreaInsets.right
+        let barHeight = loadedAndCurrentTimeBarView.bounds.height
+
+        if fitsMovieToKeyboardHeight,
+           let keyboardRect {
+            let movieTopY: CGFloat = 0
+            let keyboardFrame = view.convert(keyboardRect, from: nil)
+            let movieHeight = max(0, keyboardFrame.minY - movieTopY)
+            let presentationSize = moviePlayerViewController.player?.currentItem?.presentationSize ?? .zero
+
+            if presentationSize.width > 0, presentationSize.height > 0 {
+                let movieWidth = movieHeight * presentationSize.width / presentationSize.height
+                let movieX = (view.bounds.width - movieWidth) / 2
+                movieView.frame = CGRect(x: movieX, y: movieTopY, width: movieWidth, height: movieHeight)
+                movieView.isHidden = false
+            } else {
+                // presentationSizeが確定するまで誤った縦横比で表示しない
+                movieView.isHidden = true
+            }
+
+            loadedAndCurrentTimeBarView.frame = CGRect(
+                x: view.safeAreaInsets.left,
+                y: keyboardFrame.minY - barHeight,
+                width: safeWidth,
+                height: barHeight
+            )
+        } else {
+            movieView.isHidden = false
+            let movieHeight = judgeOffsetLabel.frame.maxY - topY
+            movieView.frame = CGRect(
+                x: view.safeAreaInsets.left,
+                y: topY,
+                width: safeWidth,
+                height: movieHeight
+            )
+            loadedAndCurrentTimeBarView.frame = CGRect(
+                x: view.safeAreaInsets.left,
+                y: topY + movieHeight,
+                width: safeWidth,
+                height: barHeight
+            )
+        }
+    }
+
+    private func observeMoviePresentationSize() {
+        presentationSizeObservation?.invalidate()
+        presentationSizeObservation = nil
+
+        guard let item = moviePlayerViewController?.player?.currentItem else {
+            return
+        }
+
+        updateMovieLayout()
+        presentationSizeObservation = item.observe(\.presentationSize, options: [.new]) { [weak self] item, _ in
+            guard item.presentationSize.width > 0, item.presentationSize.height > 0 else {
+                return
+            }
+
+            DispatchQueue.main.async {
+                guard let self,
+                      item === self.moviePlayerViewController?.player?.currentItem else {
+                    return
+                }
+                self.updateMovieLayout()
+            }
+        }
+    }
+
     @objc private func windowDidBecomeVisible(_ info: Notification) {
         let type = String(describing: info.object)
         if type.range(of: "UIRemoteKeyboardWindow") != nil {
-            print("That's UIRemoteKeyboardWindow")
+            // print("That's UIRemoteKeyboardWindow")
             Window_UIRemoteKeyboard = info.object as? UIView
+        }
+    }
+
+    private func showKeyboardWarmUpOverlay() {
+        let overlay = UIView()
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.65)
+
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        // 保存済みのキーボード位置では表示せず、今回の表示完了を待つ。
+        label.isHidden = true
+        label.text = "キーボードの準備をします\n好きな文字を一度フリックしてください"
+        label.textColor = .white
+        label.font = UIFont.systemFont(ofSize: 20, weight: .semibold)
+        label.textAlignment = .center
+        label.numberOfLines = 0
+
+        overlay.addSubview(label)
+        view.addSubview(overlay)
+        let labelCenterYConstraint = label.centerYAnchor.constraint(
+            equalTo: overlay.topAnchor,
+            constant: view.bounds.midY
+        )
+        NSLayoutConstraint.activate([
+            overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            overlay.topAnchor.constraint(equalTo: view.topAnchor),
+            overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: overlay.leadingAnchor, constant: 24),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: overlay.trailingAnchor, constant: -24),
+            label.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            labelCenterYConstraint
+        ])
+        keyboardWarmUpOverlay = overlay
+        keyboardWarmUpLabel = label
+        keyboardWarmUpLabelCenterYConstraint = labelCenterYConstraint
+        updateKeyboardWarmUpLabelPosition()
+    }
+
+    private func updateKeyboardWarmUpLabelPosition() {
+        guard let constraint = keyboardWarmUpLabelCenterYConstraint else { return }
+
+        let availableTop = view.bounds.minY + view.safeAreaInsets.top
+        let availableBottom: CGFloat
+        if let keyboardRect {
+            let keyboardFrame = view.convert(keyboardRect, from: nil)
+            availableBottom = min(max(keyboardFrame.minY, availableTop), view.bounds.maxY)
+        } else {
+            availableBottom = view.bounds.maxY
+        }
+        let availableCenterY = availableTop + (availableBottom - availableTop) / 2
+        constraint.constant = availableCenterY - view.bounds.minY
+    }
+
+    private func requestInitialGameStart() {
+        let startGame = { [weak self] in
+            guard let self else { return }
+            if self.savingPlayMovie {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.maeCount_keyboardBackground = 0
+                    self.setKeyboardImage()
+                    self.startRecording {
+                        self.startPlaybackFromBeginning()
+                    }
+                }
+            } else {
+                self.startPlaybackFromBeginning()
+            }
+        }
+
+        if isWaitingForKeyboardWarmUp {
+            pendingInitialGameStart = startGame
+        } else {
+            startGame()
+        }
+    }
+
+    private func finishKeyboardWarmUp() {
+        Self.hasWarmedUpKeyboardInput = true
+        isWaitingForKeyboardWarmUp = false
+
+        let overlay = keyboardWarmUpOverlay
+        keyboardWarmUpOverlay = nil
+        keyboardWarmUpLabel = nil
+        keyboardWarmUpLabelCenterYConstraint = nil
+        UIView.animate(withDuration: 0.2, animations: {
+            overlay?.alpha = 0
+        }, completion: { _ in
+            overlay?.removeFromSuperview()
+        })
+
+        let startGame = pendingInitialGameStart
+        pendingInitialGameStart = nil
+        DispatchQueue.main.async {
+            startGame?()
+        }
+    }
+
+    private func startPlaybackFromBeginning() {
+        guard let player = moviePlayerViewController?.player else { return }
+
+        let startTime = CMTime(seconds: 0, preferredTimescale: Int32(NSEC_PER_SEC))
+        player.seek(
+            to: startTime,
+            toleranceBefore: kCMTimeZero,
+            toleranceAfter: kCMTimeZero
+        ) { [weak self] finished in
+            guard finished, let self else { return }
+
+            DispatchQueue.main.async {
+                guard !self.isGameMenuPresented else {
+                    player.pause()
+                    return
+                }
+
+                self.resetTimelineCursors(at: 0)
+                self.firstAttack = true
+                self.time3secMediaTime = nil
+                self.isWaitingForMovieLoad = true
+                player.pause()
+
+                self.startDisplayLink()
+                self.configureAutoPlayObserver(from: 0)
+            }
+        }
+    }
+
+    private func beginMoviePlayback() {
+        guard let player = moviePlayerViewController?.player else { return }
+        let playbackRate = practiceMode ? practiceRatebar.value : 1.0
+        player.playImmediately(atRate: playbackRate)
+    }
+
+    private func resetJudgementEffectViews() {
+        let judgementViews = greatViews + goodViews + safeViews + badViews + missViews
+        for view in judgementViews {
+            view.layer.removeAllAnimations()
+            view.isHidden = true
+        }
+
+        for view in flickViews {
+            view.layer.removeAllAnimations()
+            view.transform = .identity
+            view.alpha = flickView.alpha
+            view.isHidden = true
         }
     }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){
         if segue.identifier == "fromGameMenu" {
+            isGameMenuPresented = false
+            // ゲームメニュー設定反映
+            if fitsMovieToKeyboardHeight != userData.fitsMovieToKeyboardHeight {
+                // 動画サイズ設定値変更確認
+                fitsMovieToKeyboardHeight = userData.fitsMovieToKeyboardHeight
+                updateMovieLayout()
+            }
+            if judgeOffsetLabel.isHidden != !userData.showOffsetLabel {
+                judgeOffsetLabel.isHidden = !userData.showOffsetLabel
+            }
+            
+            let gameMenuPausedDuration = gameMenuPresentedMediaTime.map {
+                $0.distance(to: CACurrentMediaTime())
+            }
+            gameMenuPresentedMediaTime = nil
+
             switch returnToMeData {
             case 0:
+                if let gameMenuPausedDuration,
+                   let preRollStartTime = time3secMediaTime {
+                    time3secMediaTime = preRollStartTime + gameMenuPausedDuration
+                }
+
                 //se
                 seSystemAudio.canselSePlay()
                 // 再開
                 textField.becomeFirstResponder() //キーボードを開く
-                
-                if moviePlayerViewController != nil {
-                    if moviePlayerViewController.player != nil {
-                        //再生
-                        moviePlayerViewController.player?.play()
-                    }
+                // 先行ノーツ中は、残り時間が終わるまで曲を再生しない
+                if time3secMediaTime == nil {
+                    beginMoviePlayback()
                 }
-                //  ジャッジオフセットの取得
-                if let jo = userData.JudgeOffset[selectLevel.sqlID] {
-                    judgeOffset = Double(jo)
-                }
-                judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset))"
+                // ジャッジオフセットの再設定
+                SetJudgeOffset()
                 //
                 self.SetBorderY()
+                startDisplayLink()
+                configureAutoPlayObserver()
                 break
             case 1:
                 //録画しなおし
                 canselRecording()
+                stopDisplayLink()
+                removeAutoPlayObserver()
+                moviePlayerViewController?.player?.pause()
                 //se
                 seSystemAudio.canselSePlay()
                 //リトライ
@@ -796,58 +1259,36 @@ class GameView: UIViewController, UITextFieldDelegate {
                 noteData.noteReset() //データをリセットする
                 self.comboView.isHidden = true //表示関係もリセット
                 scoreLabel.text = "Score: "+String(noteData.score.totalScore)+" "
-                //  ジャッジオフセットの取得
-                if let jo = userData.JudgeOffset[selectLevel.sqlID] {
-                    judgeOffset = Double(jo)
-                }
-                judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset))"
+                // ジャッジオフセットの再設定
+                SetJudgeOffset()
                 //
                 self.SetBorderY()
                 
                 //Labelを非表示かつ見えない位置に移動
+                lastDisplayedNoteTime = nil
                 for note in noteData.notes { //なんか前のが勝手に再利用される？ので苦肉の策
                     note.label.frame.origin.x = -200
                     note.label.isHidden = true
                 }
+                resetJudgementEffectViews()
                 
-                if moviePlayerViewController != nil {
-                    if moviePlayerViewController.player != nil {
-                        if self.savingPlayMovie {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                self.startRecording(){
-                                    //再生
-                                    self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                                    self.moviePlayerViewController.player?.play()
-                                    if self.t03 <= 0.0 {
-                                        self.time3secMediaTime = nil
-                                    }else {
-                                        self.time3secMediaTime = CACurrentMediaTime()
-                                        self.moviePlayerViewController.player?.pause()
-                                        self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                                    }
-                                }
-                            }
-                        }else {
-                            //再生
-                            self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                            self.moviePlayerViewController.player?.play()
-                            if self.t03 <= 0.0 {
-                                self.time3secMediaTime = nil
-                            }else {
-                                self.time3secMediaTime = CACurrentMediaTime()
-                                self.moviePlayerViewController.player?.pause()
-                                self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                            }
+                if self.savingPlayMovie {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.startRecording() {
+                            self.startPlaybackFromBeginning()
                         }
                     }
+                } else {
+                    startPlaybackFromBeginning()
                 }
                 
                 break
             case 2:
                 //se
                 seSystemAudio.cansel2SePlay()
-                print("戻る")
+                // print("戻る")
                 canselRecording()
+                recordPlayHistoryIfNeeded()
                 
                 if moviePlayerViewController != nil {
                     if moviePlayerViewController.player != nil {
@@ -857,43 +1298,11 @@ class GameView: UIViewController, UITextFieldDelegate {
                         self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) ) //時間を戻しておく
                         if currentTime > (duration / 2) {
                             //カウンタを回す
-                            print("PlayCount")
+                            // print("PlayCount")
                             //  プレイ回数データ
                             userData.PlayCount.addPlayCount(levelID: selectLevel.sqlID)
-                            //プレイ回数をデータベースに送信する(送信済みでないもの)
-                            let pfcountset = PFCounter.init().getSendPlayFavoriteCountStr()
-                            if pfcountset != "" {
-                                // プレイ回数 送信
-                                ServerDataHandler().postPlayFavoriteCountData(pfcountset: pfcountset) { (bool) in
-                                    if bool {
-                                        //プレイ回数データを保存する(初期化データになる)
-                                        UserData.sharedInstance.PlayCount.setSended()
-                                        UserData.sharedInstance.FavoriteCount.setSended()
-                                    }
-                                }
-                            }else{
-                                let playcountset = UserData.sharedInstance.PlayCount.getSendPlayCountStr() //送信するデータ
-                                if playcountset != "" {
-                                    // プレイ回数 送信
-                                    ServerDataHandler().postPlayCountData(playcountset: playcountset) { (bool) in
-                                        if bool {
-                                            //プレイ回数データを保存する(初期化データになる)
-                                            UserData.sharedInstance.PlayCount.setSended()
-                                        }
-                                    }
-                                }
-                                let favoritecountset = UserData.sharedInstance.FavoriteCount.getSendFavoriteCountStr() //送信するデータ
-                                if favoritecountset != "" {
-                                    // プレイ回数 送信
-                                    ServerDataHandler().postFavoriteCountData(favoritecountset: favoritecountset) { (bool) in
-                                        if bool {
-                                            //プレイ回数データを保存する(初期化データになる)
-                                            UserData.sharedInstance.FavoriteCount.setSended()
-                                        }
-                                    }
-                                }
-                            }
-                            
+                            // playCount,like,dislike,musicFavorite の送信(成功したらカウントデータを初期化)
+                            ServerDataHandler().postUserCountData()
                         }
                     }
                 }
@@ -914,15 +1323,13 @@ class GameView: UIViewController, UITextFieldDelegate {
                 noteData.noteReset() //データをリセットする
                 self.comboView.isHidden = true //表示関係もリセット
                 scoreLabel.text = "Score: "+String(noteData.score.totalScore)+" "
-                //  ジャッジオフセットの取得
-                if let jo = userData.JudgeOffset[selectLevel.sqlID] {
-                    judgeOffset = Double(jo)
-                }
-                judgeOffsetLabel.text = "offset: \(String(format:"%0.02f",judgeOffset))"
+                // ジャッジオフセットの再設定
+                SetJudgeOffset()
                 //
                 self.SetBorderY()
                 
                 //Labelを非表示かつ見えない位置に移動
+                lastDisplayedNoteTime = nil
                 for note in noteData.notes { //なんか前のが勝手に再利用される？ので苦肉の策
                     note.label.frame.origin.x = -200
                     note.label.isHidden = true
@@ -940,65 +1347,39 @@ class GameView: UIViewController, UITextFieldDelegate {
                 self.view.viewWithTag(5050)?.removeFromSuperview()
                 
                 MovieAccess.init().StreamingUrlNicoAccess(smNum: smNum){ nicodougaURL in
-                    print(nicodougaURL)
+                    // print(nicodougaURL)
                     //session.dataTas後のサブスレッド内でviewを処理させると表示関連が後回しになるので、メインスレッドでaddSubviewする。
                     DispatchQueue.main.async {
                         //UI処理はメインスレッドの必要あり
-                        self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!, smNum: smNum)
+                        guard let videoURL = URL(string: nicodougaURL) else { return }
+                        self.moviePlayerViewController = self.cachedMovies.access(url: videoURL, smNum: smNum)
+                        self.configureAutoPlayObserver()
+                        self.startDisplayLink()
                         self.moviePlayerViewController?.view.tag = 5050
                         //  add
                         self.view.addSubview(self.moviePlayerViewController.view)
                         self.view.sendSubview(toBack: self.moviePlayerViewController.view)
                         
-                        let screenWidth:CGFloat = self.view.frame.size.width - self.view.safeAreaInsets.left - self.view.safeAreaInsets.right
-                        let movieHeight = self.judgeOffsetLabel.frame.origin.y + self.judgeOffsetLabel.frame.size.height - self.view.safeAreaInsets.top
-                        //let screenHeight:CGFloat = self.view.frame.size.height - self.view.safeAreaInsets.top - self.view.safeAreaInsets.bottom
-                        print("\(screenWidth)x\(movieHeight)")
-                        //  動画Viewの位置
-                        self.moviePlayerViewController.view.frame = CGRect(x: 0, y: self.view.safeAreaInsets.top, width: screenWidth, height: movieHeight)
+                        self.observeMoviePresentationSize()
                         // 動画が終了した時に呼ばれるnotificationを登録
                         NotificationCenter.default.addObserver(forName: NSNotification.Name.AVPlayerItemDidPlayToEndTime, object: nil, queue: nil){ notification in
                             //再生終了したとき
-                            print("終了")
+                            // print("終了")
                             DispatchQueue.main.async {
                                 //UI処理はメインスレッドの必要あり
                                 self.performSegue(withIdentifier: "toResultView", sender: self)
                             }
                         }
-                        //ムービーロードbar
-                        self.loadedAndCurrentTimeBarView.frame = CGRect(x: 0, y: self.view.safeAreaInsets.top+movieHeight, width: screenWidth, height: self.loadedAndCurrentTimeBarView.frame.size.height)
                         self.loadedAndCurrentTimeBarView.isHidden = false
                         
                         if self.savingPlayMovie {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                self.startRecording(){
-                                    //  動画再生
-                                    self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                                    
-                                    print("t03=\(self.t03)")
-                                    self.moviePlayerViewController.player?.play()
-                                    if self.t03 <= 0.0 {
-                                        self.time3secMediaTime = nil
-                                    }else {
-                                        self.time3secMediaTime = CACurrentMediaTime()
-                                        self.moviePlayerViewController.player?.pause()
-                                        self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                                    }
+                                self.startRecording() {
+                                    self.startPlaybackFromBeginning()
                                 }
                             }
-                        }else {
-                            //  動画再生
-                            self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                            
-                            print("t03=\(self.t03)")
-                            self.moviePlayerViewController.player?.play()
-                            if self.t03 <= 0.0 {
-                                self.time3secMediaTime = nil
-                            }else {
-                                self.time3secMediaTime = CACurrentMediaTime()
-                                self.moviePlayerViewController.player?.pause()
-                                self.moviePlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0.0, Int32(NSEC_PER_SEC)) )
-                            }
+                        } else {
+                            self.startPlaybackFromBeginning()
                         }
                     }
                 }
@@ -1021,6 +1402,13 @@ class GameView: UIViewController, UITextFieldDelegate {
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "toGameMenu" {
+            isGameMenuPresented = true
+            if time3secMediaTime != nil {
+                gameMenuPresentedMediaTime = CACurrentMediaTime()
+            } else {
+                gameMenuPresentedMediaTime = nil
+            }
+            stopDisplayLink()
             
             //se
             seSystemAudio.gameMenuSePlay()
@@ -1035,6 +1423,7 @@ class GameView: UIViewController, UITextFieldDelegate {
             textField.resignFirstResponder()
 
             //Labelを非表示かつ見えない位置に移動
+            lastDisplayedNoteTime = nil
             for note in noteData.notes { //なんか前のが勝手に再利用される？ので苦肉の策
                 note.label.frame.origin.x = -200
                 note.label.isHidden = true
@@ -1056,6 +1445,7 @@ class GameView: UIViewController, UITextFieldDelegate {
             textField.resignFirstResponder()
             
             //Labelを非表示かつ見えない位置に移動
+            lastDisplayedNoteTime = nil
             for note in noteData.notes {
                 note.label.frame.origin.x = -200
                 note.label.isHidden = true
@@ -1072,64 +1462,55 @@ class GameView: UIViewController, UITextFieldDelegate {
     
     var maeCount_keyboardBackground = 0
     var maeSubviewsDescriptions:[String] = []
+    private let keyboardCaptureInterval: CFTimeInterval = 1.0 / 20.0
+    private var lastKeyboardCaptureTime: CFTimeInterval = 0
+    private var keyboardImageRenderer: UIGraphicsImageRenderer?
+    private var keyboardImageRendererSize = CGSize.zero
     
     func setKeyboardImage() {
-        guard let keyboardRect = keyboardRect else { return }
-        var windows:[UIView]
-        if #available(iOS 16.0, *) {
-            guard let window = Window_UIRemoteKeyboard else { return }
-            windows = [window]
-        }
+        guard
+            savingPlayMovie,
+            let keyboardWindow = Window_UIRemoteKeyboard,
+            let keyboardRect
         else {
-            windows = UIApplication.shared.windows
-        }
-        for window in windows {
-            //print("window.classForCoder.description()=\(window.classForCoder.description())")
-            if window.classForCoder.description() != "UIRemoteKeyboardWindow" { continue }
-            guard let view = window.subviews.first else { break }
-            
-            //background
-            for sv in view.subviews {
-                if sv.classForCoder.description() != "UIInputSetHostView" { continue }
-                let count = sv.recursiveSubviews.count //UIInputSetHostView下ツリーのview総数。前回と異なるときだけキーボード背景をimageViewへ
-                if maeCount_keyboardBackground != count {
-                    maeCount_keyboardBackground = count
-                    keyboardImageView.image = sv.GetImage2()
-                    print("keyboardBackground draw!!")
-                }
-                break
-            }
-            //key
-            var flg = false
-            //subviewの数かsubviewsの中身説明(Description)が前回と異なるときkey部分(のイメージ)をViewに貼り付け
-            if maeSubviewsDescriptions.count != view.subviews.count {
-                flg = true
-            }else {
-                for (index,sv) in view.subviews.enumerated() {
-                    if maeSubviewsDescriptions[index] != sv.description {
-                        flg = true
-                        break
-                    }
-                }
-            }
-            if flg {
-                maeSubviewsDescriptions = []
-                for sv in view.subviews {
-                    maeSubviewsDescriptions.append(sv.description)
-                }
-                for v in keyboardKeyView.subviews {
-                    v.removeFromSuperview()
-                }
-                for sv in view.subviews {
-                    if sv.classForCoder.description() != "UIKBBlurredKeyView" { continue }
-                    let keyView = UIImageView(image: sv.GetImage2())
-                    keyView.frame.origin = CGPoint(x: sv.frame.origin.x - keyboardRect.origin.x, y: sv.frame.origin.y - keyboardRect.origin.y)
-                    keyboardKeyView.addSubview(keyView)
-                }
-            }
-            break
+            return
         }
 
+        let captureRect = keyboardWindow.convert(keyboardRect, from: nil)
+            .intersection(keyboardWindow.bounds)
+
+        guard !captureRect.isEmpty else { return }
+
+        let currentTime = CACurrentMediaTime()
+        guard currentTime - lastKeyboardCaptureTime >= keyboardCaptureInterval else {
+            return
+        }
+        lastKeyboardCaptureTime = currentTime
+
+        if keyboardImageRenderer == nil || keyboardImageRendererSize != captureRect.size {
+            let format = UIGraphicsImageRendererFormat()
+            // 録画用キーボード画像を最大2xで生成し、画質を保ちながら描画負荷を抑える。
+            format.scale = min(UIScreen.main.scale, 2)
+            format.opaque = false
+
+            keyboardImageRenderer = UIGraphicsImageRenderer(
+                size: captureRect.size,
+                format: format
+            )
+            keyboardImageRendererSize = captureRect.size
+        }
+
+        guard let keyboardImageRenderer else { return }
+
+        keyboardImageView.image = keyboardImageRenderer.image { context in
+            context.cgContext.translateBy(
+                x: -captureRect.minX,
+                y: -captureRect.minY
+            )
+            keyboardWindow.layer.render(in: context.cgContext)
+        }
+
+        keyboardKeyView.subviews.forEach { $0.removeFromSuperview() }
     }
     
     func startRecording(callback :@escaping ()->Void) {
@@ -1138,7 +1519,7 @@ class GameView: UIViewController, UITextFieldDelegate {
         // 録画開始
         RPScreenRecorder.shared().startRecording { error in
             if error != nil {
-                print("recording failed")
+                // print("recording failed")
                 self.failedSavePlayMovie = true
             }
             callback()
@@ -1148,6 +1529,91 @@ class GameView: UIViewController, UITextFieldDelegate {
         guard RPScreenRecorder.shared().isRecording else { return }
         RPScreenRecorder.shared().stopRecording(handler: nil)
     }
+    
+    @IBAction func practiceSeekbar_TouchDown(_ sender: UISlider) {
+        practice_movieTimeSliding = true
+        removeAutoPlayObserver()
+        // Note
+        // - 打ち済みNoteも復活させる(とりあえず見た目)
+        for note in noteData.notes {
+            if note.isFlickable && note.flicked {
+                note.setFlickableFont()  // ジャッジ等はそのまま残す。
+            }
+        }
+        // - コンボカウンタをゼロにする
+        noteData.score.comboCounter = 0
+        self.ComboAction()  // コンボ表示があれば消させる
+    }
+    @IBAction func practiceSeekbar_TouchUp(_ sender: UISlider) {
+        practice_movieTimeSliding = false
+        practice_waitingForFlickAfterMovieTimeSlide = true
+        // print("practice_movieTimeSliding_afterFlick ",practice_waitingForFlickAfterMovieTimeSlide)
+        if let duration = moviePlayerViewController?.player?.currentItem?.duration {
+            let durationSeconds = CMTimeGetSeconds(duration)
+            let time = min(durationSeconds * Double(sender.value), max(durationSeconds - 2.0, 0.0))
+            if durationSeconds > 0.0 {
+                sender.value = Float(time / durationSeconds)
+            }
+            moviePlayerViewController?.player?.seek(to:
+                CMTime(seconds: time, preferredTimescale: Int32(NSEC_PER_SEC)),
+                                                   toleranceBefore: kCMTimeZero,
+                                                   toleranceAfter: kCMTimeZero
+            )
+            // Note
+            for note in noteData.notes {
+                if !note.isFlickable { continue }
+                if note.flicked {
+                    note.flickedTime = -1.0
+                    note.flicked = false
+                    //note.judge = Note.NORMAL
+                    note.setFlickableFont()  // 押下のときもしているが一応
+                }
+                // 再生開始位置より前のものは打てないNoteにする
+                if note.time <= time {
+                    note.flicked = true
+                    note.setUnFlickableFont()
+                }
+            }
+            noteData.lastFlickedNum = 0
+            for (i, note) in noteData.notes.enumerated() {
+                if note.time > time {
+                    noteData.lastFlickedNum = i
+                    break
+                }
+            }
+            resetTimelineCursors(at: time)
+            configureAutoPlayObserver(from: time)
+            // print("TouchUppp")
+        }
+    }
+    @IBAction func practiceSeekbar_ValueChanged(_ sender: UISlider) {
+//        practice_movieTimeSliding_value = sender.value
+//        if let duration = moviePlayerViewController?.player?.currentItem?.duration {
+//            movieCurrentTimeLabel.text = String.secondsToTimetag(seconds: (CMTimeGetSeconds(duration) * Double(sender.value)), noBrackets: true)
+//        }
+    }
+    
+    @IBAction func practiceRatebar(_ sender: UISlider) {
+        let rate = Float(Int(round(sender.value * 10))) / 10
+        setMovieRate(rate: rate)
+    }
+    func setMovieRate(rate:Float){
+        practiceRatebar.value = rate
+        if time3secMediaTime == nil,
+           !isGameMenuPresented,
+           moviePlayerViewController?.player?.rate != rate {
+            moviePlayerViewController?.player?.rate = rate
+        }
+        practiceRateLabel.text = "× " + String(format:"%.01f",rate)
+    }
+    @IBAction func practiceAutoPlaySwitch(_ sender: UISwitch) {
+        if sender.isOn {
+            configureAutoPlayObserver()
+        } else {
+            removeAutoPlayObserver()
+        }
+    }
+    
 }
 
 // Convert a collection of NSValues into an array of CMTimeRanges.

@@ -25,10 +25,9 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
-        let naviBar_ly = naviBar.frame.origin.y + naviBar.frame.size.height
-        wkWebView.frame = CGRect(x: view.frame.origin.x, y: view.frame.origin.y + naviBar_ly, width: view.frame.size.width, height: view.frame.size.height - naviBar_ly)
         wkWebView.navigationDelegate = self
         wkWebView.uiDelegate = self
+        wkWebView.translatesAutoresizingMaskIntoConstraints = false
         
         // スワイプでの「戻る・すすむ」を有効にする
         wkWebView.allowsBackForwardNavigationGestures = true
@@ -36,11 +35,17 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
         let urlRequest = URLRequest(url:URL(string:targetUrl)!)
         wkWebView.load(urlRequest)
         view.addSubview(wkWebView)
+        NSLayoutConstraint.activate([
+            wkWebView.topAnchor.constraint(equalTo: naviBar.bottomAnchor),
+            wkWebView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            wkWebView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            wkWebView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
         
         createWebControlParts()
         if titleText != "" {
             DispatchQueue.main.async {
-                let alert = UIAlertController(title:nil, message: "タイトルにアーティスト名など余計な文字が含まれていたら除去して「再検索」して下さい", preferredStyle: UIAlertControllerStyle.alert)
+                let alert = UIAlertController(title:nil, message: "タイトルにアーティスト名など余計な文字が含まれていたら除去して「検索」して下さい", preferredStyle: UIAlertControllerStyle.alert)
                 alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.cancel, handler: nil))
                 self.present(alert, animated: true, completion: nil)
             }
@@ -68,9 +73,9 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
                     "document.getElementsByName('IN_WORKS_TITLE_OPTION1')[0].value = '2'",
                     completionHandler: { (value: Any?, error: Error?) in
                         
-                        webView.evaluateJavaScript(
-                            "document.forms[1].submit()",
-                            completionHandler: nil)
+//                        webView.evaluateJavaScript(
+//                            "document.forms[1].submit()",
+//                            completionHandler: nil)
                         /*
                         webView.evaluateJavaScript(
                             "document.getElementsByName('frame2')[0].contentDocument.getElementsByName('IN_ARTIST_NAME1')[0].value = '\(self.artistText)'",
@@ -103,16 +108,13 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
     /// 戻る・すすむボタン作成
     private func createWebControlParts() {
         
-        let buttonSize = CGSize(width:40,height:40)
-        let offseetUnderBottom:CGFloat = 60
-        let yPos = (UIScreen.main.bounds.height - offseetUnderBottom)
-        let buttonPadding:CGFloat = 10
-        
-        let backButtonPos = CGPoint(x:buttonPadding, y:yPos)
-        let forwardButtonPos = CGPoint(x:(buttonPadding + buttonSize.width + buttonPadding), y:yPos)
-        
-        backButton = UIButton(frame: CGRect(origin: backButtonPos, size: buttonSize))
-        forwadButton = UIButton(frame: CGRect(origin:forwardButtonPos, size:buttonSize))
+        let buttonSize: CGFloat = 40
+        let buttonPadding: CGFloat = 10
+
+        backButton = UIButton(type: .system)
+        forwadButton = UIButton(type: .system)
+        backButton.translatesAutoresizingMaskIntoConstraints = false
+        forwadButton.translatesAutoresizingMaskIntoConstraints = false
         
         backButton.setTitle("<", for: .normal)
         backButton.setTitle("< ", for: .highlighted)
@@ -133,7 +135,18 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
         forwadButton.addTarget(self, action: #selector(goForward), for: .touchUpInside)
         forwadButton.isHidden = true
         view.addSubview(forwadButton)
-        
+
+        NSLayoutConstraint.activate([
+            backButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: buttonPadding),
+            backButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -buttonPadding),
+            backButton.widthAnchor.constraint(equalToConstant: buttonSize),
+            backButton.heightAnchor.constraint(equalToConstant: buttonSize),
+
+            forwadButton.leadingAnchor.constraint(equalTo: backButton.trailingAnchor, constant: buttonPadding),
+            forwadButton.centerYAnchor.constraint(equalTo: backButton.centerYAnchor),
+            forwadButton.widthAnchor.constraint(equalToConstant: buttonSize),
+            forwadButton.heightAnchor.constraint(equalToConstant: buttonSize)
+        ])
     }
     
     @objc private func goBack() {
@@ -145,4 +158,3 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
     }
     
 }
-

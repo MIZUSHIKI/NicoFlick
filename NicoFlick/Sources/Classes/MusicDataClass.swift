@@ -46,6 +46,8 @@ class musicData {
     var tag:[String] = []
     var sqlUpdateTime:Int!
     var sqlCreateTime:Int!
+    var favoriteCount:Int!
+    var favoriteCountTime:Int!
     
     var levelIDs:Set<Int> = [] //levelから逆引きできるように保存（ソート用）
 
@@ -54,6 +56,7 @@ class musicData {
 class levelData {
     var sqlID:Int!
     var level:Int!
+    var calcLv:Int = 0
     var creator:String!
     var description:String!
     var speed:Int!
@@ -66,6 +69,9 @@ class levelData {
     var favoriteCountTime:Int!
     var commentTime:Int!
     var scoreTime:Int!
+    var likeCount:Int!
+    var dislikeCount:Int!
+    var likeCountTime:Int!
     
     func getLevelAsString() -> String {
         var star = ""
@@ -120,7 +126,7 @@ class MusicDataLists{
         flg_levelsFistrLoad = false
     }
 
-    func setMusic(sqlID:Int, movieURL:String, thumbnailURL:String, title:String, artist:String, movieLength:String, tags:String, updateTime:Int, createTime:Int){
+    func setMusic(sqlID:Int, movieURL:String, thumbnailURL:String, title:String, artist:String, movieLength:String, tags:String, updateTime:Int, createTime:Int, favoriteCount:Int, favoriteCountTime:Int){
         if movieURL == "delete" || thumbnailURL == "delete"  {
             //削除
             if let index = musicsSqlIDtoIndex[sqlID] {
@@ -152,6 +158,8 @@ class MusicDataLists{
                 musics[index].tag = tags.components(separatedBy: " ")
                 musics[index].sqlUpdateTime = updateTime
                 musics[index].sqlCreateTime = createTime
+                musics[index].favoriteCount = favoriteCount
+                musics[index].favoriteCountTime = favoriteCountTime
                 return
             }
         }
@@ -168,12 +176,24 @@ class MusicDataLists{
         musicdata.tag = tags.components(separatedBy: " ")
         musicdata.sqlUpdateTime = updateTime
         musicdata.sqlCreateTime = createTime
+        musicdata.favoriteCount = favoriteCount
+        musicdata.favoriteCountTime = favoriteCountTime
         //print(String(format: "musicsCount=%d", musics.count))
         //print(String(format: "update music=%d, %@, %@, %@", sqlID, title, musicdata.thumbnailURL, musicdata.movieURL))
         musics.append(musicdata)
     }
+    func setMusic_Favoritecount(sqlID:Int, favoriteCount:Int, favoriteCountTime:Int){
+        guard let index = musicsSqlIDtoIndex[sqlID] else {
+            return
+        }
+        let music = musics[index]
+        if favoriteCount != -1 {
+            music.favoriteCount = favoriteCount
+            music.favoriteCountTime = favoriteCountTime
+        }
+    }
     
-    func setLevel(sqlID:Int, movieURL:String, level:Int, creator:String, description:String, speed:Int, noteData:String, updateTime:Int, createTime:Int, playCount:Int, playCountTime:Int, favoriteCount:Int, favoriteCountTime:Int, commentTime:Int, scoreTime:Int){
+    func setLevel(sqlID:Int, movieURL:String, level:Int, calcLv:Int, creator:String, description:String, speed:Int, noteData:String, updateTime:Int, createTime:Int, playCount:Int, playCountTime:Int, favoriteCount:Int, favoriteCountTime:Int, commentTime:Int, scoreTime:Int, likeCount:Int, dislikeCount:Int, likeCountTime:Int){
         if level == -1 {
             //削除
             //musicsの逆引き用のlevelIDsから指定IDを削除する
@@ -208,6 +228,7 @@ class MusicDataLists{
                 }
                 if f.count > 0 { // 実は１個しかない(ハズだ)からfirstで処理
                     f.first!.level = level
+                    f.first!.calcLv = calcLv
                     f.first!.creator = creator
                     f.first!.description = description
                     f.first!.speed = speed
@@ -220,6 +241,9 @@ class MusicDataLists{
                     f.first!.favoriteCountTime = favoriteCountTime
                     f.first!.commentTime = commentTime
                     f.first!.scoreTime = scoreTime
+                    f.first!.likeCount = likeCount
+                    f.first!.dislikeCount = dislikeCount
+                    f.first!.likeCountTime = likeCountTime
                     return
                 }
             }
@@ -227,6 +251,7 @@ class MusicDataLists{
         let leveldata = levelData()
         leveldata.sqlID = sqlID
         leveldata.level = level
+        leveldata.calcLv = calcLv
         leveldata.creator = creator
         leveldata.description = description
         leveldata.speed = speed
@@ -239,6 +264,9 @@ class MusicDataLists{
         leveldata.favoriteCountTime = favoriteCountTime
         leveldata.commentTime = commentTime
         leveldata.scoreTime = scoreTime
+        leveldata.likeCount = likeCount
+        leveldata.dislikeCount = dislikeCount
+        leveldata.likeCountTime = likeCountTime
         levels[movieURL] = levels[movieURL] ?? []// nilの場合配列を初期化する
         levels[movieURL]?.append(leveldata)
         
@@ -246,7 +274,7 @@ class MusicDataLists{
         //print(movieURL)
         //print(String(format: "levelsCount=%d", (levels[movieURL]?.count)!))
     }
-    func setLevel_PlaycountFavorite(sqlID:Int, playCount:Int, playCountTime:Int, favoriteCount:Int, favoriteCountTime:Int, commentTime:Int, scoreTime:Int){
+    func setLevel_PlaycountLike(sqlID:Int, playCount:Int, playCountTime:Int, commentTime:Int, scoreTime:Int, likeCount:Int, dislikeCount:Int, likeCountTime:Int){
         guard let movieURL = levelsSqlIDtoMovieURL[sqlID] else {
             return
         }
@@ -259,9 +287,14 @@ class MusicDataLists{
                     f.first!.playCount = playCount
                     f.first!.playCountTime = playCountTime
                 }
-                if favoriteCount != -1 {
-                    f.first!.favoriteCount = favoriteCount
-                    f.first!.favoriteCountTime = favoriteCountTime
+                if likeCount != -1 || dislikeCount != -1 {
+                    if likeCount != -1 {
+                        f.first!.likeCount = likeCount
+                    }
+                    if dislikeCount != -1 {
+                        f.first!.dislikeCount = dislikeCount
+                    }
+                    f.first!.likeCountTime = likeCountTime
                 }
                 if commentTime != -1 {
                     f.first!.commentTime = commentTime
@@ -279,6 +312,15 @@ class MusicDataLists{
         for music in musics {
             if time < music.sqlUpdateTime {
                 time = music.sqlUpdateTime
+            }
+        }
+        return time
+    }
+    func getLastFavoriteCountTimeMusic() -> Int {
+        var time = 0
+        for music in musics {
+            if time < music.favoriteCountTime {
+                time = music.favoriteCountTime
             }
         }
         return time
@@ -306,12 +348,12 @@ class MusicDataLists{
         }
         return time
     }
-    func getLastFavoriteCountTimeLevel() -> Int {
+    func getLastLikeCountTimeLevel() -> Int {
         var time = 0
         for leveldates in levels {
             for level in leveldates.value {
-                if time < level.favoriteCountTime {
-                    time = level.favoriteCountTime
+                if time < level.likeCountTime {
+                    time = level.likeCountTime
                 }
             }
         }
@@ -343,6 +385,9 @@ class MusicDataLists{
     func createTaglist(){
         taglist = [:] //初期化
         for music in musics {
+            if !hasPlayableLevel(selectMovieURL: music.movieURL, isMe: true){
+                continue
+            }
             for tag in music.tag {
                 if tag == "" { continue }
                 if let num = taglist[tag] {
@@ -368,7 +413,7 @@ class MusicDataLists{
             var timetag = ""
             for levelData in levelm {
                 timetag = levelData.noteData.pregMatche_firstString(pattern: "(\\[\\d\\d\\:\\d\\d[\\:|\\.]\\d\\d\\])")
-                print(timetag)
+                // print(timetag)
                 if timetag != "" {
                     let time = timetag.timetagToSeconds()
                     if time < 0.0 {
@@ -407,8 +452,9 @@ class MusicDataLists{
         var sita = 0
         var ue = 99 * 60 + 99
         for tagp in selectCondition.tag {
+            // まず @g:a-b-c(gameID), @m:A-B-C(movieID), @sm000 を単品の @m:musicID に変換する
             if tagp.word.hasPrefix("@g:") {//tagp.word.suffix(tagp.word.count-3)
-                let ids = tagp.word.suffix(tagp.word.count-3).components(separatedBy: "-").compactMap{ Int($0) }
+                let ids = tagp.word.suffix(tagp.word.count-3).components(separatedBy: "_").compactMap{ Int($0) }
                 //tagps += ids.map{ SelectConditions.tagp.init(tag: "@g:\($0)", type: tagp.type) }
                 //print(ids.map{ SelectConditions.tagp.init(tag: "@g:\($0)", type: tagp.type) })
                 // @mへの変換
@@ -422,8 +468,24 @@ class MusicDataLists{
                 }
                 continue
             }else if tagp.word.hasPrefix("@m:") {
-                let ids = tagp.word.suffix(tagp.word.count-3).components(separatedBy: "-").compactMap{ Int($0) }
+                let ids = tagp.word.suffix(tagp.word.count-3).components(separatedBy: "_").compactMap{ Int($0) }
                 tagps += ids.map{ SelectConditions.tagp.init(tag: "@m:\($0)", type: tagp.type) }
+                continue
+            }else if tagp.word.hasPrefix("@sm:") {
+                let ids = tagp.word.suffix(tagp.word.count-4).components(separatedBy: "-").compactMap{ Int($0) }
+                tagps += ids.map{ SelectConditions.tagp.init(tag: "@sm:\($0)", type: tagp.type) }
+                if ids.count >= 2 {
+                    // @mへの変換
+                    for music in musics {
+                        let num_smNum = Int(music.movieURL.pregMatche_firstString(pattern: "sm(\\d+)$")) ?? -1
+                        if num_smNum < ids[0] || ids[1] < num_smNum { continue }
+                        if let musicID = music.sqlID {
+                            let t = SelectConditions.tagp.init(tag: "@m:\(musicID)", type: tagp.type)
+                            tagps.append(t)
+                        }
+                    }
+
+                }
                 continue
             }else if tagp.word.hasPrefix("@t:") {
                 var ans:[String]=[]
@@ -438,7 +500,7 @@ class MusicDataLists{
                 if sita > ue {
                     swap(&sita, &ue)
                 }
-                print("sita=\(sita), ue=\(ue)")
+                // print("sita=\(sita), ue=\(ue)")
                 continue
             }else if tagp.word == "@初期楽曲" {
                 //
@@ -448,15 +510,15 @@ class MusicDataLists{
                    let musicID = music.sqlID {
                     let t = SelectConditions.tagp.init(tag: "@m:\(musicID)", type: tagp.type)
                     tagps.append(t)
-                    print(t)
+                    // print(t)
                 }
                 continue
             }
             tagps.append(tagp)
         }
         
-        print("selectCondition.tag.count = \(tagps.count)")
-        print(tagps)
+        // print("selectCondition.tag.count = \(tagps.count)")
+        // print(tagps)
         var extractMusics:[musicData] = []
         if tagps.count == 0 {
             extractMusics = musics
@@ -569,13 +631,13 @@ class MusicDataLists{
         
         var sortedMusics:[musicData] = []
         switch selectCondition.sortItem.pregReplace(pattern: " [★☆]{10}[■□]$", with: "") {
-        case "曲の投稿が新しい順":
+        case "曲の投稿日時 降順":
             sortedMusics = musics.sorted{ $0.sqlCreateTime > $1.sqlCreateTime }
             break
-        case "曲の投稿が古い順":
+        case "曲の投稿日時 昇順":
             sortedMusics = musics.sorted{ $0.sqlCreateTime < $1.sqlCreateTime }
             break
-        case "ゲームの投稿が新しい曲順":
+        case "ゲームの投稿日時 降順":
             var levelp:[String:Int] = [:] //[URL:sqlInt]
             for (key,lvInURL) in levels {
                 //print("\(key), \(lvInURL)")
@@ -583,19 +645,19 @@ class MusicDataLists{
                     if level.isEditing && !level.isMyEditing {
                         continue
                     }
-                    if let sqlID = levelp[key] {
-                        if sqlID < level.sqlID {
-                            levelp[key] = level.sqlID
+                    if let createTime = levelp[key] {
+                        if createTime < level.sqlCreateTime {
+                            levelp[key] = level.sqlCreateTime
                         }
                     }else {
-                        levelp[key] = level.sqlID
+                        levelp[key] = level.sqlCreateTime
                     }
                 }
             }
             sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
             sortedMusics.sort(by: {levelp[$0.movieURL]! > levelp[$1.movieURL]!})
             break
-        case "ゲームの投稿が古い曲順":
+        case "ゲームの投稿日時 昇順":
             var levelp:[String:Int] = [:] //[URL:sqlInt]
             for (key,lvInURL) in levels {
                 //print("\(key), \(lvInURL)")
@@ -603,19 +665,19 @@ class MusicDataLists{
                     if level.isEditing && !level.isMyEditing {
                         continue
                     }
-                    if let sqlID = levelp[key] {
-                        if sqlID > level.sqlID {
-                            levelp[key] = level.sqlID
+                    if let createTime = levelp[key] {
+                        if createTime > level.sqlCreateTime {
+                            levelp[key] = level.sqlCreateTime
                         }
                     }else {
-                        levelp[key] = level.sqlID
+                        levelp[key] = level.sqlCreateTime
                     }
                 }
             }
             sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
             sortedMusics.sort(by: {levelp[$0.movieURL]! < levelp[$1.movieURL]!})
             break
-        case "ゲームプレイ回数が多い曲順":
+        case "みんなのプレイ回数が多い曲順":
             var levelp:[String:Int] = [:] //[URL:allPlayCount]
             for (key,lvInURL) in levels {
                 levelp[key] = lvInURL.reduce(0){ $0 + $1.playCount}
@@ -623,13 +685,13 @@ class MusicDataLists{
             sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
             sortedMusics.sort(by: {levelp[$0.movieURL]! > levelp[$1.movieURL]!})
             break
-        case "ゲームプレイ回数が少ない曲順":
+        case "みんなのプレイ回数が少ない曲順":
             var levelp:[String:Int] = [:] //[URL:allPlayCount]
             for (key,lvInURL) in levels {
                 levelp[key] = lvInURL.reduce(0, { $0 + $1.playCount})
             }
             sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
-            sortedMusics.sort(by: {levelp[$0.movieURL]! <= levelp[$1.movieURL]!})
+            sortedMusics.sort(by: {levelp[$0.movieURL]! < levelp[$1.movieURL]!})
             break
         case "最近ハイスコアが更新された曲順":
             var levelp:[String:Int] = [:] //[URL:allPlayCount]
@@ -647,27 +709,45 @@ class MusicDataLists{
             sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
             sortedMusics.sort(by: {levelp[$0.movieURL]! > levelp[$1.movieURL]!})
             break
-        case "お気に入り数が多い曲順":
-            var levelp:[String:Int] = [:] //[URL:allPlayCount]
-            for (key,lvInURL) in levels {
-                levelp[key] = lvInURL.reduce(0){ $0 + $1.favoriteCount}
+        case "最近プレイした曲順":
+            let histories = UserData.sharedInstance.LevelPlayHistories
+            var lastPlayedAtByURL:[String:TimeInterval] = [:]
+            for (key, levelsInURL) in levels {
+                lastPlayedAtByURL[key] = levelsInURL.reduce(0) {
+                    max($0, histories[$1.sqlID]?.lastPlayedAt ?? 0)
+                }
             }
-            sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
-            sortedMusics.sort(by: {levelp[$0.movieURL]! > levelp[$1.movieURL]!})
+            sortedMusics = musics.sorted {
+                (lastPlayedAtByURL[$0.movieURL] ?? 0) > (lastPlayedAtByURL[$1.movieURL] ?? 0)
+            }
+            break
+        case "あなたのプレイ回数が多い曲順":
+            let histories = UserData.sharedInstance.LevelPlayHistories
+            var playCountByURL:[String:Int] = [:]
+            for (key, levelsInURL) in levels {
+                playCountByURL[key] = levelsInURL.reduce(0) {
+                    $0 + (histories[$1.sqlID]?.playCount ?? 0)
+                }
+            }
+            sortedMusics = musics.sorted {
+                (playCountByURL[$0.movieURL] ?? 0) > (playCountByURL[$1.movieURL] ?? 0)
+            }
+            break
+        case "お気に入り数が多い曲順":
+            // 曲のお気に入り数（musicFavorite）で並べ替える。
+            sortedMusics = musics.filter { levels[$0.movieURL] != nil }
+            sortedMusics.sort { ($0.favoriteCount ?? 0) > ($1.favoriteCount ?? 0) }
             break
         case "お気に入り数が少ない曲順":
-            var levelp:[String:Int] = [:] //[URL:allPlayCount]
-            for (key,lvInURL) in levels {
-                levelp[key] = lvInURL.reduce(0){ $0 + $1.favoriteCount}
-            }
-            sortedMusics = musics.filter({ levelp.keys.contains($0.movieURL)})
-            sortedMusics.sort(by: {levelp[$0.movieURL]! <= levelp[$1.movieURL]!})
+            // 曲のお気に入り数（musicFavorite）で並べ替える。
+            sortedMusics = musics.filter { levels[$0.movieURL] != nil }
+            sortedMusics.sort { ($0.favoriteCount ?? 0) < ($1.favoriteCount ?? 0) }
             break
-        case "動画IDが大きい順":
+        case "動画ID 降順":
             sortedMusics = musics.sorted{ Int($0.movieURL.components(separatedBy: CharacterSet.decimalDigits.inverted).last!) ?? 0 > Int($1.movieURL.components(separatedBy: CharacterSet.decimalDigits.inverted).last!) ?? 0 }
             //sortedMusics = musics.sorted{ Int($0.movieURL.pregReplace(pattern: "[^0-9]", with: "")) ?? 0 > Int($1.movieURL.pregReplace(pattern: "[^0-9]", with: "")) ?? 0 }
             break
-        case "動画IDが小さい順":
+        case "動画ID 昇順":
             sortedMusics = musics.sorted{ Int($0.movieURL.components(separatedBy: CharacterSet.decimalDigits.inverted).last!) ?? 0 < Int($1.movieURL.components(separatedBy: CharacterSet.decimalDigits.inverted).last!) ?? 0 }
             //sortedMusics = musics.sorted{ Int($0.movieURL.pregReplace(pattern: "[^0-9]", with: "")) ?? 0 < Int($1.movieURL.pregReplace(pattern: "[^0-9]", with: "")) ?? 0 }
             break
@@ -683,17 +763,11 @@ class MusicDataLists{
         
         //お気に入りを先頭に集める
         if UserData.sharedInstance.musicSortCondition == 1 {
-            var levelp:[String:Bool] = [:] //[URL:allPlayCount]
-            for (key,lvInURL) in levels {
-                levelp[key] = false
-                for level in lvInURL {
-                    if UserData.sharedInstance.MyFavoriteAll.contains(level.sqlID){
-                        levelp[key] = true
-                        break
-                    }
-                }
-            }
-            sortedMusics = sortedMusics.filter({ (levelp[$0.movieURL] ?? false) }) + sortedMusics.filter({ !(levelp[$0.movieURL] ?? false) })
+            let favoriteIDs = UserData.sharedInstance.MyFavorite3
+
+            sortedMusics =
+                sortedMusics.filter { favoriteIDs.contains($0.sqlID) } +
+                sortedMusics.filter { !favoriteIDs.contains($0.sqlID) }
         }
         
         callback(sortedMusics)
@@ -723,7 +797,7 @@ class MusicDataLists{
                 }
                 return UserData.sharedInstance.SelectedMusicCondition.sortStars[levelData.level-1]
             }) {
-                if UserData.sharedInstance.MyFavoriteAll.contains(level.sqlID) {
+                if let like = UserData.sharedInstance.MyLike[level.sqlID], like == -2 || like > 0 {
                     a.append(level)
                 }else {
                     b.append(level)
@@ -747,6 +821,18 @@ class MusicDataLists{
         }
         return selectLevels
     }
+    func hasPlayableLevel(selectMovieURL:String, isMe:Bool = true) -> Bool{
+        guard let levels = levels[selectMovieURL] else {
+            return false
+        }
+        for level in levels {
+            if level.isEditing && !(level.isMyEditing && isMe){
+                continue
+            }
+            return true
+        }
+        return false
+    }
     
     // music Json化。UserData保存用
     func toMusicsJsonString() -> String {
@@ -762,6 +848,8 @@ class MusicDataLists{
             jObject["tags"] = musicdata.tags
             jObject["updateTime"] = String(musicdata.sqlUpdateTime)
             jObject["createTime"] = String(musicdata.sqlCreateTime)
+            jObject["favorite"] = String(musicdata.favoriteCount)
+            jObject["favoriteTime"] = String(musicdata.favoriteCountTime)
             
             jArray.append(jObject)
         }
@@ -770,7 +858,7 @@ class MusicDataLists{
             let jsonStr = String(bytes: jsonData, encoding: .utf8)!
             return jsonStr
         } catch (let e) {
-            print(e)
+            // print(e)
             return ""
         }
     }
@@ -779,23 +867,28 @@ class MusicDataLists{
         if( jsonStr=="" ){ return }
         let jsonData: Data =  jsonStr.data(using: String.Encoding.utf8)!
         do {
-            let jsonArray = (try JSONSerialization.jsonObject(with: jsonData, options: [])) as! Array<Dictionary<String,String>>
+            let jsonArray = try decodeStringDictionaryArray(from: jsonData)
             for dic in jsonArray {
+                //下位互換
+                let favoriteCount = try optionalJSONInt(dic, key: "favorite")
+                let favoriteCountTime = try optionalJSONInt(dic, key: "favoriteTime")
                 self.setMusic(
-                    sqlID: Int(dic["id"]!)!,
-                    movieURL: dic["movieURL"]!,
-                    thumbnailURL: dic["thumbnailURL"]!,
-                    title: dic["title"]!,
-                    artist: dic["artist"]!,
-                    movieLength: dic["movieLength"]!,
-                    tags: dic["tags"]!,
-                    updateTime: Int(dic["updateTime"]!)!,
-                    createTime: Int(dic["createTime"]!)!
+                    sqlID: try requiredJSONInt(dic, key: "id"),
+                    movieURL: try requiredJSONString(dic, key: "movieURL"),
+                    thumbnailURL: try requiredJSONString(dic, key: "thumbnailURL"),
+                    title: try requiredJSONString(dic, key: "title"),
+                    artist: try requiredJSONString(dic, key: "artist"),
+                    movieLength: try requiredJSONString(dic, key: "movieLength"),
+                    tags: try requiredJSONString(dic, key: "tags"),
+                    updateTime: try requiredJSONInt(dic, key: "updateTime"),
+                    createTime: try requiredJSONInt(dic, key: "createTime"),
+                    favoriteCount: favoriteCount,
+                    favoriteCountTime: favoriteCountTime
                 )
             }
             self.createTaglist() //タグリストを更新
         } catch {
-            print(error)
+            // print(error)
         }
     }
     
@@ -809,6 +902,7 @@ class MusicDataLists{
                 jObject["id"] = String(leveldata.sqlID)
                 jObject["movieURL"] = movieURL
                 jObject["level"] = String(leveldata.level)
+                jObject["calcLv"] = String(leveldata.calcLv)
                 jObject["creator"] = leveldata.creator
                 jObject["description"] = leveldata.description
                 jObject["speed"] = String(leveldata.speed)
@@ -821,6 +915,9 @@ class MusicDataLists{
                 jObject["favoriteTime"] = String(leveldata.favoriteCountTime)
                 jObject["commentTime"] = String(leveldata.commentTime)
                 jObject["scoreTime"] = String(leveldata.scoreTime)
+                jObject["poslike"] = String(leveldata.likeCount)
+                jObject["dislike"] = String(leveldata.dislikeCount)
+                jObject["likeTime"] = String(leveldata.likeCountTime)
                 
                 jArray.append(jObject)
             }
@@ -830,7 +927,7 @@ class MusicDataLists{
             let jsonStr = String(bytes: jsonData, encoding: .utf8)!
             return jsonStr
         } catch (let e) {
-            print(e)
+            // print(e)
             return ""
         }
     }
@@ -840,50 +937,43 @@ class MusicDataLists{
         flg_levelsFistrLoad = true
         let jsonData: Data =  jsonStr.data(using: String.Encoding.utf8)!
         do {
-            let jsonArray = (try JSONSerialization.jsonObject(with: jsonData, options: [])) as! Array<Dictionary<String,String>>
+            let jsonArray = try decodeStringDictionaryArray(from: jsonData)
             for dic in jsonArray {
                 //下位互換
-                var playCountTime = 0
-                var favoriteCount = 0
-                var favoriteCountTime = 0
-                var commentTime = 0
-                var scoreTime = 0
-                if dic["playCountTime"] != nil {
-                    playCountTime = Int(dic["playCountTime"]!)!
-                }
-                if dic["favorite"] != nil {
-                    favoriteCount = Int(dic["favorite"]!)!
-                }
-                if dic["favoriteTime"] != nil {
-                    favoriteCountTime = Int(dic["favoriteTime"]!)!
-                }
-                if dic["commentTime"] != nil {
-                    commentTime = Int(dic["commentTime"]!)!
-                }
-                if dic["scoreTime"] != nil {
-                    scoreTime = Int(dic["scoreTime"]!)!
-                }
+                let calcLv = try optionalJSONInt(dic, key: "calcLv")
+                let playCountTime = try optionalJSONInt(dic, key: "playCountTime")
+                let favoriteCount = try optionalJSONInt(dic, key: "favorite")
+                let favoriteCountTime = try optionalJSONInt(dic, key: "favoriteTime")
+                let commentTime = try optionalJSONInt(dic, key: "commentTime")
+                let scoreTime = try optionalJSONInt(dic, key: "scoreTime")
+                let likeCount = try optionalJSONInt(dic, key: "poslike")
+                let dislikeCount = try optionalJSONInt(dic, key: "dislike")
+                let likeCountTime = try optionalJSONInt(dic, key: "likeTime")
                 self.setLevel(
-                    sqlID: Int(dic["id"]!)!,
-                    movieURL: dic["movieURL"]!,
-                    level: Int(dic["level"]!)!,
-                    creator: dic["creator"]!,
-                    description: dic["description"]!,
-                    speed: Int(dic["speed"]!)!,
-                    noteData: dic["notes"]!,
-                    updateTime: Int(dic["updateTime"]!)!,
-                    createTime: Int(dic["createTime"]!)!,
-                    playCount: Int(dic["playCount"]!)!,
+                    sqlID: try requiredJSONInt(dic, key: "id"),
+                    movieURL: try requiredJSONString(dic, key: "movieURL"),
+                    level: try requiredJSONInt(dic, key: "level"),
+                    calcLv: calcLv,
+                    creator: try requiredJSONString(dic, key: "creator"),
+                    description: try requiredJSONString(dic, key: "description"),
+                    speed: try requiredJSONInt(dic, key: "speed"),
+                    noteData: try requiredJSONString(dic, key: "notes"),
+                    updateTime: try requiredJSONInt(dic, key: "updateTime"),
+                    createTime: try requiredJSONInt(dic, key: "createTime"),
+                    playCount: try requiredJSONInt(dic, key: "playCount"),
                     playCountTime: playCountTime,
                     favoriteCount: favoriteCount,
                     favoriteCountTime: favoriteCountTime,
                     commentTime: commentTime,
-                    scoreTime: scoreTime
+                    scoreTime: scoreTime,
+                    likeCount: likeCount,
+                    dislikeCount: dislikeCount,
+                    likeCountTime: likeCountTime
                 )
             }
             self.createTaglist() //タグリストを更新
         } catch {
-            print(error)
+            // print(error)
         }
         flg_levelsFistrLoad = false
     }

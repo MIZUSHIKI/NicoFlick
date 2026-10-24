@@ -12,6 +12,8 @@ import AVFoundation
 
 class Settings: UIViewController {
     
+    private let useNewLevelCalculationKey = "UseNewLevelCalculation"
+    
     @IBOutlet var textfieldMail: UITextField!
     @IBOutlet var textfieldPass: UITextField!
     @IBOutlet var labelUserID: UILabel!
@@ -26,6 +28,7 @@ class Settings: UIViewController {
     @IBOutlet weak var gameSeVolumeSlider: UISlider!
     @IBOutlet weak var systemSeVolumeSlider: UISlider!
     @IBOutlet weak var savePlayMovieSwitch: UISwitch!
+    @IBOutlet weak var useNewLevelCalculationSwitch: UISwitch!
     @IBOutlet weak var drawingUpdateIntervalLabel: UILabel!
     @IBOutlet weak var drawingUpdateIntervalSlider: UISlider!
     
@@ -42,9 +45,11 @@ class Settings: UIViewController {
     
     //Indicator
     private var activityIndicator:UIActivityIndicatorView!
+    private var playMovieDefaultTintColor: UIColor?
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        playMovieDefaultTintColor = playMovie.tintColor
         // Do any additional setup after loading the view, typically from a nib.
         
         //既に保存データが有れば入力欄に入れる
@@ -61,19 +66,43 @@ class Settings: UIViewController {
         gameSeVolumeSlider.value = userData.SoundVolumeGameSE
         systemSeVolumeSlider.value = userData.SoundVolumeSystemSE
         savePlayMovieSwitch.isOn = userData.SavePlayMovie
+        useNewLevelCalculationSwitch.isOn = UserDefaults.standard.bool(forKey: useNewLevelCalculationKey)
         drawingUpdateIntervalLabel.text = String(format: "%0.3f", userData.DrawingUpdateInterval)
         drawingUpdateIntervalSlider.value = userData.DrawingUpdateInterval
         
-        if #available(iOS 15.0, *){
-            playMovie.configuration = nil
-        }
         playMovie.titleLabel?.font = UIFont.systemFont(ofSize: 10)
         playMovie.titleLabel?.numberOfLines = 1
         playMovie.titleLabel?.lineBreakMode = NSLineBreakMode.byWordWrapping
+
+        let previewTitle: String
         if let cache = CachedMovies.sharedInstance.cachedMovies.last {
-            playMovie.setTitle("  動画再生：\(cache.smNum)", for: .normal)
-        }else {
-            playMovie.setTitle("  動画再生：キャッシュなし", for: .normal)
+            previewTitle = "試聴：\(cache.smNum)"
+        } else {
+            previewTitle = "試聴：sm25672022"
+        }
+
+        if #available(iOS 15.0, *), var configuration = playMovie.configuration {
+            configuration.title = previewTitle
+            configuration.imagePadding = 4
+            playMovie.configuration = configuration
+        } else {
+            playMovie.setTitle(previewTitle, for: .normal)
+        }
+
+        if CachedMovies.sharedInstance.cachedMovies.isEmpty {
+            let smNum = "sm25672022"
+            MovieAccess().StreamingUrlNicoAccess(smNum: smNum) { nicodougaURL in
+                guard let url = URL(string: nicodougaURL) else {
+                    // print("動画URLの取得に失敗: \(nicodougaURL)")
+                    return
+                }
+                DispatchQueue.main.async {
+                    _ = CachedMovies.sharedInstance.access(
+                        url: url,
+                        smNum: smNum
+                    )
+                }
+            }
         }
         
         //let view = SlashShadeView.init(frame: contentsViewInScrollView.frame, color: .white, lineWidth: 1, space: 4)
@@ -126,19 +155,22 @@ class Settings: UIViewController {
     @IBAction func buttonRegistName(_ sender: Any) {
         self.CloseKeyboard()
 
-        //Indicator くるくる開始
+        let submittedName = textfieldName.text ?? ""
+        
+        // 通信中の重複操作や画面遷移を防ぐ
+        view.isUserInteractionEnabled = false
         activityIndicator.startAnimating()
         
         //データベースに登録
-        ServerDataHandler().postUserName(name: textfieldName.text!, userID: userData.UserID, callback: { bool in
+        ServerDataHandler().postUserName(name: submittedName, userID: userData.UserID, callback: { bool in
             
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
-                //  Indicator隠す
+                self.view.isUserInteractionEnabled = true
                 self.activityIndicator.stopAnimating()
                 if bool {
                     //  データ保存
-                    self.userData.UserName = self.textfieldName.text!
+                    self.userData.UserName = submittedName
                     
                     let alert = UIAlertController(title:"あなたの名前を登録しました", message: nil, preferredStyle: UIAlertControllerStyle.alert)
                     alert.addAction( UIAlertAction(title: "OK", style: .default, handler: nil) )
@@ -164,8 +196,10 @@ class Settings: UIViewController {
             if cache.avPlayerViewController.player?.isPlaying == false {
                 cache.avPlayerViewController.player?.seek(to: CMTimeMakeWithSeconds(0, Int32(NSEC_PER_SEC)) )
                 cache.avPlayerViewController.player?.play()
-            }else {
+                sender.tintColor = .systemRed
+            } else {
                 cache.avPlayerViewController.player?.pause()
+                sender.tintColor = playMovieDefaultTintColor
             }
         }
     }
@@ -210,9 +244,31 @@ class Settings: UIViewController {
             self.present(alert, animated: true, completion: nil)
         }
     }
+    @IBAction func UseNewLevelCalculationSwitch(_ sender: UISwitch) {
+        UserDefaults.standard.set(sender.isOn, forKey: useNewLevelCalculationKey)
+        
+        guard sender.isOn else {
+            return
+        }
+        
+        let alert = UIAlertController(
+            title: "新しい難易度表示 (テスト中)",
+            message: """
+・★1〜7はゲームエディタの「難易度参考値」と同じ従来式、★8〜20は新しい計算式で算出します。
+・FULLにも難易度が表示されます。
+・計算式は調整中のため、表示が変わる場合があります。
+
+難易度表示の傾向が体感と合わない場合は、調整案をGitHubまたはメールでお寄せください。計算式のPHPはGitHubで公開しています。
+""",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+    
     @IBAction func DrawingUpdateInterval_ValueChanded(_ sender: UISlider) {
         userData.DrawingUpdateInterval = Float(Int(sender.value * 1000))/1000
-        print(Float(Int(sender.value * 1000))/1000)
+        // print(Float(Int(sender.value * 1000))/1000)
         drawingUpdateIntervalLabel.text = String(format: "%0.3f", sender.value)
     }
     

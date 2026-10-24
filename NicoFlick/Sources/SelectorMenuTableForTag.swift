@@ -15,6 +15,7 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var editButton: UIBarButtonItem! //「＋時間指定」に変更
     @IBOutlet weak var editMaruButton: UICustomButton!
+    @IBOutlet weak var navigationBar: UINavigationBar!
     
     
     //音楽データ(シングルトン)
@@ -37,16 +38,17 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        print(list)
+        // print(list)
         _list = list
         textField.text = userData.SelectedMusicCondition.tags
         textField.addTarget(self, action: #selector(self.textFieldDidChange(textFiled:)), for: .editingChanged)
 
         editMaruButton.isHidden = ( currentMusic == nil )
+        navigationBar.topItem?.title = currentMusic == nil ? "tag" : "tag (music)"
     }
     @objc func textFieldDidChange(textFiled: UITextField) {
         let text = textField.text ?? ""
-        print(text)
+        // print(text)
         
         //テキストフィールド内に既にあるか確認 //タグ文字列を空白で分割
         
@@ -64,7 +66,7 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
             }
         }
 
-        print(array.count)
+        // print(array.count)
         
         if array.isEmpty {
             if list != _list {
@@ -107,7 +109,7 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         // セルの数を設定
-        print(list.count)
+        // print(list.count)
         return list.count
     }
     
@@ -127,7 +129,7 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
         if(textField.isFirstResponder){
             textField.resignFirstResponder()
         }
-        print("タップされたセルのindex番号: \(indexPath.row)")
+        // print("タップされたセルのindex番号: \(indexPath.row)")
         tableView.deselectRow(at: indexPath, animated: true)//選択を外す
 
         //テキストフィールド内に既にあるか確認
@@ -146,12 +148,12 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
         }
         
         //時間指定が含まれていたら一度削除
-        print(jikanSitei)
-        print(textField.text)
+        // print(jikanSitei)
+        // print(textField.text)
         if list != _list {
-            print(textField.text!.pregMatche_firstString(pattern: "\\s(\\S+?)$"))
+            // print(textField.text!.pregMatche_firstString(pattern: "\\s(\\S+?)$"))
             textField.text = textField.text!.pregReplace(pattern: "\\s?\\S+?$", with: "")
-            print(textField.text)
+            // print(textField.text)
         }
         if textField.text != "" && !(textField.text?.hasSuffix("-"))! {
             //空欄じゃなかったら空白を足す。
@@ -174,7 +176,7 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
     
     func tableView(_ tableView: UITableView, accessoryButtonTappedForRowWith indexPath: IndexPath) {
         // アクセサリボタン（セルの右にあるボタン）がタップされた時の処理
-        print("タップされたアクセサリがあるセルのindex番号: \(indexPath.row)")
+        // print("タップされたアクセサリがあるセルのindex番号: \(indexPath.row)")
     }
     
     // MARK: - UIPickerViewDelegate
@@ -303,10 +305,11 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
         numberRoll_index2_s = 0
         // PickerView
         let w = 250//alert.view.bounds.width
-        print(w)
-        print(w*2/10)
+        // print(w)
+        // print(w*2/10)
         var pv = UIPickerView()
         pv.tag = 123
+        pv.alpha = 0
         pv.frame = CGRect(x: w*1/7, y: 60, width: 50, height: 100) // 配置、サイズ
         pv.dataSource = self
         pv.delegate = self
@@ -315,6 +318,7 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
         //
         pv = UIPickerView()
         pv.tag = 234
+        pv.alpha = 0
         pv.frame = CGRect(x: w*2/7, y: 60, width: 50, height: 100) // 配置、サイズ
         pv.dataSource = self
         pv.delegate = self
@@ -323,12 +327,14 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
         //
         let lb = UILabel()
         lb.text = "〜"
+        lb.alpha = 0
         lb.textAlignment = .center
         lb.frame = CGRect(x: w*3/7, y: 60, width: 50, height: 100) // 配置、サイズ
         alert.view.addSubview(lb)
         //
         pv = UIPickerView()
         pv.tag = 567
+        pv.alpha = 0
         pv.frame = CGRect(x: w*4/7, y: 60, width: 50, height: 100) // 配置、サイズ
         pv.dataSource = self
         pv.delegate = self
@@ -337,6 +343,7 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
         //
         pv = UIPickerView()
         pv.tag = 678
+        pv.alpha = 0
         pv.frame = CGRect(x: w*5/7, y: 60, width: 50, height: 100) // 配置、サイズ
         pv.dataSource = self
         pv.delegate = self
@@ -345,16 +352,32 @@ class TableViewForTag: UIViewController, UITableViewDelegate, UITableViewDataSou
 
         alert.addAction(okAction)
         alert.addAction(ngAction)
-        present(alert, animated: true, completion: nil)
+        present(alert, animated: true) {
+            let w = alert.view.bounds.width
+            let y = (alert.view.bounds.height - 100) / 2 - 20
+            alert.view.viewWithTag(123)?.frame = CGRect(x: w*1/7, y: y, width: 50, height: 100)
+            alert.view.viewWithTag(234)?.frame = CGRect(x: w*2/7, y: y, width: 50, height: 100)
+            lb.frame = CGRect(x: w*3/7, y: y, width: 50, height: 100)
+            alert.view.viewWithTag(567)?.frame = CGRect(x: w*4/7, y: y, width: 50, height: 100)
+            alert.view.viewWithTag(678)?.frame = CGRect(x: w*5/7, y: y, width: 50, height: 100)
+
+            UIView.animate(withDuration: 0.1) {
+                alert.view.viewWithTag(123)?.alpha = 1
+                alert.view.viewWithTag(234)?.alpha = 1
+                lb.alpha = 1
+                alert.view.viewWithTag(567)?.alpha = 1
+                alert.view.viewWithTag(678)?.alpha = 1
+            }
+        }
     }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){
-        print("returnToMe")
+        // print("returnToMe")
     }
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        print("seg")
+        // print("seg",segue.identifier)
         if segue.identifier == "toTagEditor" {
             //遷移先にデータを渡す
             let tagEditorController:TagEditor = segue.destination as! TagEditor

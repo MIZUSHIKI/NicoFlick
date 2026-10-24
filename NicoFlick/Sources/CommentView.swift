@@ -8,7 +8,7 @@
 
 import Foundation
 
-class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource, UITextViewDelegate {
+class CommentView: RankingNetworkViewController, UITableViewDelegate, UITableViewDataSource, UITextViewDelegate {
     
     @IBOutlet var musicTitle: UILabel!
     @IBOutlet var musicRank: UILabel!
@@ -26,7 +26,7 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     var selectMusic:musicData!
     var selectLevel:levelData!
     var commentPostable:Bool!
-    var resultViewController:ResultView!
+    var resultViewController:ResultView?
     var rankingViewController:RankingView?
     
     var userNameDatas:userNameDataLists = userNameDataLists.sharedInstance
@@ -58,6 +58,7 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         activityIndicator = Indicator(center: self.view.center).view
         self.view.addSubview(activityIndicator)
         //Indicator くるくる開始
+        beginNetworkOperation()
         activityIndicator.startAnimating()
         
         //
@@ -94,7 +95,6 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         
         //データベース接続
 
-//        ServerDataHandler().DownloadScoreData(levelID: self.selectLevel.sqlID!){ (data) in
         ServerDataHandler().DownloadCommentData(levelID: selectLevel.sqlID){ (error) in
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
@@ -103,9 +103,9 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
                 self.commentData = self.commentDatas.getSortedComments(levelID: self.selectLevel.sqlID)
                 //テーブル再描画
                 self.commentTable.reloadData()
+                self.endNetworkOperation()
+                self.showDownloadError(error)
             }
-        }
-        ServerDataHandler().getCommentData(levelID: selectLevel.sqlID) { (data) in
         }
         
         commentTable.reloadData()
@@ -139,7 +139,7 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     }
     
     func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
-        print("tab select")
+        // print("tab select")
         seSystemAudio.openSePlay()
     }
     
@@ -205,7 +205,7 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         // セルがタップされた時の処理
-        print("タップされたセルのindex番号: \(indexPath.row)")
+        // print("タップされたセルのindex番号: \(indexPath.row)")
         //非表示にする。
         if(commentTextView.isFirstResponder){
             commentTextView.resignFirstResponder()
@@ -219,7 +219,7 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     */
     func tableView(_ tableView: UITableView, accessoryButtonTappedForRowWith indexPath: IndexPath) {
         // アクセサリボタン（セルの右にあるボタン）がタップされた時の処理
-        print("タップされたアクセサリがあるセルのindex番号: \(indexPath.row)")
+        // print("タップされたアクセサリがあるセルのindex番号: \(indexPath.row)")
     }
     
     //UITextView
@@ -287,9 +287,11 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         
     }
     @IBAction func commentPostButton(_ sender: Any) {
-        if commentTextView.text == "" {
+        if isNetworkBusy || !commentPostButton.isEnabled || commentTextView.text == "" {
             return
         }
+        let previousTextColor = commentTextView.backgroundColor
+        let previousButtonColor = commentPostButton.backgroundColor
         //非表示にする。
         if(commentTextView.isFirstResponder){
             commentTextView.resignFirstResponder()
@@ -301,17 +303,30 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         commentPostButton.backgroundColor = UIColor.gray
         
         //Indicator くるくる開始
+        beginNetworkOperation()
         activityIndicator.startAnimating()
         
         //  ユーザーID
         let userData = UserData.sharedInstance
         // コメント投稿
-        ServerDataHandler().postComment(comment: commentTextView.text, levelID: selectLevel.sqlID, userID: userData.UserID) {
+        ServerDataHandler().postComment(comment: commentTextView.text, levelID: selectLevel.sqlID, userID: userData.UserID) { (bool) in
+            if !bool {
+                DispatchQueue.main.async {
+                    self.activityIndicator.stopAnimating()
+                    self.endNetworkOperation()
+                    self.commentTextView.isEditable = true
+                    self.commentTextView.backgroundColor = previousTextColor
+                    self.commentPostButton.isEnabled = true
+                    self.commentPostButton.backgroundColor = previousButtonColor
+                    guard self.viewIfLoaded?.window != nil else { return }
+                    let alert = UIAlertController(title: nil, message: "コメントの投稿に失敗しました", preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(alert, animated: true)
+                }
+                return
+            }
             // 再度データベースからコメントデータを取得してリストを更新
             ServerDataHandler().DownloadCommentData(levelID: self.selectLevel.sqlID){ (error) in
-                
-            }
-            ServerDataHandler().getCommentData(levelID: self.selectLevel.sqlID) { (data) in
                 DispatchQueue.main.async {
                     //UI処理はメインスレッドの必要あり
                     //Indicator隠す
@@ -319,6 +334,10 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
                     self.commentData = self.commentDatas.getSortedComments(levelID: self.selectLevel.sqlID)
                     //テーブル再描画
                     self.commentTable.reloadData()
+                    self.commentPostable = false
+                    self.resultViewController?.commentPostable = false
+                    self.endNetworkOperation()
+                    self.showDownloadError(error)
                 }
             }
         }
@@ -327,8 +346,9 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     //画面遷移処理 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     //遷移の許可
     override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {
-        print("should comment")
-        print(identifier)
+        guard super.shouldPerformSegue(withIdentifier: identifier, sender: sender) else { return false }
+        // print("should comment")
+        // print(identifier)
         seSystemAudio.canselSePlay()
         return true
     }

@@ -18,6 +18,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     @IBOutlet var musicTags: UILabel!
     @IBOutlet var levelSpeed: UILabel!
     @IBOutlet var musicNum: UILabel!
+    @IBOutlet weak var musicSortButton: UIButton!
     
     @IBOutlet var carousel: iCarousel!
     @IBOutlet var levelSelectPicker: UIPickerView!
@@ -27,12 +28,13 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     @IBOutlet weak var rankingTimeLabel: UILabel!
     @IBOutlet weak var commentTimeLabel: UILabel!
     
-    @IBOutlet weak var blackStar: UIImageView!
-    @IBOutlet weak var colorStar: UIImageView!
-    @IBOutlet weak var favoriteNum: UILabel!
-    @IBOutlet weak var favoriteNum2: UILabel!
-    @IBOutlet weak var levelSortButton: UIButton!
-    @IBOutlet weak var musicSortButton: UIButton!
+    @IBOutlet weak var blackHeart: UIImageView!
+    @IBOutlet weak var edgeHeart: UIImageView!
+    @IBOutlet weak var colorHeart: UIImageView!
+    @IBOutlet weak var likeNum: UILabel!
+    
+    @IBOutlet weak var colorMusicStar: UIImageView!
+    @IBOutlet weak var musicFavoriteNum: UILabel!
     
     @IBOutlet weak var thumbMoviePlay: UIImageView!
     @IBOutlet weak var thumbMoviePlay_Color: UIImageView!
@@ -58,6 +60,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     var indexCarousel = 0
     var indexPicker = 0
     var maeMusic:musicData? = nil
+    private var isReloadingCarousel = false
     
     //遷移中フラグ
     var segueing = false
@@ -75,6 +78,63 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     var flgThumbMovieTopMost = false //ムービー再生を薄バックからサムネ全面に移動させたフラグ
     var volumeForceInResult:Float = 1.0
     let ReducedVolumeForceInResult:Float = 0.5
+    private let japaneseKeyboardGuidePromptedKey = "JapaneseKeyboardGuidePrompted_v1"
+    private var didScheduleJapaneseKeyboardGuide = false
+    private var pendingFlickOnlyReminder = false
+    private var flickOnlyReminderWorkItem: DispatchWorkItem?
+
+    func queueFlickOnlyReminder() {
+        pendingFlickOnlyReminder = true
+        print("reminder")
+    }
+
+    private func scheduleFlickOnlyReminderIfNeeded() {
+        guard pendingFlickOnlyReminder, flickOnlyReminderWorkItem == nil else { return }
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            self.flickOnlyReminderWorkItem = nil
+            self.showFlickOnlyReminderIfReady()
+        }
+        flickOnlyReminderWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+    }
+
+    private func showFlickOnlyReminderIfReady() {
+        guard pendingFlickOnlyReminder else { return }
+        guard !UserDefaults.standard.bool(forKey: FlickOnlyReminder.shownKey) else {
+            pendingFlickOnlyReminder = false
+            return
+        }
+        // 既存案内、通信、unwind、サムネイルの音量復帰を優先する。
+        guard viewIfLoaded?.window != nil,
+              presentedViewController == nil,
+              transitionCoordinator == nil,
+              !isBeingDismissed, !segueing,
+              returnToMeString.isEmpty,
+              !activityIndicator.isAnimating,
+              view.isUserInteractionEnabled,
+              volumeForceInResult == 1.0,
+              UIApplication.shared.applicationState == .active else {
+            scheduleFlickOnlyReminderIfNeeded()
+            return
+        }
+        guard let image = UIImage(named: "howto2.png") else {
+            pendingFlickOnlyReminder = false
+            return
+        }
+        let previousPlayback = pauseThumbMovieForJapaneseKeyboardGuide()
+        let guide = FlickOnlyReminderViewController(guideImage: image)
+        guide.onDismiss = { [weak self] in
+            self?.restoreThumbMoviePlayback(to: previousPlayback)
+        }
+        guide.modalPresentationStyle = .overFullScreen
+        guide.modalTransitionStyle = .crossDissolve
+        pendingFlickOnlyReminder = false
+        present(guide, animated: true) {
+            // 予約時ではなく、実際に表示できた時点で一度限りのフラグを保存。
+            UserDefaults.standard.set(true, forKey: FlickOnlyReminder.shownKey)
+        }
+    }
     
     enum ForceInResultType {
         case none
@@ -106,9 +166,6 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             levelSpeed.frame.origin.y -= 12
             musicNum.frame.origin.y -= 12
         }
-        //お気に入りソート関係
-        levelSortButton.alpha = (userData.LevelSortCondition != 0) ? 0.6 : 0.2
-        musicSortButton.alpha = (userData.musicSortCondition != 0) ? 0.6 : 0.2
         //
         thumbMoviePlay.isHidden = userData.thumbMoviePlay
         thumbMoviePlay_Color.isHidden = !userData.thumbMoviePlay
@@ -116,6 +173,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         let view = SlashShadeView.init(frame: self.view.frame, color: .white, lineWidth: 1, space: 2)
         self.view.addSubview(view)
         self.view.sendSubview(toBack: view)
+        
+        // バージョンアップ時の処理
+        migration()
         
         //現在設定されているタグで選択された楽曲を保持する
         //currentMusics = musicDatas.getSelectMusics()
@@ -126,9 +186,99 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
 
         self.SetMusicToCarousel(thumbMovieForcePlay: true)
         
-        //self.showChangeFavoSpecView() //もういいか
+        //self.showChangeFavoSpecView() //もういいか (ver.1500お気に入り仕様変更案内)
         self.showHowToExtendView()
     }
+    private var hasJapaneseKeyboard: Bool {
+        return UITextInputMode.activeInputModes.contains {
+            $0.primaryLanguage?.hasPrefix("ja") == true
+        }
+    }
+
+    var shouldOfferJapaneseKeyboardGuide: Bool {
+        return !hasJapaneseKeyboard
+    }
+
+    private func scheduleJapaneseKeyboardGuideIfNeeded() {
+        guard !didScheduleJapaneseKeyboardGuide,
+              !hasJapaneseKeyboard,
+              !UserDefaults.standard.bool(forKey: japaneseKeyboardGuidePromptedKey) else {
+            return
+        }
+
+        didScheduleJapaneseKeyboardGuide = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
+            self?.showJapaneseKeyboardGuidePrompt()
+        }
+    }
+
+    private func showJapaneseKeyboardGuidePrompt() {
+        guard presentedViewController == nil else {
+            didScheduleJapaneseKeyboardGuide = false
+            return
+        }
+
+        UserDefaults.standard.set(true, forKey: japaneseKeyboardGuidePromptedKey)
+        let thumbMoviePlayBeforeGuide = pauseThumbMovieForJapaneseKeyboardGuide()
+
+        let alert = UIAlertController(
+            title: "Set up Japanese Flick Input",
+            message: "NicoFlick is designed for the Japanese Kana flick keyboard. Set it up for the best gameplay experience.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Show Setup Guide", style: .default) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.showJapaneseKeyboardGuide(restoringThumbMoviePlayTo: thumbMoviePlayBeforeGuide)
+            }
+        })
+        alert.addAction(UIAlertAction(title: "I’ve Already Set It Up", style: .cancel) { [weak self] _ in
+            self?.restoreThumbMoviePlayback(to: thumbMoviePlayBeforeGuide)
+        })
+        alert.addAction(UIAlertAction(title: "Not Now", style: .default) { [weak self] _ in
+            self?.restoreThumbMoviePlayback(to: thumbMoviePlayBeforeGuide)
+        })
+        present(alert, animated: true)
+    }
+
+    @objc func showJapaneseKeyboardGuide() {
+        showJapaneseKeyboardGuide(restoringThumbMoviePlayTo: nil)
+    }
+
+    private func showJapaneseKeyboardGuide(restoringThumbMoviePlayTo previousValue: Bool?) {
+        let guide = JapaneseKeyboardSetupViewController()
+        guide.onDismiss = { [weak self] in
+            guard let previousValue = previousValue else { return }
+            self?.restoreThumbMoviePlayback(to: previousValue)
+        }
+        guide.modalPresentationStyle = .pageSheet
+        if #available(iOS 15.0, *) {
+            guide.sheetPresentationController?.detents = [.medium(), .large()]
+            guide.sheetPresentationController?.selectedDetentIdentifier = .large
+            guide.sheetPresentationController?.prefersGrabberVisible = true
+        }
+        present(guide, animated: true)
+    }
+
+    private func pauseThumbMovieForJapaneseKeyboardGuide() -> Bool {
+        let previousValue = userData.thumbMoviePlay
+        userData.thumbMoviePlay = false
+        thumbMoviePlay.isHidden = false
+        thumbMoviePlay_Color.isHidden = true
+        ThumbMovieStop()
+        return previousValue
+    }
+
+    private func restoreThumbMoviePlayback(to previousValue: Bool) {
+        userData.thumbMoviePlay = previousValue
+        thumbMoviePlay.isHidden = previousValue
+        thumbMoviePlay_Color.isHidden = !previousValue
+        if previousValue {
+            ThumbMoviePlay()
+        } else {
+            ThumbMovieStop()
+        }
+    }
+
     func SetMusicToCarousel(thumbMovieForcePlay:Bool = false) {
         //Indicator くるくる開始
         DispatchQueue.main.async {
@@ -144,16 +294,27 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 //Indicator隠す
                 self.activityIndicator.stopAnimating()
                 
-                //iCarousel再描画
+                // iCarouselの再描画では、選択曲が変わっていなくても
+                // carouselCurrentItemIndexDidChange が呼ばれるため、動画の再開を抑止する。
+                self.isReloadingCarousel = true
                 self.carousel.reloadData()
+
+                guard !self.currentMusics.isEmpty else {
+                    self.isReloadingCarousel = false
+                    self.ThumbMovieStop()
+                    self.currentLevels = []
+                    self.levelSelectPicker.reloadAllComponents()
+                    return
+                }
+
                 //前回選択していた曲に飛べれば飛ぶ
                 var sameMovieURLAsMaeMusic = false
                 var selectIndex = 0
                 if self.numberRoll_index == -1 {
-                    print("mae \(self.maeMusic?.movieURL)")
+                    // print("mae \(self.maeMusic?.movieURL)")
                     if let selectMusic = self.maeMusic {
                         if let firstIndex = self.currentMusics.firstIndex(where: {$0.movieURL == selectMusic.movieURL}){
-                            print("fi \(firstIndex)")
+                            // print("fi \(firstIndex)")
                             selectIndex = firstIndex
                             sameMovieURLAsMaeMusic = true
                         }
@@ -165,12 +326,38 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 self.carousel.currentItemIndex = selectIndex
                 //現在選択されている曲を保持する
                 self.setCurrentLevels(index:self.carousel.currentItemIndex)
+                self.isReloadingCarousel = false
                 
                 if thumbMovieForcePlay || sameMovieURLAsMaeMusic == false {
                     self.ThumbMoviePlay()
                 }
             }
         })
+        
+        // sortボタンに画像を適用
+        let sortItem = UserData.sharedInstance.SelectedMusicCondition.sortItem
+            .pregReplace(pattern: " [★☆]{10}[■□]$", with: "")
+        let sortItemNum = SelectConditions.SortItems.firstIndex(of: sortItem) ?? -1
+        let sortIconNames = [
+            "music-new.png",
+            "music-old.png",
+            "flick-new.png",
+            "flick-old.png",
+            "plays-new.png",
+            "plays-old.png",
+            "favorites-many.png",
+            "favorites-few.png",
+            "video-id-large.png",
+            "video-id-small.png",
+            "highscore-recent.png",
+            "comment-recent.png",
+            "plays-recent.png",
+            "plays-user.png"
+        ]
+        let sortIconName = sortIconNames.indices.contains(sortItemNum)
+            ? sortIconNames[sortItemNum]
+            : "cursor-lr.png"
+        musicSortButton.setImage(UIImage(named: sortIconName), for: .normal)
     }
     
     var first_attack = true
@@ -194,21 +381,32 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }
         //iOS16以降?
         if let oyaView = levelSelectPicker.superview {
-            print("kitayo")
+            // print("kitayo")
             levelSelectPicker.frame = oyaView.bounds
         }
         
     }
     override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        scheduleJapaneseKeyboardGuideIfNeeded()
+        scheduleFlickOnlyReminderIfNeeded()
         if timer == nil {
             timer = Timer.scheduledTimer(timeInterval: 0.1, target: self, selector: #selector(self.update), userInfo: nil, repeats: true)
             timer?.fire()
             RunLoop.main.add(timer!, forMode: .commonModes)
         }
         if returnToMeString != "" {
-            //returnToMe from できなくて
-            print("selector return :\(returnToMeString)")
-            if returnToMeString != "BackButton" {
+            //returnToMe from では処理できなくて、ここで遅延させてから処理する
+            // print("selector return :\(returnToMeString)")
+            
+            // ゲームから戻ったときに名前変え提案 (ver.2.0)
+            if returnToMeString == "showNameRegistrationPromptIfNoName" {
+                self.showNameRegistrationPromptIfNoName_exec()
+                
+            // StartWiki からの戻りで、タグとソートを設定する [上記以外のreturnToMeStringは wikiからの戻り文字]
+            }else if returnToMeString != "BackButton" {
+                // - wikiのPLAYボタンからでtagsort文字列が入る
+                // - Back to MusicSelect ボタンでブラウザを閉じると"BackButton"が入っている
                 let retStr = returnToMeString.removingPercentEncoding
                 if var retTag = retStr?.pregMatche_firstString(pattern: "tag=(.*?)(&sort=|$)"),
                    let retSort = retStr?.pregMatche_firstString(pattern: "sort=(.*?)(&tag=|$)"){
@@ -243,6 +441,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }
     }
     override func viewWillDisappear(_ animated: Bool) {
+        flickOnlyReminderWorkItem?.cancel()
+        flickOnlyReminderWorkItem = nil
         timer?.invalidate()
         timer = nil
     }
@@ -267,10 +467,79 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         //    itemView = view
         //} else {
             itemView = AsyncImageView(frame: CGRect(x: 0, y: 0, width: 315, height: 175));
-        itemView.loadImage(urlString: currentMusics[index].thumbnailURL, contentMode: .scaleAspectFill)
+        guard currentMusics.indices.contains(index) else { return itemView }
+        let music = currentMusics[index]
+        itemView.loadImage(urlString: music.thumbnailURL, contentMode: .scaleAspectFill) { result in
+            if case .failure(let error) = result, error.shouldRepairThumbnailURL {
+                self.repairThumbnailURLIfNeeded(for: music, imageView: itemView)
+            }
+        }
             itemView.contentMode = .center
         //}
         return itemView
+    }
+
+    private func repairThumbnailURLIfNeeded(for music: musicData, imageView: AsyncImageView) {
+        guard let musicID = music.sqlID else {
+            return
+        }
+        guard !AppDelegate.thumbnailRepairAttemptedMusicIDs.contains(musicID) else {
+            return
+        }
+        AppDelegate.thumbnailRepairAttemptedMusicIDs.insert(musicID)
+
+        guard let movieURL = music.movieURL else {
+            return
+        }
+        guard let movieURLComponents = URLComponents(string: movieURL) else {
+            return
+        }
+        let videoID = movieURLComponents.path.split(separator: "/").last.map(String.init) ?? ""
+        guard !videoID.isEmpty else {
+            return
+        }
+        guard let url = URL(string: AppDelegate.NicoApiURL_GetThumbInfo + videoID) else {
+            return
+        }
+
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if error != nil {
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse else {
+                return
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                return
+            }
+            guard let data else {
+                return
+            }
+
+            let responseText = String(decoding: data, as: UTF8.self)
+            guard responseText.pregMatche(pattern: "<nicovideo_thumb_response status=\"ok\">") else {
+                return
+            }
+            let thumbnailURL = responseText.pregMatche_firstString(pattern: "<thumbnail_url>(.*?)</thumbnail_url>").htmlDecoded
+            guard !thumbnailURL.isEmpty else {
+                return
+            }
+
+            ServerDataHandler().postMusicThumbnailUpdate(
+                id: musicID,
+                thumbnailURL: thumbnailURL,
+                userID: UserData.sharedInstance.UserID
+            ) { success in
+                guard success else {
+                    return
+                }
+                DispatchQueue.main.async {
+                    music.thumbnailURL = thumbnailURL
+                    imageView.loadImage(urlString: thumbnailURL, contentMode: .scaleAspectFill)
+                }
+            }
+        }.resume()
     }
     
     func carousel(_ carousel: iCarousel, valueFor option: iCarouselOption, withDefault value: CGFloat) -> CGFloat {
@@ -293,15 +562,17 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         hitViews = []
         hitRow = -1
         
-        ThumbMoviePlay()
-        print("carousel.isDraggingAndThenDecelerating=\(carousel.isDraggingAndThenDecelerating)")
+        if !isReloadingCarousel {
+            ThumbMoviePlay()
+        }
+        // print("carousel.isDraggingAndThenDecelerating=\(carousel.isDraggingAndThenDecelerating)")
         if carousel.isDraggingAndThenDecelerating {
             //se
             seSystemAudio.shuffleSePlay()
         }
     }
     func setCurrentLevels(index:Int){
-        if index == -1 {
+        if !currentMusics.indices.contains(index) {
             //曲が１つもないとき
             self.musicTitle.text = ""
             self.musicArtist.text = ""
@@ -313,23 +584,27 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             self.buttonRankingComment.isHidden = true
             self.labelRankingComment.isHidden = true
             self.levelSelectPicker.reloadAllComponents()
-            colorStar.isHidden = true
-            favoriteNum.isHidden = true
-            favoriteNum2.isHidden = true
             rankingTimeLabel.isHidden = true
             commentTimeLabel.isHidden = true
             EditButtonView.isHidden = true
+            colorMusicStar.isHidden = true
+            musicFavoriteNum.isHidden = true
+            colorHeart.isHidden = true
+            blackHeart.isHidden = true
+            edgeHeart.isHidden = true
+            likeNum.isHidden = true
             return
         }
-        self.musicTitle.text = currentMusics[index].title
-        self.musicArtist.text = currentMusics[index].artist
-        self.musicLength.text = currentMusics[index].movieLength
-        let tags = currentMusics[index].tags
+        let currentMusic = currentMusics[index]
+        self.musicTitle.text = currentMusic.title
+        self.musicArtist.text = currentMusic.artist
+        self.musicLength.text = currentMusic.movieLength
+        let tags = currentMusic.tags
         self.musicTags.text = tags
         let attrText = NSMutableAttributedString(string: tags!)
         for tagp in userData.SelectedMusicCondition.tag {
             let tag = tagp.word
-            print(tag)
+            // print(tag)
             let regTag = NSRegularExpression.escapedPattern(for: tag)
             if let regex = try? NSRegularExpression(pattern: "(^|\\s)\(regTag)(\\s|$)", options: []) {
                 let targetStringRange = NSRange(location: 0, length: tags!.count)
@@ -338,39 +613,64 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                     for j in 0 ..< result!.numberOfRanges {
                         let range = result!.range(at: j)
                         attrText.addAttribute(.foregroundColor, value: UIColor.black, range: range)
-                        print(range)
+                        // print(range)
                     }
                 }
             }
         }
         self.musicTags.attributedText = attrText
         self.musicNum.text = "\(index+1) / \(currentMusics.count)"
-        if (musicDatas.levels[currentMusics[index].movieURL]==nil){
+        if (musicDatas.levels[currentMusic.movieURL]==nil){
             currentLevels = []
             self.buttonRankingComment.isHidden = true
             self.labelRankingComment.isHidden = true
         }else {
-            currentLevels = musicDatas.getSelectMusicLevels(selectMovieURL: currentMusics[index].movieURL)
+            currentLevels = musicDatas.getSelectMusicLevels(selectMovieURL: currentMusic.movieURL)
             self.buttonRankingComment.isHidden = false
             self.labelRankingComment.isHidden = false
-            if currentLevels.count > levelSelectPicker.selectedRow(inComponent: 0) {
-                UpdateObject_Level(currentLevel: currentLevels[levelSelectPicker.selectedRow(inComponent: 0)])
-            }
         }
+        self.colorMusicStar.isHidden = !userData.MyFavorite3.contains(currentMusic.sqlID)
+        let favoriteCount = Int(currentMusic.favoriteCount / 5) * 5
+        musicFavoriteNum.text = String(favoriteCount)
+        musicFavoriteNum.isHidden = ( favoriteCount == 0 )
+        // print("favoriteCount:",favoriteCount)
+        let previouslySelectedRow = levelSelectPicker.selectedRow(inComponent: 0)
         self.levelSelectPicker.reloadAllComponents()
+        if !currentLevels.isEmpty {
+            let safeRow = currentLevels.indices.contains(previouslySelectedRow) ? previouslySelectedRow : 0
+            self.levelSelectPicker.selectRow(safeRow, inComponent: 0, animated: false)
+            UpdateObject_Level(currentLevel: currentLevels[safeRow])
+        }
+    }
+
+    func currentSelectedLevel() -> levelData? {
+        guard !currentLevels.isEmpty else { return nil }
+
+        let selectedRow = levelSelectPicker.selectedRow(inComponent: 0)
+        let safeRow = currentLevels.indices.contains(selectedRow) ? selectedRow : 0
+        if safeRow != selectedRow {
+            levelSelectPicker.selectRow(safeRow, inComponent: 0, animated: false)
+        }
+        indexPicker = safeRow
+        return currentLevels[safeRow]
+    }
+
+    func currentSelectedMusic() -> musicData? {
+        guard currentMusics.indices.contains(indexCarousel) else { return nil }
+        return currentMusics[indexCarousel]
     }
     //Add TapGesture
     func carouselDidTap(_ carousel: iCarousel) {
-        print("did tap!!")
+        // print("did tap!!")
         if !userData.thumbMoviePlay { return }
         if flgThumbMovieStopping { return }
-        print("did tap!! st")
+        // print("did tap!! st")
         if flgThumbMovieTopMost { return }
-        print("did tap!! top")
+        // print("did tap!! top")
         guard let view = self.view.viewWithTag(5050) else { return }
-        print("did tap!! 50")
+        // print("did tap!! 50")
         guard let carouselView = self.view.viewWithTag(5000) else { return }
-        print("did tap!! 00")
+        // print("did tap!! 00")
         flgThumbMovieTopMost = true //thumbMovieを最前面再生しているか
 
         //ViewのZ位置は入れ替えしかできないからtempViewをinsertする
@@ -378,7 +678,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         tempView.tag = 5051
         tempView.isHidden = true
         self.view.insertSubview(tempView, aboveSubview: carouselView)
-        print(view.frame)
+        // print(view.frame)
         var index_thumbMovie = -1
         var index_tempView = -1
         for (i,v) in self.view.subviews.enumerated() {
@@ -413,8 +713,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         animation2.toValue = carouselView.frame.width / view.frame.width
         animation2.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
         let b = carouselView.frame.width / view.frame.width
-        print("carouselView.frame.width / view.frame.width = \(carouselView.frame.width) / \(view.frame.width)")
-        print("b= \(b)")
+        // print("carouselView.frame.width / view.frame.width = \(carouselView.frame.width) / \(view.frame.width)")
+        // print("b= \(b)")
 
 
         //位置(position.x)を変更する
@@ -442,7 +742,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         self.moviePlayerViewController?.player?.volume = 0.9 * userData.SoundVolumeMovie * self.volumeForceInResult
     }
     func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
-        print("did stop")
+        // print("did stop")
         if !flgThumbMovieTopMost { return }
         guard let view = self.view.viewWithTag(5050) else { return }
         guard let carouselView = self.view.viewWithTag(5000) else { return }
@@ -489,7 +789,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                     if currentLevels.count > row {
                         if hitRow != row {
                             hitRow = row
-                            print("hitRow=\(hitRow)")
+                            // print("hitRow=\(hitRow)")
                             UpdateObject_Level(currentLevel: currentLevels[row])
                         }
                     }
@@ -500,14 +800,26 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     func UpdateObject_Level( currentLevel:levelData ){
         //スピード反映
         levelSpeed.text = "speed: "+String(currentLevel.speed)
-        //favorite反映
-        colorStar.isHidden = !userData.MyFavorite2.contains(currentLevel.sqlID)
-        blackStar.isHidden = !userData.MyFavorite.contains(currentLevel.sqlID)
-        let fc = Int(currentLevel.favoriteCount / 5) * 5
-        favoriteNum.text = String(fc)
-        favoriteNum2.text = String(fc)
-        favoriteNum.isHidden = ( fc == 0 )
-        favoriteNum2.isHidden = ( fc == 0 )
+        //like反映
+        colorHeart.isHidden = true
+        edgeHeart.isHidden = true
+        blackHeart.isHidden = true
+        if let likeValue = userData.MyLike[currentLevel.sqlID] {
+            switch likeValue {
+            case -2:
+                edgeHeart.isHidden = false
+            case -1:
+                blackHeart.isHidden = false
+            case 0:
+                break
+            default: // 0より大きい
+                colorHeart.isHidden = false
+            }
+        }
+        let likeCount = Int((currentLevel.likeCount - currentLevel.dislikeCount) / 5) * 5
+        likeNum.text = String(likeCount)
+        likeNum.isHidden = ( likeCount == 0 )
+        likeNum.textColor = likeCount < 0 ? .red : .black
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy.MM.dd"
         if (userData.SelectedMusicCondition.sortItem.hasPrefix("最近ハイスコアが更新された曲順") || (Int(Date().timeIntervalSince1970) -  currentLevel.scoreTime)<2592000) && currentLevel.scoreTime > 0 {
@@ -516,14 +828,14 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }else{
             rankingTimeLabel.isHidden = true
         }
-        print("currentLevel.scoreTime=\(currentLevel.scoreTime)")
+        // print("currentLevel.scoreTime=\(currentLevel.scoreTime)")
         if (userData.SelectedMusicCondition.sortItem.hasPrefix("最近コメントされた曲順") || (Int(Date().timeIntervalSince1970) -  currentLevel.commentTime)<2592000) && currentLevel.commentTime > 0 {
             commentTimeLabel.text = dateFormatter.string(for: Date(timeIntervalSince1970: TimeInterval(currentLevel.commentTime)))
             commentTimeLabel.isHidden = false
         }else{
             commentTimeLabel.isHidden = true
         }
-        print("currentLevel.commentTime=\(currentLevel.commentTime)")
+        // print("currentLevel.commentTime=\(currentLevel.commentTime)")
         
         if !currentLevel.isEditing/*isMyEditing()*/ {
             EditButtonView.isHidden = true
@@ -552,6 +864,16 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }
         labelView1.textAlignment = NSTextAlignment.center
         myView.addSubview(labelView1)
+        //難易度2
+        let labelView1_2 = UILabel()
+        if UserDefaults.standard.bool(forKey: "UseNewLevelCalculation") && currentLevels[row].calcLv > 0 {
+            labelView1_2.text = "★"+String(currentLevels[row].calcLv)
+            labelView1_2.frame = CGRect(x: labelView1.center.x, y: 20 + 20, width: 100, height: 15)
+            labelView1_2.font = labelView1_2.font.withSize(12)
+            labelView1_2.textColor = .systemGray
+            labelView1_2.textAlignment = .right
+        }
+        myView.addSubview(labelView1_2)
         //製作者
         let labelView2 = UILabel()
         labelView2.text = currentLevels[row].creator
@@ -672,22 +994,24 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }
     }
     
-    @IBAction func TapTitleLabel(_ sender: UITapGestureRecognizer) {
+    @IBAction func SortButton(_ sender: Any) {
         self.TapSortableLabel()
     }
-    @IBAction func TapArtistLabel(_ sender: UITapGestureRecognizer) {
-        self.TapSortableLabel()
-    }
-    @IBAction func TapLengthLabel(_ sender: UITapGestureRecognizer) {
-        self.TapSortableLabel()
-    }
-    @IBAction func TapSpeedLabel(_ sender: UITapGestureRecognizer) {
-        self.TapSortableLabel()
+    @IBAction func TapTagLabel(_ sender: UITapGestureRecognizer) {
+        self.TapTagableLabel()
     }
     func TapSortableLabel() {
         //se
         seSystemAudio.openSePlay()
         self.performSegue(withIdentifier: "toTableViewForSortFromSelector", sender: self)
+    }
+    func TapTagableLabel() {
+        if currentMusics.count == 0 {
+            return
+        }
+        //se
+        seSystemAudio.openSePlay()
+        self.performSegue(withIdentifier: "toTableViewForTagFromSelector", sender: self)
     }
     @IBAction func TapMusicNumLabel(_ sender: UITapGestureRecognizer) {
         if currentMusics.count == 0 {
@@ -701,106 +1025,79 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         let okAction = UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler:{
           (action: UIAlertAction!) -> Void in
+            if self.numberRoll_index == -1 { return }
+            if self.indexCarousel == self.numberRoll_index {
+                self.numberRoll_index = -1
+                return
+            }
             self.SetMusicToCarousel()
         })
 
         // PickerView
         let pv = UIPickerView()
+        pv.alpha = 0
         pv.tag = 123
         pv.frame = CGRect(x: 0, y: 60, width: alert.view.bounds.width * 0.7, height: 150) // 配置、サイズ
         pv.dataSource = self
         pv.delegate = self
         pv.selectRow(indexCarousel, inComponent: 0, animated: true) // 初期値
-        print("indexC = \(indexCarousel)")
+        // print("indexC = \(indexCarousel)")
         alert.view.addSubview(pv)
 
+        let firstButton = UIButton(type: .system, primaryAction: UIAction { _ in
+            pv.selectRow(0, inComponent: 0, animated: true)
+            self.numberRoll_index = 0
+        })
+        firstButton.setTitle("▲", for: .normal)
+        firstButton.backgroundColor = .systemGray5
+        firstButton.layer.cornerRadius = 18
+        firstButton.accessibilityLabel = "先頭に移動"
+        firstButton.alpha = 0
+        alert.view.addSubview(firstButton)
+
+        let lastButton = UIButton(type: .system, primaryAction: UIAction { _ in
+            let lastRow = self.currentMusics.count - 1
+            pv.selectRow(lastRow, inComponent: 0, animated: true)
+            self.numberRoll_index = lastRow
+        })
+        lastButton.setTitle("▼", for: .normal)
+        lastButton.backgroundColor = .systemGray5
+        lastButton.layer.cornerRadius = 18
+        lastButton.accessibilityLabel = "最後尾に移動"
+        lastButton.alpha = 0
+        alert.view.addSubview(lastButton)
+
         alert.addAction(okAction)
-        present(alert, animated: true, completion: nil)
-    }
-    @IBAction func TapTagLabel(_ sender: UITapGestureRecognizer) {
-        if currentMusics.count == 0 {
-            return
-        }
-        //se
-        seSystemAudio.openSePlay()
-        self.performSegue(withIdentifier: "toTableViewForTagFromSelector", sender: self)
-    }
-    @IBAction func favoriteButton(_ sender: UIButton) {
-        if currentMusics.indices.contains(indexCarousel) == false {
-            return
-        }
-        let selectMovieURL:String = currentMusics[indexCarousel].movieURL
-        if musicDatas.levels.count > 0 && musicDatas.levels[selectMovieURL] == nil {
-            return
-        }
-        let currentLevel = currentLevels[levelSelectPicker.selectedRow(inComponent: 0)]
-        if userData.MyFavorite2.contains(currentLevel.sqlID){
-            userData.MyFavorite2.remove(currentLevel.sqlID)
-            userData.FavoriteCount.subFavoriteCount(levelID: currentLevel.sqlID)
-            seSystemAudio.openSubSePlay()
-        }else {
-            if userData.MyFavorite.contains(currentLevel.sqlID){
-                //Ver.1.5未満の互換
-                userData.MyFavorite.remove(currentLevel.sqlID)
-                //プレイしたことのあるレベルだけお気に入りできるようにする
-                if userData.Score.scores.keys.contains(currentLevel.sqlID){
-                    userData.MyFavorite2.insert(currentLevel.sqlID)
-                    userData.FavoriteCount.addFavoriteCount(levelID: currentLevel.sqlID)
-                }
-            }else{
-                //プレイしたことのあるレベルだけお気に入りできるようにする
-                if userData.Score.scores.keys.contains(currentLevel.sqlID){
-                    userData.MyFavorite2.insert(currentLevel.sqlID)
-                    userData.FavoriteCount.addFavoriteCount(levelID: currentLevel.sqlID)
-                    seSystemAudio.openSePlay()
-                }else{
-                    let alert = UIAlertController(title:"ゲームをプレイしたらお気に入りできるようになります", message: "譜面が良かったらお気に入りしよう！", preferredStyle: UIAlertControllerStyle.alert)
-                    alert.addAction( UIAlertAction(title: "OK", style: .cancel, handler: nil) )
-                    self.present(alert, animated: true, completion: nil)
-                }
+        present(alert, animated: true) {
+            let pickerY = (alert.view.bounds.height - 150) / 3
+            pv.frame = CGRect(
+                x: 0,
+                y: pickerY,
+                width: alert.view.bounds.width,
+                height: 150
+            )
+            firstButton.frame = CGRect(
+                x: alert.view.bounds.width - 44,
+                y: pickerY - 13,
+                width: 36,
+                height: 36
+            )
+            lastButton.frame = CGRect(
+                x: alert.view.bounds.width - 44,
+                y: pickerY + 127,
+                width: 36,
+                height: 36
+            )
+            UIView.animate(withDuration: 0.1) {
+                pv.alpha = 1
+                firstButton.alpha = 1
+                lastButton.alpha = 1
             }
         }
-        blackStar.isHidden = !userData.MyFavorite.contains(currentLevel.sqlID)
-        colorStar.isHidden = !userData.MyFavorite2.contains(currentLevel.sqlID)
-        
-    }
-    @IBAction func levelSortButton(_ sender: UIButton) {
-        
-        let alert = UIAlertController(title:nil, message: "お気に入りソート", preferredStyle: UIAlertControllerStyle.alert)
-        
-        alert.addAction( UIAlertAction(title: "なし", style: .default, handler: {_ in
-            self.userData.LevelSortCondition = 0
-            self.SetMusicToCarousel()
-            self.levelSortButton.alpha = (self.userData.LevelSortCondition != 0) ? 0.6 : 0.2
-        }) )
-        alert.addAction( UIAlertAction(title: "お気に入りを上に集める", style: .default, handler: {_ in
-            self.userData.LevelSortCondition = 1
-            self.SetMusicToCarousel()
-            self.levelSortButton.alpha = (self.userData.LevelSortCondition != 0) ? 0.6 : 0.2
-        }) )
-        alert.addAction( UIAlertAction(title: "キャンセル", style: .cancel, handler: nil) )
-        self.present(alert, animated: true, completion: nil)
-        seSystemAudio.openSubSePlay()
-    }
-    @IBAction func musicSortButton(_ sender: UIButton) {
-        let alert = UIAlertController(title:nil, message: "お気に入りソート", preferredStyle: UIAlertControllerStyle.alert)
-        
-        alert.addAction( UIAlertAction(title: "なし", style: .default, handler: {_ in
-            self.userData.musicSortCondition = 0
-            self.SetMusicToCarousel()
-            self.musicSortButton.alpha = (self.userData.musicSortCondition != 0) ? 0.6 : 0.2
-        }) )
-        alert.addAction( UIAlertAction(title: "お気に入りを含む曲を先頭に集める", style: .default, handler: {_ in
-            self.userData.musicSortCondition = 1
-            self.SetMusicToCarousel()
-            self.musicSortButton.alpha = (self.userData.musicSortCondition != 0) ? 0.6 : 0.2
-        }) )
-        alert.addAction( UIAlertAction(title: "キャンセル", style: .cancel, handler: nil) )
-        self.present(alert, animated: true, completion: nil)
-        seSystemAudio.openSubSePlay()
+        //present(alert, animated: true, completion: nil)
     }
     @IBAction func ThumbMoviePlayButton(_ sender: UIButton) {
-        print("ThumbMoviePlayButton")
+        // print("ThumbMoviePlayButton")
         userData.thumbMoviePlay = !userData.thumbMoviePlay
         thumbMoviePlay.isHidden = userData.thumbMoviePlay
         thumbMoviePlay_Color.isHidden = !userData.thumbMoviePlay
@@ -830,7 +1127,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         ThumbMovieStart(index: self.indexCarousel, loadOnly: typeLoadOnly)
     }
     func ThumbMovieStop() {
-        print("ThumbMovieStop")
+        // print("ThumbMovieStop")
         //ThumbMovieを最前面再生していたら奥に引っ込める
         ThumbMovieReturnToBottom(opacity: 0.01)
         flgThumbMovieStopping = true
@@ -846,12 +1143,11 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
     private func ThumbMovieStart(index:Int, loadOnly:Bool = false) {
         flgThumbMovieStopping = false
         flgThumbMovieTopMost = false
-        if !self.currentMusics.indices.contains(index) {
-            return
-        }
+        guard self.currentMusics.indices.contains(index) else { return }
+        guard let movieURL = self.currentMusics[index].movieURL else { return }
         var ans:[String]=[]
         var smNum = ""
-        if (self.currentMusics[index].movieURL.pregMatche(pattern: "watch/(.+)$", matches: &ans)){
+        if (movieURL.pregMatche(pattern: "watch/(.+)$", matches: &ans)){
             smNum = ans[1]
         }else{
             return
@@ -861,9 +1157,9 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             //print("\(smNum) => \(index) / \(self.indexCarousel)")
             if index == self.indexCarousel || loadOnly == true {
                 MovieAccess.init().StreamingUrlNicoAccessForThumbMovie(smNum: smNum){ (nicodougaURL) in
-                print("smNum=\(smNum), loadOnly=\(loadOnly), nicodougaURL=\(nicodougaURL)")
+                // print("smNum=\(smNum), loadOnly=\(loadOnly), nicodougaURL=\(nicodougaURL)")
                     if self.flgThumbMovieStopping == true {
-                        print("ThumbMovieStopping")
+                        // print("ThumbMovieStopping")
                         return
                     }
                     if loadOnly == true && nicodougaURL == "cached" {
@@ -895,10 +1191,10 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                             self.view.sendSubview(toBack: self.moviePlayerViewController!.view)
                             //  動画Viewの位置
                             self.moviePlayerViewController?.view.frame.size = CGSize(width: self.view.frame.size.height * 16 / 9, height: self.view.frame.size.height)
-                            print("wi = \(self.view.frame.size.height * 16 / 9)")
+                            // print("wi = \(self.view.frame.size.height * 16 / 9)")
                             self.moviePlayerViewController!.view.center.x = self.view.center.x
                         }
-                        var t30 = self.musicDatas.getNotesFirstTime(movieURL: self.currentMusics[index].movieURL)
+                        var t30 = self.musicDatas.getNotesFirstTime(movieURL: movieURL)
                         if t30 < 0.0 {
                             t30 = 30.0
                         }else {
@@ -907,8 +1203,8 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                                 t30 = 0.0
                             }
                         }
-                        print("t30=\(t30)")
-                        print(self.currentMusics[index].movieURL)
+                        // print("t30=\(t30)")
+                        // print(self.currentMusics[index].movieURL)
                         if loadOnly == false{
                             //フェードイン・アウト・ループ設定
                             var firstRun = true
@@ -930,7 +1226,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                                         let animation4 = CABasicAnimation(keyPath: "opacity")
                                         animation4.fromValue = CGFloat(0.25 *  Double(i) / 10.0)
                                         animation4.toValue = CGFloat(0.25 *  Double(i) / 10.0)
-                                        print("in \(i) alpha")
+                                        // print("in \(i) alpha")
                                         animation4.isRemovedOnCompletion = false
                                         animation4.fillMode = kCAFillModeForwards
                                         self.moviePlayerViewController?.view.layer.add(animation4, forKey: nil)
@@ -1000,7 +1296,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                                         let animation4 = CABasicAnimation(keyPath: "opacity")
                                         animation4.fromValue = 0.25
                                         animation4.toValue = 0.25
-                                        print("naka alpha")
+                                        // print("naka alpha")
                                         animation4.isRemovedOnCompletion = false
                                         animation4.fillMode = kCAFillModeForwards
                                         self.moviePlayerViewController?.view.layer.add(animation4, forKey: nil)
@@ -1013,15 +1309,15 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                                     return
                                 }
                                 if self.flgThumbMovieTopMost { return }
-                                print("30秒でループ")
+                                // print("30秒でループ")
                                 self.moviePlayerViewController?.player?.seek(to: CMTimeMakeWithSeconds(t30, Int32(NSEC_PER_SEC)) )
                             }
                             // 動画が終了した時に呼ばれるnotificationを登録
                             NotificationCenter.default.addObserver(forName: NSNotification.Name.AVPlayerItemDidPlayToEndTime, object: nil, queue: nil){ notification in
                                 //もし再生終了したときもループ
-                                print("終了でループ")
+                                // print("終了でループ")
                                 if self.flgThumbMovieStopping == true {
-                                    print("ThumbMovieStopping")
+                                    // print("ThumbMovieStopping")
                                     return
                                 }
                                 DispatchQueue.main.async {
@@ -1050,12 +1346,16 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                         }else {
                             //読み込みのみ
                             mpvc.player?.addBoundaryTimeObserver(forTimes: [NSValue(time: CMTimeMakeWithSeconds(t30 + 0.5, Int32(NSEC_PER_SEC)))], queue: nil){
-                                if self.currentMusics[self.indexCarousel].movieURL.pregMatche_firstString(pattern: "watch/(.+)$") != smNum {
-                                    //選択中indexではない。両サイドの読み込みのみのとき
-                                    print("再生された形跡見つけたらムービーを止める")
+                                guard let selectedMusic = self.currentSelectedMusic() else {
                                     mpvc.player?.pause()
-                                    print(self.currentMusics[self.indexCarousel].movieURL.pregMatche_firstString(pattern: "watch/(.+)$"))
-                                    print(smNum)
+                                    return
+                                }
+                                if selectedMusic.movieURL.pregMatche_firstString(pattern: "watch/(.+)$") != smNum {
+                                    //選択中indexではない。両サイドの読み込みのみのとき
+                                    // print("再生された形跡見つけたらムービーを止める")
+                                    mpvc.player?.pause()
+                                    // print(self.currentMusics[self.indexCarousel].movieURL.pregMatche_firstString(pattern: "watch/(.+)$"))
+                                    // print(smNum)
                                 }
                             }
                         }
@@ -1103,11 +1403,11 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         // 3曲以上プレイしたら初期楽曲以外のプレイ方法を表示する
         if userData.lookedExtend == false {
             var musicIDSet:Set<Int> = []
-            // スコアデータからプレイしたlevelIDを取得
-            for (sKey,_) in userData.Score.scores {
+            // プレイを開始したことがあるlevelIDから、プレイ済みの楽曲数を数える
+            for levelID in userData.LevelPlayHistories.keys {
                 for ms in musicDatas.musics {
                     // どの楽曲に含まれるか確認して記憶
-                    if ms.levelIDs.contains(sKey) {
+                    if ms.levelIDs.contains(levelID) {
                         musicIDSet.insert(ms.sqlID)
                     }
                 }
@@ -1116,7 +1416,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 userData.lookedExtend = true
                 DispatchQueue.main.async {
                     //UI処理はメインスレッドの必要あり
-                    print("HowToを表示")
+                    // print("HowToを表示")
                     self.performSegue(withIdentifier: "toHowToExtendView", sender: self)
                 }
                 return true
@@ -1129,17 +1429,65 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             return
         }
         userData.lookedChangeFavoSpec_v1500 = true
-        DispatchQueue.main.async {
-            //UI処理はメインスレッドの必要あり
-            self.performSegue(withIdentifier: "toChangeFavoSpecView_v1500", sender: self)
-        }
+//        DispatchQueue.main.async {
+//            //UI処理はメインスレッドの必要あり
+//            self.performSegue(withIdentifier: "toChangeFavoSpecView_v1500", sender: self)
+//        }
+    }
+    func showNameRegistrationPromptIfNoName() -> Bool{
+        if userData.lookedNameRegistrationIfNoName_v2000 { return false }
+        if userData.Score.scores.count < 10 { return false }
+        userData.lookedNameRegistrationIfNoName_v2000 = true
+        if userData.UserName != "NO_NAME" { return false }
+        
+        // returnToMeが unwind segue の遷移完了前に呼ばれるため遅延して実行させる（viewDidAppear内で処理）
+        returnToMeString = "showNameRegistrationPromptIfNoName"
+        return true
+    }
+    func showNameRegistrationPromptIfNoName_exec(){
+        let alert = UIAlertController(title:"プレイヤー名を付けてみませんか？", message: "名前はあとから設定でも変更できます", preferredStyle: UIAlertControllerStyle.alert)
+        alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: {
+            (action: UIAlertAction!) in
+            if alert.textFields![0].text == UserData.sharedInstance.UserName {
+                // print("field")
+                return
+            }
+            let submittedName = alert.textFields?[0].text ?? ""
+            // 通信中の重複操作や画面遷移を防ぐ
+            self.view.isUserInteractionEnabled = false
+            self.activityIndicator.startAnimating()
+            //データベースに登録
+            ServerDataHandler().postUserName(name: submittedName, userID: UserData.sharedInstance.UserID, callback: { bool in
+                DispatchQueue.main.async {
+                    //UI処理はメインスレッドの必要あり
+                    self.view.isUserInteractionEnabled = true
+                    self.activityIndicator.stopAnimating()
+                    if bool {
+                        //  データ保存
+                        UserData.sharedInstance.UserName = submittedName
+                        let alert = UIAlertController(title:"名前を登録しました", message: nil, preferredStyle: UIAlertControllerStyle.alert)
+                        alert.addAction( UIAlertAction(title: "OK", style: .default, handler: nil) )
+                        self.present(alert, animated: true, completion: nil)
+                    }
+                }
+            })
+        }))
+        alert.addAction((UIAlertAction(title: "キャンセル", style: UIAlertActionStyle.cancel, handler: nil)))
+        //textfiledの追加
+        alert.addTextField(configurationHandler: {(textField: UITextField!) in
+            textField.text = UserData.sharedInstance.UserName
+            textField.placeholder = "プレイヤー名"
+            textField.autocorrectionType = .no
+            textField.autocapitalizationType = .none
+        })
+        self.present(alert, animated: true, completion: nil)
     }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){
-        print("returnToMe")
+        // print("returnToMe: " + (segue.identifier ?? "???"))
         if segue.identifier == "fromSelectorMenu" {
-            print("back from menu")
+            // print("back from menu")
             seSystemAudio.canselSePlay()
             //現在設定されているタグで選択された楽曲を保持する
             //currentMusics = musicDatas.getSelectMusics()
@@ -1150,46 +1498,53 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
 
             self.SetMusicToCarousel()
         }else if segue.identifier == "fromGameView" {
-            print("back from gameview")
+            // print("back from gameview")
             //ゲームスコアをピッカービューに反映するためCurrentLevelsを更新
             userScore = userData.Score //保存しているスコアデータの読み込み
             self.setCurrentLevels(index:self.carousel.currentItemIndex)
+            // ３曲以上プレイしたら拡張方法を表示する -> 表示なければfalse
             if !self.showHowToExtendView() {
-                //ユーザーネームデータをロードをするため、遷移させないようにする。
-                segueing = true
-                //Indicator くるくる開始
-                activityIndicator.startAnimating()
-                //サーバから music,level,userName データを順次取得。
-                ServerDataHandler().Chance_DownloadUserNameData_FirstData { (error) in
-                    self.segueing = false
-                    if let error = error {
-                        print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
-                    }
-                    DispatchQueue.main.async {
-                        //UI処理はメインスレッドの必要あり
-                        //Indicator隠す
-                        self.activityIndicator.stopAnimating()
+                // ver.2.0アプデでまだNO_NAMEだったら名前変更の案内を表示 -> 表示なければfalse
+                if !self.showNameRegistrationPromptIfNoName() {
+                    // ユーザーネームデータの残りを取得する必要がある場合は実行
+                    if userNameDataLists.sharedInstance.usernameJsonNumCount != -1 {
+                        //ユーザーネームデータをロードをするため、遷移させないようにする。
+                        segueing = true
+                        //Indicator くるくる開始
+                        activityIndicator.startAnimating()
+                        //サーバから music,level,userName データを順次取得。
+                        ServerDataHandler().Chance_DownloadUserNameData_FirstData { (error) in
+                            self.segueing = false
+                            if let error = error {
+                                // print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
+                            }
+                            DispatchQueue.main.async {
+                                //UI処理はメインスレッドの必要あり
+                                //Indicator隠す
+                                self.activityIndicator.stopAnimating()
+                            }
+                        }
                     }
                 }
             }
             //リザルトで再生したthumbMovieの音量を元に戻す
-            print("確認")
+            // print("確認")
             if userData.thumbMoviePlay {
                 self.volumeForceInResult += 0.01
-                print(self.volumeForceInResult)
+                // print(self.volumeForceInResult)
                 if self.volumeForceInResult >= 1.0 {
                     self.volumeForceInResult = 1.0
                 }
-                print(self.volumeForceInResult)
+                // print(self.volumeForceInResult)
                 if self.volumeForceInResult != 1.0 {
-                    print("timer")
+                    // print("timer")
                     Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true, block: { timer in
                         guard let player = self.moviePlayerViewController?.player else {
                             self.volumeForceInResult = 1.0
                             timer.invalidate()
                             return
                         }
-                        print("self.volumeForceInResult=\(self.volumeForceInResult)")
+                        // print("self.volumeForceInResult=\(self.volumeForceInResult)")
                         if self.volumeForceInResult >= 1.0 {
                             self.volumeForceInResult = 1.0
                             timer.invalidate()
@@ -1202,29 +1557,29 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                         player.volume = 0.45 * self.userData.SoundVolumeMovie * self.volumeForceInResult
                     })
                 }else {
-                    print("play")
+                    // print("play")
                     self.ThumbMoviePlay()
                 }
             }else {
-                print("stop")
+                // print("stop")
                 //self.ThumbMovieStop()
                 self.volumeForceInResult -= 0.01
-                print(self.volumeForceInResult)
+                // print(self.volumeForceInResult)
                 if self.volumeForceInResult >= self.ReducedVolumeForceInResult {
                     self.volumeForceInResult = 1.0
-                    print(self.volumeForceInResult)
+                    // print(self.volumeForceInResult)
                 }else {
-                    print(self.volumeForceInResult)
+                    // print(self.volumeForceInResult)
                     
                     self.ThumbMovieReturnToBottom(opacity: 0.01)
-                    print("timer")
+                    // print("timer")
                     Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true, block: { timer in
                         guard let player = self.moviePlayerViewController?.player else {
                             self.volumeForceInResult = 1.0
                             timer.invalidate()
                             return
                         }
-                        print("self.volumeForceInResult=\(self.volumeForceInResult)")
+                        // print("self.volumeForceInResult=\(self.volumeForceInResult)")
                         if self.volumeForceInResult <= 0.0 {
                             self.ThumbMovieStop()
                             self.volumeForceInResult = 1.0
@@ -1242,22 +1597,23 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             }
             
         }else if segue.identifier == "fromEditView" {
-            print("back from editview")
+            // print("back from editview")
             self.SetMusicToCarousel(thumbMovieForcePlay: true)
         }else if segue.identifier == "fromTableViewForTag" {
-            print("back from tableView for tag")
+            // print("back from tableView for tag")
             self.SetMusicToCarousel()
         }else if segue.identifier == "fromTableViewForSort" {
-            print("back from tableView for Sort")
+            // print("back from tableView for Sort")
             self.SetMusicToCarousel()
         }
         //print(segue.identifier)
     }
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        // print("prepare: " + (segue.identifier ?? "???"))
         
         indexCarousel = carousel.currentItemIndex
-        indexPicker = levelSelectPicker.selectedRow(inComponent: 0)
+        _ = currentSelectedLevel()
         
         if segue.identifier == "toGameView" {
             //現在選択中のデータをGameViewに渡す
@@ -1271,9 +1627,11 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
              */
             //let destinationNavigationController = segue.destination as! UINavigationController
             //let gameViewController:GameView = destinationNavigationController.topViewController as! GameView
+            guard let selectedMusic = currentSelectedMusic(),
+                  let selectedLevel = currentSelectedLevel() else { return }
             let gameViewController:GameView = segue.destination as! GameView
-            gameViewController.selectMusic = currentMusics[indexCarousel]
-            gameViewController.selectLevel = currentLevels[levelSelectPicker.selectedRow(inComponent: 0)]
+            gameViewController.selectMusic = selectedMusic
+            gameViewController.selectLevel = selectedLevel
             gameViewController.selectorController = self
             
             ThumbMovieStop()
@@ -1289,15 +1647,17 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 currentLevels = musicDatas.getSelectMusicLevels(selectMovieURL: selectMovieURL)
             }
             */
+            guard let selectedMusic = currentSelectedMusic(),
+                  let selectedLevel = currentSelectedLevel() else { return }
             let destinationTabBarController = segue.destination as! UITabBarController
             let rankingViewController:RankingView = destinationTabBarController.viewControllers?.first as! RankingView
             //let gameViewController:GameView = segue.destination as! GameView
-            rankingViewController.selectMusic = currentMusics[indexCarousel]
-            rankingViewController.selectLevel = currentLevels[levelSelectPicker.selectedRow(inComponent: 0)]
+            rankingViewController.selectMusic = selectedMusic
+            rankingViewController.selectLevel = selectedLevel
             let commentViewController:CommentView = destinationTabBarController.viewControllers?[1] as! CommentView
             //let gameViewController:GameView = segue.destination as! GameView
-            commentViewController.selectMusic = currentMusics[indexCarousel]
-            commentViewController.selectLevel = currentLevels[levelSelectPicker.selectedRow(inComponent: 0)]
+            commentViewController.selectMusic = selectedMusic
+            commentViewController.selectLevel = selectedLevel
             commentViewController.commentPostable = false
             commentViewController.rankingViewController = rankingViewController
             
@@ -1312,18 +1672,21 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             
         }else if segue.identifier == "toEditor" {
             //現在選択中のデータをEditorViewに渡す
+            guard let selectedMusic = currentSelectedMusic(),
+                  let selectedLevel = currentSelectedLevel() else { return }
             let editorViewController:EditorView = segue.destination as! EditorView
-            editorViewController.selectMusic = currentMusics[indexCarousel]
-            editorViewController.selectLevel = currentLevels[indexPicker]
+            editorViewController.selectMusic = selectedMusic
+            editorViewController.selectLevel = selectedLevel
             editorViewController.password = password
             
             ThumbMovieStop()
             
         }else if segue.identifier == "toTableViewForTagFromSelector" {
             //遷移先のTableViewにデータを渡す
+            guard let selectedMusic = currentSelectedMusic() else { return }
             let tableViewController:TableViewForTag = segue.destination as! TableViewForTag
-            tableViewController.list = currentMusics[indexCarousel].tag
-            tableViewController.currentMusic = currentMusics[indexCarousel]
+            tableViewController.list = selectedMusic.tag
+            tableViewController.currentMusic = selectedMusic
             
         }else if segue.identifier == "toWikipageWebkit" {
             //遷移先にデータを渡す
@@ -1332,10 +1695,50 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             
             ThumbMovieStop()
             seSystemAudio.openSePlay()
+            
+        }else if segue.identifier == "toFavoriteView" {
+            seSystemAudio.openSePlay()
+            let selectorFavoriteController:SelectorFavoriteView = segue.destination as! SelectorFavoriteView
+            selectorFavoriteController.selectorController = self
+            // 戻ってきたときの処理
+            selectorFavoriteController.onDismiss = { [weak self] changed in
+                // print("onDismiss:", changed)
+                guard let self else { return }
+                // 本体で処理
+                self.fromFavoriteView(changed: changed)
+            }
+            
+        }else if segue.identifier == "toLikeView" {
+            seSystemAudio.openSePlay()
+            let selectorLikeController:SelectorLikeView = segue.destination as! SelectorLikeView
+            selectorLikeController.selectorController = self
+            // 戻ってきたときの処理
+            selectorLikeController.onDismiss = { [weak self] changed in
+                // print("onDismiss:", changed)
+                guard let self else { return }
+                // 本体で処理
+                self.fromLikeView(changed: changed)
+            }
+            
         }else if segue.identifier == "fromSelector" {
-            print("titleへ")
+            // print("titleへ")
             ThumbMovieStop()
             seSystemAudio.canselSePlay()
+        }
+    }
+    // from処理
+    func fromFavoriteView(changed: Bool){
+        // print("indexCarousel: ", indexCarousel)
+        if changed {
+            self.SetMusicToCarousel()
+            ServerDataHandler().postUserCountData()
+        }
+    }
+    func fromLikeView(changed: Bool){
+        // print("indexCarousel: ", indexCarousel)
+        if changed {
+            self.SetMusicToCarousel()
+            ServerDataHandler().postUserCountData()
         }
     }
     //遷移の許可
@@ -1345,8 +1748,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
         }
         
         if(identifier == "toGameView"){
-            
-            if(currentLevels.count<1){
+            guard let selectedLevel = currentSelectedLevel() else {
                 //レベルが一個もなかったら遷移なし
                 return false
             }
@@ -1364,22 +1766,27 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 currentLevels = musicDatas.getSelectMusicLevels(selectMovieURL: selectMovieURL)
             }
              */
-            //選択しているlevel
-            indexPicker = levelSelectPicker.selectedRow(inComponent: 0)
             // 初期データにnoteData先頭16文字を含めるようにした（thumbMovie再生に最初のタイムタグを使うため）
-            if( currentLevels[indexPicker].noteData.count <= 20 ){
+            if selectedLevel.noteData.count <= 20 {
                 // データが入っていなかったので取得する //
                 //データをロードした後に遷移させるため、一度、遷移キャンセル。
                 segueing = true
                 
-                ServerDataHandler().DownloadTimetag(level: currentLevels[indexPicker]) { (error) in
+                ServerDataHandler().DownloadTimetag(level: selectedLevel) { (error) in
                     self.segueing = false
                     DispatchQueue.main.async {
                         //UI処理はメインスレッドの必要あり
                         //  Indicator隠す
                         self.activityIndicator.stopAnimating()
                         if let error = error {
-                            print(error) //なんか失敗した。
+                            // print(error)
+                            let alert = UIAlertController(
+                                title: "ゲームデータ取得エラー",
+                                message: "ゲームデータを取得できませんでした。時間をおいて、もう一度お試しください。",
+                                preferredStyle: .alert
+                            )
+                            alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                            self.present(alert, animated: true, completion: nil)
                             return
                         }
                         //  遷移指示。
@@ -1393,6 +1800,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             }
             
         }else if identifier == "toEditor" {
+            guard let selectedLevel = currentSelectedLevel() else { return false }
             password = ""
             let alert = UIAlertController(title:"パスワード", message: nil, preferredStyle: UIAlertControllerStyle.alert)
             alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: {
@@ -1400,7 +1808,7 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
                 //print("はいをタップした時の処理")
                 //Indicator くるくる開始
                 self.activityIndicator.startAnimating()
-                ServerDataHandler().checkLevelPassword(id: self.currentLevels[self.levelSelectPicker.selectedRow(inComponent: 0)].sqlID, pass: alert.textFields![0].text!, userID: self.userData.UserID, callback: { (bool) in
+                ServerDataHandler().checkLevelPassword(id: selectedLevel.sqlID, pass: alert.textFields![0].text!, userID: self.userData.UserID, callback: { (bool) in
                     //passCheck
                     DispatchQueue.main.async {
                         //  Indicator隠す
@@ -1424,8 +1832,129 @@ class Selector: UIViewController,UIPickerViewDelegate, UIPickerViewDataSource, i
             })
             self.present(alert, animated: true, completion: nil)
             return false
+            
+        }else if identifier == "toRankingTabBar" {
+            guard currentSelectedLevel() != nil else { return false }
+        }else if identifier == "toFavoriteView" {
+            if(currentLevels.count<1){
+                //レベルが一個もなかったら遷移なし
+                return false
+            }
+            
+        }else if identifier == "toLikeView" {
+            if(currentLevels.count<1){
+                //レベルが一個もなかったら遷移なし
+                return false
+            }
         }
         return true
     }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+    
+    // バージョンアップ時の処理
+    func migration(){
+        if userData.doneJustPlayedScoreLevelMigration == false {
+            let savedLevelIDs = userData.JustPlayedScore.scores.keys
+            // 既存の未送信スコアがある場合は、musicデータの読み込み完了後に移行する。
+            if savedLevelIDs.isEmpty || musicDatas.levels.isEmpty == false {
+                let forcedFullLevelIDs: Set<Int> = [
+                    6751, 9009, 4533, 3346, 3575, 3831, 794, 3143, 3145, 3322,
+                    3500, 3501, 3523, 3524, 4919, 5253, 6370, 7374, 4035, 8344,
+                    8190, 7684, 6082, 1486, 2745, 3925, 6376, 6462, 7342, 7343,
+                    7845, 8973, 8970, 9481, 9477, 9005, 9007, 6459, 708, 704,
+                    688, 5985, 6325, 4423, 7580, 5522, 9383
+                ]
+                var currentLevels: [Int:Int] = [:]
+
+                for levels in musicDatas.levels.values {
+                    for levelData in levels {
+                        guard let levelID = levelData.sqlID,
+                              let level = levelData.level else {
+                            continue
+                        }
+                        currentLevels[levelID] = level
+                    }
+                }
+
+                var scoreLevels = userData.JustPlayedScoreLevel
+                for levelID in savedLevelIDs where scoreLevels[levelID] == nil {
+                    if forcedFullLevelIDs.contains(levelID) {
+                        scoreLevels[levelID] = 100
+                    } else {
+                        // DBから削除済みなど、musicデータにない譜面はFULLとして保持する。
+                        scoreLevels[levelID] = currentLevels[levelID] ?? 100
+                    }
+                }
+
+                userData.JustPlayedScoreLevel = scoreLevels
+                userData.doneJustPlayedScoreLevelMigration = true
+            }
+        }
+
+        if userData.doneScoreLevelMigration == false {
+            let savedLevelIDs = userData.Score.scores.keys
+            // 既存スコアがある場合は、musicデータの読み込み完了後に移行する。
+            if savedLevelIDs.isEmpty || musicDatas.levels.isEmpty == false {
+                let forcedFullLevelIDs: Set<Int> = [
+                    6751, 9009, 4533, 3346, 3575, 3831, 794, 3143, 3145, 3322,
+                    3500, 3501, 3523, 3524, 4919, 5253, 6370, 7374, 4035, 8344,
+                    8190, 7684, 6082, 1486, 2745, 3925, 6376, 6462, 7342, 7343,
+                    7845, 8973, 8970, 9481, 9477, 9005, 9007, 6459, 708, 704,
+                    688, 5985, 6325, 4423, 7580, 5522, 9383
+                ]
+                var currentLevels: [Int:Int] = [:]
+
+                for levels in musicDatas.levels.values {
+                    for levelData in levels {
+                        guard let levelID = levelData.sqlID,
+                              let level = levelData.level else {
+                            continue
+                        }
+                        currentLevels[levelID] = level
+                    }
+                }
+
+                var scoreLevels = userData.ScoreLevel
+                for levelID in savedLevelIDs where scoreLevels[levelID] == nil {
+                    if forcedFullLevelIDs.contains(levelID) {
+                        scoreLevels[levelID] = 100
+                    } else {
+                        // DBから削除済みなど、musicデータにない譜面はFULLとして保持する。
+                        scoreLevels[levelID] = currentLevels[levelID] ?? 100
+                    }
+                }
+
+                userData.ScoreLevel = scoreLevels
+                userData.doneScoreLevelMigration = true
+            }
+        }
+
+        if userData.doneFavoriteUpdate_v2000 == false {  // まだ済んでない。done変数なので default は true
+            if musicDatas.levels.count > 0 {  // もしかしたらver.2.0にしてmusicDatas空のまま突破して来られたら困るので、その場合updateフラグが消されないようにする
+                var favoriteMusicIDs = userData.MyFavorite3
+                var likedLevelIDs = userData.MyLike
+                
+                for level_sqlID in userData.MyFavoriteAll_v1500 {
+                    for (movieURL, levels) in musicDatas.levels {
+                        guard levels.contains(where: { $0.sqlID == level_sqlID }) else {
+                            continue
+                        }
+                        // print("level_sqlID=",level_sqlID)
+                        likedLevelIDs[level_sqlID] = -2
+                        
+                        if let music = musicDatas.musics.first(where: { $0.movieURL == movieURL }) {
+                            favoriteMusicIDs.insert(music.sqlID)
+                            // print("music_sqlID=",music.sqlID)
+                        }
+                        
+                        break
+                    }
+                }
+                
+                userData.MyFavorite3 = favoriteMusicIDs
+                userData.MyLike = likedLevelIDs
+                userData.doneFavoriteUpdate_v2000 = true
+            }
+        }
+    }
 }

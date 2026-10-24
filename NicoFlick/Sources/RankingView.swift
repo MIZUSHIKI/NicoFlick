@@ -8,7 +8,84 @@
 
 import Foundation
 
-class RankingCommentTabController: UITabBarController {
+class RankingCommentTabController: UITabBarController, UITabBarControllerDelegate {
+    private var pendingOperations = 0
+    private var savedGestureStates: [(UIGestureRecognizer, Bool)] = []
+    private var savedNavigationInteraction: Bool?
+    var isNetworkBusy: Bool { pendingOperations > 0 }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        delegate = self
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if isNetworkBusy { lockNavigation() }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if isNetworkBusy { lockNavigation() }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Never leave the next screen's navigation disabled after an external dismissal.
+        restoreNavigation()
+    }
+
+    func beginNetworkOperation() {
+        pendingOperations += 1
+        viewIfLoaded?.isUserInteractionEnabled = false
+        tabBar.isUserInteractionEnabled = false
+        if #available(iOS 13.0, *) { isModalInPresentation = true }
+        lockNavigation()
+    }
+
+    func endNetworkOperation() {
+        pendingOperations = max(0, pendingOperations - 1)
+        guard !isNetworkBusy else { return }
+        viewIfLoaded?.isUserInteractionEnabled = true
+        tabBar.isUserInteractionEnabled = true
+        if #available(iOS 13.0, *) { isModalInPresentation = false }
+        restoreNavigation()
+    }
+
+    private func lockNavigation() {
+        guard let navigationController else { return }
+        if savedNavigationInteraction == nil {
+            savedNavigationInteraction = navigationController.navigationBar.isUserInteractionEnabled
+        }
+        navigationController.navigationBar.isUserInteractionEnabled = false
+        var gestures = [navigationController.interactivePopGestureRecognizer].compactMap { $0 }
+        if #available(iOS 26.0, *) {
+            if let gesture = navigationController.interactiveContentPopGestureRecognizer {
+                gestures.append(gesture)
+            }
+        }
+        for gesture in gestures {
+            if !savedGestureStates.contains(where: { $0.0 === gesture }) {
+                savedGestureStates.append((gesture, gesture.isEnabled))
+            }
+            gesture.isEnabled = false
+        }
+    }
+
+    private func restoreNavigation() {
+        for (gesture, wasEnabled) in savedGestureStates { gesture.isEnabled = wasEnabled }
+        savedGestureStates.removeAll()
+        if let wasEnabled = savedNavigationInteraction {
+            navigationController?.navigationBar.isUserInteractionEnabled = wasEnabled
+            savedNavigationInteraction = nil
+        }
+    }
+
+    func tabBarController(_ tabBarController: UITabBarController,
+                          shouldSelect viewController: UIViewController) -> Bool {
+        return !isNetworkBusy
+    }
+
     
     //効果音プレイヤー(シングルトン)
     var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
@@ -16,7 +93,7 @@ class RankingCommentTabController: UITabBarController {
     var maeTag = 0
     
     override func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
-        print("tabbar select")
+        // print("tabbar select")
         if maeTag != item.tag {
             seSystemAudio.openSubSePlay()
             maeTag = item.tag
@@ -24,7 +101,42 @@ class RankingCommentTabController: UITabBarController {
     }
 }
 
-class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource {
+// Ranking and comment operations share the parent's navigation lock.
+class RankingNetworkViewController: UIViewController {
+    private(set) var isNetworkBusy = false
+    private weak var operationContainer: RankingCommentTabController?
+
+    func beginNetworkOperation() {
+        guard !isNetworkBusy else { return }
+        isNetworkBusy = true
+        view.isUserInteractionEnabled = false
+        operationContainer = tabBarController as? RankingCommentTabController
+        operationContainer?.beginNetworkOperation()
+    }
+
+    func endNetworkOperation() {
+        guard isNetworkBusy else { return }
+        isNetworkBusy = false
+        view.isUserInteractionEnabled = true
+        operationContainer?.endNetworkOperation()
+        operationContainer = nil
+    }
+
+    func showDownloadError(_ error: Error?) {
+        guard error != nil, viewIfLoaded?.window != nil else { return }
+        let alert = UIAlertController(title: "データ取得エラー",
+                                      message: "データを取得できませんでした。時間をおいて開き直してください。",
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+
+    override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {
+        return !isNetworkBusy && !((tabBarController as? RankingCommentTabController)?.isNetworkBusy ?? false)
+    }
+}
+
+class RankingView: RankingNetworkViewController, UITableViewDelegate, UITableViewDataSource {
     
     @IBOutlet var musicTitle: UILabel!
     @IBOutlet var musicRank: UILabel!
@@ -69,6 +181,7 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
         activityIndicator = Indicator(center: self.view.center).view
         self.view.addSubview(activityIndicator)
         //Indicator くるくる開始
+        beginNetworkOperation()
         activityIndicator.startAnimating()
         
         //
@@ -89,7 +202,14 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
         
         //まずユーザーデータの取得
         ServerDataHandler().DownloadUserNameData{ (error) in
-            if error != nil { /*何らかのエラー*/}
+            if let error {
+                DispatchQueue.main.async {
+                    self.activityIndicator.stopAnimating()
+                    self.endNetworkOperation()
+                    self.showDownloadError(error)
+                }
+                return
+            }
             //スコアデータの取得
             ServerDataHandler().DownloadScoreData(levelID: self.selectLevel.sqlID!){ (error) in
                 DispatchQueue.main.async {
@@ -108,14 +228,18 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
                     for (index,scoredata) in self.rankingData.enumerated() {
                         if scoredata.userID == myID {
                             self.myIndex = index
-                            DispatchQueue.main.asyncAfter(deadline: .now()+0.3){
-                                self.rankTable.scrollToRow(at: IndexPath(row: index, section: 0), at: .middle, animated: true)
-                            }
+
                             break
                         }
                     }
                     //テーブル再描画
                     self.rankTable.reloadData()
+                    self.rankTable.layoutIfNeeded()
+                    if let index = self.myIndex, self.rankingData.indices.contains(index) {
+                        self.rankTable.scrollToRow(at: IndexPath(row: index, section: 0), at: .middle, animated: false)
+                    }
+                    self.endNetworkOperation()
+                    self.showDownloadError(error)
                 }
             }
             
@@ -162,7 +286,7 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         // セルがタップされた時の処理
-        print("タップされたセルのindex番号: \(indexPath.row)")
+        // print("タップされたセルのindex番号: \(indexPath.row)")
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -172,7 +296,7 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
     
     func tableView(_ tableView: UITableView, accessoryButtonTappedForRowWith indexPath: IndexPath) {
         // アクセサリボタン（セルの右にあるボタン）がタップされた時の処理
-        print("タップされたアクセサリがあるセルのindex番号: \(indexPath.row)")
+        // print("タップされたアクセサリがあるセルのindex番号: \(indexPath.row)")
     }
     
     
@@ -191,77 +315,51 @@ class RankingView: UIViewController, UITableViewDelegate, UITableViewDataSource 
         rankTable.scrollToRow(at: IndexPath(row: rankingData.count - 1, section: 0), at: .bottom, animated: true)
     }
     @IBAction func GetDBScoreData(_ sender: UIButton) {
-        print("getDBscore")
+        guard !isNetworkBusy else { return }
         seSystemAudio.openSePlay()
-        if musicScoreMessage != "" {
-            let alert = UIAlertController(title:"この楽曲の最大スコア", message: musicScoreMessage, preferredStyle: UIAlertControllerStyle.alert)
-            alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: nil))
-            self.present(alert, animated: true, completion: nil)
+        if !musicScoreMessage.isEmpty {
+            showMusicScore()
             return
         }
-        //Indicator くるくる開始
+        beginNetworkOperation()
         activityIndicator.startAnimating()
-        
         ServerDataHandler().getMusicScoreData(musicID: selectMusic.sqlID, userID: UserData.sharedInstance.UserID) { data in
-            print("ret getMscore")
-            guard let data = data else {
-                DispatchQueue.main.async {
-                    self.activityIndicator.stopAnimating()
-                }
-                return
-            }
-            print(data)
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy/M/d"
-            if let unixt = data["updateTime"] {
-                self.musicScoreMessage += "\n全期間：\(data["score"]!) - \(formatter.string(from: Date(timeIntervalSince1970: Double(unixt)!)))"
-            }
-            if let unixt = data["updateTimeYear"] {
-                self.musicScoreMessage += "\n年間：\(data["scoreYear"]!) - \(formatter.string(from: Date(timeIntervalSince1970: Double(unixt)!)))"
-            }
-            if let unixt = data["updateTimeMonth"] {
-                self.musicScoreMessage += "\n月間：\(data["scoreMonth"]!) - \(formatter.string(from: Date(timeIntervalSince1970: Double(unixt)!)))"
-            }
-            if let unixt = data["updateTimeWeek"] {
-                self.musicScoreMessage += "\n週間：\(data["scoreWeek"]!) - \(formatter.string(from: Date(timeIntervalSince1970: Double(unixt)!)))"
-            }
-            print(self.musicScoreMessage)
-            if self.musicScoreMessage == "" { self.musicScoreMessage = "\nあなたの記録はありません" }
             DispatchQueue.main.async {
                 self.activityIndicator.stopAnimating()
-                let alert = UIAlertController(title:"この楽曲の最大スコア", message: self.musicScoreMessage, preferredStyle: UIAlertControllerStyle.alert)
-                alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: nil))
-                self.present(alert, animated: true, completion: nil)
+                self.endNetworkOperation()
+                guard let data else {
+                    self.showDownloadError(URLError(.badServerResponse))
+                    return
+                }
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy/M/d"
+                let periods = [("全期間", "score", "updateTime"), ("年間", "scoreYear", "updateTimeYear"),
+                               ("月間", "scoreMonth", "updateTimeMonth"), ("週間", "scoreWeek", "updateTimeWeek")]
+                self.musicScoreMessage = periods.compactMap { title, scoreKey, timeKey in
+                    guard let score = data[scoreKey], let time = data[timeKey],
+                          let timestamp = Double(time), timestamp.isFinite else { return nil }
+                    return "\n\(title)：\(score) - \(formatter.string(from: Date(timeIntervalSince1970: timestamp)))"
+                }.joined()
+                if self.musicScoreMessage.isEmpty { self.musicScoreMessage = "\nあなたの記録はありません" }
+                self.showMusicScore()
             }
         }
     }
-    
-    
+
+    private func showMusicScore() {
+        guard viewIfLoaded?.window != nil else { return }
+        let alert = UIAlertController(title: "この楽曲の最大スコア", message: musicScoreMessage, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+
     //画面遷移処理 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     //遷移の許可
     override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {
-        print("should")
-        print(identifier)
-        
+        guard super.shouldPerformSegue(withIdentifier: identifier, sender: sender) else { return false }
         seSystemAudio.canselSePlay()
-
-        usumaku.isHidden = false
-        //Indicator くるくる開始
-        activityIndicator.startAnimating()
-
-        //サーバから music,level,userName データを順次取得。
-        ServerDataHandler().Chance_DownloadUserNameData_FirstData { (error) in
-            if let error = error {
-                print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
-            }
-            DispatchQueue.main.async {
-                //UI処理はメインスレッドの必要あり
-                //Indicator隠す
-                self.activityIndicator.stopAnimating()
-                //遷移指示
-                self.navigationController?.popViewController(animated: true)
-            }
-        }
+        // Back does not start another username download.
+        navigationController?.popViewController(animated: true)
         return false
     }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_

@@ -60,22 +60,38 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
         //Indicator くるくる開始
         activityIndicator.startAnimating()
         
-        let smNum = ((movieURLTextField.text?.pregMatche(pattern: "^http"))!) ? movieURLTextField.text?.pregMatche_firstString(pattern: "/(sm.*$)") : movieURLTextField.text
+        let movieURLText = movieURLTextField.text ?? ""
+        let videoID: String
+        if let components = URLComponents(string: movieURLText), components.scheme != nil {
+            videoID = components.path.split(separator: "/").last.map(String.init) ?? ""
+        } else {
+            videoID = movieURLText.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard !videoID.isEmpty else {
+            activityIndicator.stopAnimating()
+            return
+        }
         
         //GetThumbInfo
         let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.NicoApiURL_GetThumbInfo+"/"+smNum!)
+        let url = URL(string:AppDelegate.NicoApiURL_GetThumbInfo+videoID)
         let req = URLRequest(url: url!, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         session.dataTask(with: req){(data,responce,error) in
             if (error != nil) {
-                print("error") //エラー。例えばオフラインとか
+                // print("error") //エラー。例えばオフラインとか
                 DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
                     //Indicator隠す
                     self.activityIndicator.stopAnimating()
                 }
                 return
             }
-            let resText = String(data: data!, encoding:.utf8)!
+            guard let data else {
+                DispatchQueue.main.async {
+                    self.activityIndicator.stopAnimating()
+                }
+                return
+            }
+            let resText = String(decoding: data, as: UTF8.self)
             if resText.pregMatche(pattern: "<nicovideo_thumb_response status=\"ok\">") {
                 DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
                     //self.movieURLTextField.text = resText.pregMatche_firstString(pattern: "<watch_url>(.*?)</watch_url>")
@@ -83,7 +99,8 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                     self.titleTextField.text = resText.pregMatche_firstString(pattern: "<title>(.*?)</title>")
                     self.artistTextField.text = resText.pregMatche_firstString(pattern: "<user_nickname>(.*?)</user_nickname>")
                     self.timeLengthTextField.text = resText.pregMatche_firstString(pattern: "<length>(.*?)</length>")
-                    self.tagsTextField.text = resText.pregMatche_firstString(pattern: "<tags.*?>(.*?)</tags>").pregReplace(pattern: "</?tag.*?>", with: "").pregReplace(pattern: "\n", with: " ").pregReplace(pattern: " +", with: " ").trimmingCharacters(in: .whitespaces).htmlDecoded
+                    //self.tagsTextField.text = resText.pregMatche_firstString(pattern: "<tags.*?>(.*?)</tags>").pregReplace(pattern: "</?tag.*?>", with: "").pregReplace(pattern: "\n", with: " ").pregReplace(pattern: " +", with: " ").trimmingCharacters(in: .whitespaces).htmlDecoded
+                    self.tagsTextField.text = resText.pregMatche_firstString(pattern: "<tags.*?>(.*?)</tags>").pregReplace(pattern: "<tag.*?>", with: "").pregReplace(pattern: "</tag>", with: " ").pregReplace(pattern: "\n|\r\n|\r", with: "").pregReplace(pattern: " +", with: " ").trimmingCharacters(in: .whitespaces).htmlDecoded
                 }
             }
             DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
@@ -130,7 +147,7 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                         }
                         return
                     }
-                    print(retStr)
+                    // print(retStr)
                     if retStr.pregMatche(pattern: "<!--EchoHtmlMes_OK-->"){
                         //登録できた。->続けてゲームデータを仮登録する。
                         var name = UserData.sharedInstance.UserName
@@ -157,13 +174,13 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                                         DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
                                             self.selectorMenuController.selectorController.maeMusic = nil
                                             UserData.sharedInstance.SelectedMusicCondition.tags = ""
-                                            UserData.sharedInstance.SelectedMusicCondition.sortItem = "ゲームの投稿が新しい曲順"
+                                            UserData.sharedInstance.SelectedMusicCondition.sortItem = "ゲームの投稿日時 降順"
                                             //Indicator くるくる開始
                                             self.activityIndicator.startAnimating()
                                             //サーバから music,level,userName データを順次取得。
                                             ServerDataHandler().DownloadMusicDataAndUserNameData { (error) in
                                                 if let error = error {
-                                                    print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
+                                                    // print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
                                                 }
                                                 DispatchQueue.main.async {
                                                     //UI処理はメインスレッドの必要あり
@@ -214,7 +231,7 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                         //音楽データ(シングルトン)
                         let musicDatas:MusicDataLists = MusicDataLists.sharedInstance
                         let levels = musicDatas.getSelectMusicLevels_noSort(selectMovieURL: nicoURL)
-                        print("levels.count=\(levels.count)")
+                        // print("levels.count=\(levels.count)")
                         if levels.count > 0 {
                             //楽曲が登録済みだけどユーザーにも見えてる
                             let alert = UIAlertController(title:"NicoFlick データベース", message: echoMessage, preferredStyle: UIAlertControllerStyle.alert)
@@ -255,13 +272,13 @@ class MusicAddView: UIViewController, UITextFieldDelegate {
                                             DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
                                                 self.selectorMenuController.selectorController.maeMusic = nil
                                                 UserData.sharedInstance.SelectedMusicCondition.tags = ""
-                                                UserData.sharedInstance.SelectedMusicCondition.sortItem = "ゲームの投稿が新しい曲順"
+                                                UserData.sharedInstance.SelectedMusicCondition.sortItem = "ゲームの投稿日時 降順"
                                                 //Indicator くるくる開始
                                                 self.activityIndicator.startAnimating()
                                                 //サーバから music,level,userName データを順次取得。
                                                 ServerDataHandler().DownloadMusicDataAndUserNameData { (error) in
                                                     if let error = error {
-                                                        print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
+                                                        // print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
                                                     }
                                                     DispatchQueue.main.async {
                                                         //UI処理はメインスレッドの必要あり

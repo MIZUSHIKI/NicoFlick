@@ -45,7 +45,7 @@ class CachedMovies {
             //print(duration)
             if loadedTime != nil {
                 let per = CGFloat(CMTimeGetSeconds(loadedTime!)/CMTimeGetSeconds(duration!))
-                print(per)
+                // print(per)
                 if per < 0.99 {
                     cachedMovies[i].avPlayerViewController.player = nil
                     cachedMovies.remove(at: i) //ロード中なのはlastとは限らない
@@ -133,7 +133,7 @@ class CachedThumbMovies {
         for i in 0 ..< num {
             let index = num - 1 - i
             if !withinExpiration(cachedMovie: cachedMovies[index] ){
-                print("cached削除 - \(cachedMovies[index].smNum)")
+                // print("cached削除 - \(cachedMovies[index].smNum)")
                 cachedMovies[index].avPlayerViewController.player = nil
                 cachedMovies.remove(at: index)
             }

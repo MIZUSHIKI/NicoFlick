@@ -7,6 +7,24 @@
 //
 
 import Foundation
+
+private enum ServerResponseError: LocalizedError {
+    case invalidResponse
+    case unacceptableStatusCode(Int)
+    case noData
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "サーバーから正しいHTTPレスポンスを受信できませんでした。"
+        case .unacceptableStatusCode(let statusCode):
+            return "サーバーエラーが発生しました。（HTTP \(statusCode)）"
+        case .noData:
+            return "サーバーからデータを受信できませんでした。"
+        }
+    }
+}
+
 /*
 ・サーバーデータ
 MusicDataClass.swift
@@ -26,6 +44,9 @@ PostedDataClass.swift
     }
 */
 class ServerDataHandler {
+    private static let userNameDownloadLock = NSLock()
+    private static var userNameDownloadCallbacks: [(Error?) -> Void] = []
+
     
     //音楽データ
     var musicDatas:MusicDataLists = MusicDataLists.sharedInstance
@@ -36,6 +57,19 @@ class ServerDataHandler {
     var commentDatas:CommentDataLists = CommentDataLists.sharedInstance
     
     
+    private func validateHTTPResponse(_ response: URLResponse?, data: Data?) -> Error? {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            return ServerResponseError.invalidResponse
+        }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            return ServerResponseError.unacceptableStatusCode(httpResponse.statusCode)
+        }
+        guard data != nil else {
+            return ServerResponseError.noData
+        }
+        return nil
+    }
+
     //サーバデータダウンロード 処理
     func DownloadMusicDataAndUserNameData(callback: @escaping (Error?) -> Void ) -> Void {
         
@@ -53,114 +87,105 @@ class ServerDataHandler {
         if commentDatas.comments.count == 0 {
             commentDatas.loadCommentsJsonString(jsonStr: UserData.sharedInstance.CommentsJson)
         }
-        if userNameDatas.userNames.count == 0 {
-            userNameDatas.loadUserNamesJsonString(jsonStr: UserData.sharedInstance.UserNamesJson)
-            userNameDatas.usernameJsonNumCount = UserData.sharedInstance.UserNamesServerJsonNumCount
-            userNameDatas.usernameJsonCreateTime = UserData.sharedInstance.UserNamesServerJsonCreateTime
-        }
+        userNameDatas.restoreIfNeeded()
         
         //データベース接続 1：まずmusicデータロード。
         ServerDataHandler().DownloadMusicData { (error) in
             if let error = error {
-                print(error)
+                // print(error)
                 //callback(error)
                 //return
             }
             //データベース接続 2：次にlevelデータロード。
             ServerDataHandler().DownloadLevelData { (error) in
                 if let error = error {
-                    print(error)
+                    // print(error)
                     //callback(error)
                     //return
                 }
-                //データベース接続 3：次にplayCount,favoriteデータロード。
-                ServerDataHandler().DownloadPlayFavoriteCountData { (error) in
+                //データベース接続 3：次にplayCount,likeCountデータロード。
+                ServerDataHandler().Download_level_PlayLikeCountData { (error) in
                     if let error = error {
-                        print(error)
+                        // print(error)
                         //callback(error)
                         //return
                     }
-                    //データベース接続 4：もしUserNameを登録していてまだIDを取得していない場合（Ver.1.4未満ケア）
-                    ServerDataHandler().getUserNameSqlID(userID: UserData.sharedInstance.UserID) {
-                        
-                        
-                        //データベース接続 おまけ：プレイ回数をデータベースに送信する(送信済みでないもの)。リザルトまで行かずに溜まったものがあれば出す。
-                        // 3.でのロード後に送信してるけど気にしない
-                        let pfcountset = PFCounter.init().getSendPlayFavoriteCountStr()
-                        print("pfcountset="+pfcountset)
-                        if pfcountset != "" {
-                            // プレイ、お気に入り回数 送信
-                            ServerDataHandler().postPlayFavoriteCountData(pfcountset: pfcountset) { (bool) in
-                                if bool {
-                                    //プレイ、お気に入り回数データを保存する(初期化データになる)
-                                    UserData.sharedInstance.PlayCount.setSended()
-                                    UserData.sharedInstance.FavoriteCount.setSended()
-                                }
-                            }
-                        }else{
-                            let playcountset = UserData.sharedInstance.PlayCount.getSendPlayCountStr() //送信するデータ
-                            print("playcountset="+playcountset)
-                            if playcountset != "" {
-                                // プレイ回数 送信
-                                ServerDataHandler().postPlayCountData(playcountset: playcountset) { (bool) in
-                                    if bool {
-                                        //プレイ回数データを保存する(初期化データになる)
-                                        UserData.sharedInstance.PlayCount.setSended()
-                                    }
-                                }
-                            }
-                            let favoritecountset = UserData.sharedInstance.FavoriteCount.getSendFavoriteCountStr() //送信するデータ
-                            print("favoritecountset="+favoritecountset)
-                            if favoritecountset != "" {
-                                // お気に入り回数 送信
-                                ServerDataHandler().postFavoriteCountData(favoritecountset: favoritecountset) { (bool) in
-                                    if bool {
-                                        //お気に入り回数データを保存する(初期化データになる)
-                                        UserData.sharedInstance.FavoriteCount.setSended()
-                                    }
-                                }
-                            }
+                    //データベース接続 4：次にfavoriteCountデータロード。
+                    ServerDataHandler().Download_music_FavoriteCountData { (error) in
+                        if let error = error {
+                            // print(error)
+                            //callback(error)
+                            //return
                         }
-                        // Selectorへ
-                        print("ServerData Download")
-                        callback(nil)
-                   
-                    
-                    }// 4.UserNameIDデータ取得
-                }// 3.playCount,favoriteデータロード
+                        //データベース接続 5：もしUserNameを登録していてまだIDを取得していない場合（Ver.1.4未満ケア）
+                        ServerDataHandler().getUserNameSqlID(userID: UserData.sharedInstance.UserID) {
+                            //データベース接続 おまけ：プレイ回数をデータベースに送信する(送信済みでないもの)。リザルトまで行かずに溜まったものがあれば出す。
+                            // playCount,like,dislike,musicFavorite の送信(成功したらカウントデータを初期化)
+                            self.postUserCountData()
+                            
+                            // Selectorへ
+                            // print("ServerData Download")
+                            callback(nil)
+                        }// 5.UserNameIDデータ取得
+                    }// 4.favoriteCountデータ取得
+                }// 3.playCount,likeCountデータロード
             }// 2.levelデータロード
         }// 1.musicデータロード
     }
     
     func DownloadMusicData(callback: @escaping (Error?) -> Void ) -> Void {
+        AppDelegate.ServerErrorMessage = ""
+        AppDelegate.serverErrorTitle = "サーバエラー"
         let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL+"?req=musicy&time="+String(self.musicDatas.getLastUpdateTimeMusic()))!
-        print("URL=\(url)")
+        let url = URL(string:AppDelegate.PHPURL+"?req=musics&time="+String(self.musicDatas.getLastUpdateTimeMusic()))!
+        // print("URL=\(url)")
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if let error = error {
-                print("musicLoad-error") //エラー。例えばオフラインとか
+                // print("musicLoad-error") //エラー。例えばオフラインとか
                 AppDelegate.ServerErrorMessage = "予期しないエラーが発生しました"
                 callback(error)
                 return
             }
-            print("downloaded")
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            // print("downloaded")
             guard var data = data else { return }
             //ロードしたmusicデータを処理
             guard var htRet = String(data: data, encoding:.utf8) else { return }
             // ロードの先頭であるmusicXのみNicoFlickMessageを受信する可能性がある
             if htRet.hasPrefix("<!--NicoFlickMessage=") {
                 AppDelegate.ServerErrorMessage = htRet.pregMatche_firstString(pattern: "^<!--NicoFlickMessage=(.*?)-->")
+                AppDelegate.ServerErrorMessage = AppDelegate.ServerErrorMessage.pregReplace(pattern: "&NicoFlickSubMessage=.*?$", with:"" )  // おそらくSubMessageがニコRe仮のためのもので役割を終えたから強制削除してるものだと思われる
                 htRet = htRet.pregReplace(pattern: "^<!--NicoFlickMessage=.*?-->", with:"" )
-                let res = AppDelegate.ServerErrorMessage.pregMatche_strings(pattern: "\\[([Android,iOS ]+)\\]")
-                if !res.isEmpty && !res.last!.pregMatche(pattern: "iOS") {
-                    AppDelegate.ServerErrorMessage = ""
+                // タイトル内の文字列を端末指定と誤認しないよう、先に取り除く。
+                let titlePattern = "\\{title:([^}]*)\\}"
+                let title = AppDelegate.ServerErrorMessage.pregMatche_firstString(pattern: titlePattern)
+                if !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    AppDelegate.serverErrorTitle = title
                 }
-                print(AppDelegate.ServerErrorMessage)
-                data = htRet.pregReplace(pattern: "^<!--NicoFlickMessage=.*?-->", with:"" ).data(using: .utf8)!
+                AppDelegate.ServerErrorMessage = AppDelegate.ServerErrorMessage.pregReplace(pattern: titlePattern, with: "")
+                AppDelegate.ServerErrorMessage = AppDelegate.ServerErrorMessage.pregReplace(pattern: "\\[\\[Silent:.*?\\]\\]", with:"" )
+                // 端末指定は本文の先頭・末尾だけを判定する。指定なしは両OS共通。
+                var message = AppDelegate.ServerErrorMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+                if message.hasPrefix("[Android]") || message.hasSuffix("[Android]") {
+                    message = ""
+                } else {
+                    if message.hasPrefix("[iOS]") {
+                        message = String(message.dropFirst("[iOS]".count))
+                    }
+                    if message.hasSuffix("[iOS]") {
+                        message = String(message.dropLast("[iOS]".count))
+                    }
+                }
+                AppDelegate.ServerErrorMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+                // print(AppDelegate.ServerErrorMessage)
+                data = htRet.data(using: .utf8)!
             }
 //            print("update music!")
-//            print(htRet)
+            // print(htRet)
             if htRet == "latest" {
                 callback(nil)
                 return
@@ -172,26 +197,12 @@ class ServerDataHandler {
                 return
             }
             do {
-                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
-                for dic in jsonArray {
-                    self.musicDatas.setMusic( sqlID: Int(dic["id"]!)!,
-                                              movieURL: dic["movieURL"]!,
-                                              thumbnailURL: dic["thumbnailURL"]!,
-                                              title: dic["title"]!,
-                                              artist: dic["artist"]!,
-                                              movieLength: dic["movieLength"]!,
-                                              tags: dic["tags"]!,
-                                              updateTime: Int(dic["updateTime"]!)!,
-                                              createTime: Int(dic["createTime"]!)!
-                    )
-                }
-                self.musicDatas.createTaglist() //タグリストを更新
-                //保存データも更新
-                UserData.sharedInstance.MusicsJson = self.musicDatas.toMusicsJsonString()
+                // ロードデータ処理
+                try self.LoadMusicData(data: data)
                 callback(nil)
                 
             } catch (let e) {
-                print(e)
+                // print(e)
                 //Jsonではなかった。何か他の結果が帰ってきた
                 callback(e)
             }
@@ -201,62 +212,80 @@ class ServerDataHandler {
     func DownloadMusicData_FirstData(serverURL:String, callback: @escaping (Error?) -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:serverURL+"musicJson")!
-        print("URL=\(url)")
+        // print("URL=\(url)")
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if let error = error {
-                print("musicLoad-error") //エラー。例えばオフラインとか
+                // print("musicLoad-error") //エラー。例えばオフラインとか
                 callback(error)
                 return
             }
-            print("downloaded")
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            // print("downloaded")
             guard let data = data else { return }
             //ロードしたmusicデータを処理
             //print(String(data: data!, encoding:.utf8)!)
             do {
-                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
-                for dic in jsonArray {
-                    self.musicDatas.setMusic( sqlID: Int(dic["id"]!)!,
-                                              movieURL: dic["movieURL"]!,
-                                              thumbnailURL: dic["thumbnailURL"]!,
-                                              title: dic["title"]!,
-                                              artist: dic["artist"]!,
-                                              movieLength: dic["movieLength"]!,
-                                              tags: dic["tags"]!,
-                                              updateTime: Int(dic["updateTime"]!)!,
-                                              createTime: Int(dic["createTime"]!)!
-                    )
-                }
-                self.musicDatas.createTaglist() //タグリストを更新
-                //保存データも更新
-                UserData.sharedInstance.MusicsJson = self.musicDatas.toMusicsJsonString()
+                // ロードデータ処理
+                try self.LoadMusicData(data: data)
                 //もう一度通常取得を試みる
                 self.DownloadMusicData(callback: callback)
                 
             } catch (let e) {
-                print(e)
+                // print(e)
                 //Jsonではなかった。何か他の結果が帰ってきた
                 callback(e)
             }
         }
         task.resume()
     }
+    private func LoadMusicData(data: Data) throws {
+        let jsonArray = try decodeStringDictionaryArray(from: data)
+        for dic in jsonArray {
+            let favoriteCount = try optionalJSONInt(dic, key: "favorite")
+            let favoriteCountTime = try optionalJSONInt(dic, key: "favoriteTime")
+            self.musicDatas.setMusic(
+                sqlID: try requiredJSONInt(dic, key: "id"),
+                movieURL: try requiredJSONString(dic, key: "movieURL"),
+                thumbnailURL: try requiredJSONString(dic, key: "thumbnailURL"),
+                title: try requiredJSONString(dic, key: "title"),
+                artist: try requiredJSONString(dic, key: "artist"),
+                movieLength: try requiredJSONString(dic, key: "movieLength"),
+                tags: try requiredJSONString(dic, key: "tags"),
+                updateTime: try requiredJSONInt(dic, key: "updateTime"),
+                createTime: try requiredJSONInt(dic, key: "createTime"),
+                favoriteCount: favoriteCount,
+                favoriteCountTime: favoriteCountTime
+            )
+        }
+        //タグリストを更新
+        self.musicDatas.createTaglist()
+        //保存データも更新
+        UserData.sharedInstance.MusicsJson = self.musicDatas.toMusicsJsonString()
+    }
     
     func DownloadLevelData(callback: @escaping (Error?) -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL+"?req=levelm-noTimetag&userID=\(UserData.sharedInstance.UserID.prefix(8))&time="+String(self.musicDatas.getLastUpdateTimeLevel()))!
-        print("URL=\(url)")
+        let url = URL(string:AppDelegate.PHPURL+"?req=levely-noTimetag&userID=\(UserData.sharedInstance.UserID.prefix(8))&time="+String(self.musicDatas.getLastUpdateTimeLevel()))!
+        // print("URL=\(url)")
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if let error = error {
-                print("levelLoad-error") //エラー
+                // print("levelLoad-error") //エラー
                 callback(error)
                 return
             }
-            print("downloaded")
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            // print("downloaded")
             guard let data = data else { return }
             //ロードしたlevelデータを処理
-            let htRet = String(data: data, encoding:.utf8)!
+            let htRet = String(decoding: data, as: UTF8.self)
             //print(htRet)
             if htRet == "latest" {
                 callback(nil)
@@ -269,52 +298,12 @@ class ServerDataHandler {
                 return
             }
             do {
-                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
-                for dic in jsonArray {
-                    var playCountTime = 0
-                    var favoriteCount = 0
-                    var favoriteCountTime = 0
-                    var commentTime = 0
-                    var scoreTime = 0
-                    if dic["playCountTime"] != nil {
-                        playCountTime = Int(dic["playCountTime"]!)!
-                    }
-                    if dic["favorite"] != nil {
-                        favoriteCount = Int(dic["favorite"]!)!
-                    }
-                    if dic["favoriteTime"] != nil {
-                        favoriteCountTime = Int(dic["favoriteTime"]!)!
-                    }
-                    if dic["commentTime"] != nil {
-                        commentTime = Int(dic["commentTime"]!)!
-                    }
-                    if dic["scoreTime"] != nil {
-                        scoreTime = Int(dic["scoreTime"]!)!
-                    }
-                    self.musicDatas.setLevel( sqlID: Int(dic["id"]!)!,
-                                              movieURL: dic["movieURL"]!,
-                                              level: Int(dic["level"]!)!,
-                                              creator: dic["creator"]!,
-                                              description: dic["description"]!,
-                                              speed: Int(dic["speed"]!)!,
-                                              noteData: dic["bitNote"] ?? "",
-                                              updateTime: Int(dic["updateTime"]!)!,
-                                              createTime: Int(dic["createTime"]!)!,
-                                              playCount: Int(dic["playCount"]!)!,
-                                              playCountTime: playCountTime,
-                                              favoriteCount: favoriteCount,
-                                              favoriteCountTime: favoriteCountTime,
-                                              commentTime: commentTime,
-                                              scoreTime: scoreTime
-                    )
-                    //noteDataは最初に全部取得すると通信量が大きいからゲーム開始時に取得することにする
-                }
-                //保存データも更新
-                UserData.sharedInstance.LevelsJson = self.musicDatas.toLevelsJsonString()
+                // ロードデータ処理
+                try self.LoadLevelData(data: data)
                 callback(nil)
 
             } catch (let e) {
-                print(e)
+                // print(e)
                 //Jsonではなかった。何か他の結果が帰ってきた
                 callback(e)
             }
@@ -324,103 +313,105 @@ class ServerDataHandler {
     func DownloadLevelData_FirstData(serverURL:String, callback: @escaping (Error?) -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:serverURL+"levelJson")!
-        print("URL=\(url)")
+        // print("URL=\(url)")
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if let error = error {
-                print("musicLoad-error") //エラー。例えばオフラインとか
+                // print("musicLoad-error") //エラー。例えばオフラインとか
                 callback(error)
                 return
             }
-            print("downloaded-fd")
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            // print("downloaded-fd")
             guard let data = data else { return }
             //ロードしたmusicデータを処理
             //print(String(data: data!, encoding:.utf8)!)
             do {
-                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
-                for dic in jsonArray {
-                    var playCountTime = 0
-                    var favoriteCount = 0
-                    var favoriteCountTime = 0
-                    var commentTime = 0
-                    var scoreTime = 0
-                    if dic["playCountTime"] != nil {
-                        playCountTime = Int(dic["playCountTime"]!)!
-                    }
-                    if dic["favorite"] != nil {
-                        favoriteCount = Int(dic["favorite"]!)!
-                    }
-                    if dic["favoriteTime"] != nil {
-                        favoriteCountTime = Int(dic["favoriteTime"]!)!
-                    }
-                    if dic["commentTime"] != nil {
-                        commentTime = Int(dic["commentTime"]!)!
-                    }
-                    if dic["scoreTime"] != nil {
-                        scoreTime = Int(dic["scoreTime"]!)!
-                    }
-                    self.musicDatas.setLevel( sqlID: Int(dic["id"]!)!,
-                                              movieURL: dic["movieURL"]!,
-                                              level: Int(dic["level"]!)!,
-                                              creator: dic["creator"]!,
-                                              description: dic["description"]!,
-                                              speed: Int(dic["speed"]!)!,
-                                              noteData: dic["bitNote"] ?? "",
-                                              updateTime: Int(dic["updateTime"]!)!,
-                                              createTime: Int(dic["createTime"]!)!,
-                                              playCount: Int(dic["playCount"]!)!,
-                                              playCountTime: playCountTime,
-                                              favoriteCount: favoriteCount,
-                                              favoriteCountTime: favoriteCountTime,
-                                              commentTime: commentTime,
-                                              scoreTime: scoreTime
-                    )
-                    //noteDataは最初に全部取得すると通信量が大きいからゲーム開始時に取得することにする
-                }
-                //保存データも更新
-                UserData.sharedInstance.LevelsJson = self.musicDatas.toLevelsJsonString()
+                // ロードデータ処理
+                try self.LoadLevelData(data: data)
                 //もう一度通常取得を試みる
                 self.DownloadLevelData(callback: callback)
 
             } catch (let e) {
-                print(e)
+                // print(e)
                 //Jsonではなかった。何か他の結果が帰ってきた
                 callback(e)
             }
         }
         task.resume()
     }
+    private func LoadLevelData(data: Data) throws {
+        let jsonArray = try decodeStringDictionaryArray(from: data)
+        for dic in jsonArray {
+            let calcLv = try optionalJSONInt(dic, key: "calcLv")
+            let playCountTime = try optionalJSONInt(dic, key: "playCountTime")
+            let commentTime = try optionalJSONInt(dic, key: "commentTime")
+            let scoreTime = try optionalJSONInt(dic, key: "scoreTime")
+            let likeCount = try optionalJSONInt(dic, key: "poslike")
+            let dislikeCount = try optionalJSONInt(dic, key: "dislike")
+            let likeCountTime = try optionalJSONInt(dic, key: "likeTime")
+            self.musicDatas.setLevel(
+                sqlID: try requiredJSONInt(dic, key: "id"),
+                movieURL: try requiredJSONString(dic, key: "movieURL"),
+                level: try requiredJSONInt(dic, key: "level"),
+                calcLv: calcLv,
+                creator: try requiredJSONString(dic, key: "creator"),
+                description: try requiredJSONString(dic, key: "description"),
+                speed: try requiredJSONInt(dic, key: "speed"),
+                noteData: dic["bitNote"] ?? "",
+                updateTime: try requiredJSONInt(dic, key: "updateTime"),
+                createTime: try requiredJSONInt(dic, key: "createTime"),
+                playCount: try requiredJSONInt(dic, key: "playCount"),
+                playCountTime: playCountTime,
+                favoriteCount: 0,
+                favoriteCountTime: 0,
+                commentTime: commentTime,
+                scoreTime: scoreTime,
+                likeCount: likeCount,
+                dislikeCount: dislikeCount,
+                likeCountTime: likeCountTime
+            )
+            //noteDataは最初に全部取得すると通信量が大きいからゲーム開始時に取得することにする
+        }
+        //タグリストを更新
+        self.musicDatas.createTaglist()
+        //保存データも更新
+        UserData.sharedInstance.LevelsJson = self.musicDatas.toLevelsJsonString()
+    }
     
-    func DownloadPlayFavoriteCountData(callback: @escaping (Error?) -> Void ) -> Void {
+    func Download_music_FavoriteCountData(callback: @escaping (Error?) -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL+"?req=PcFcCtSt&playcountTime="+String(self.musicDatas.getLastPlayCountTimeLevel())+"&favoriteTime="+String(self.musicDatas.getLastFavoriteCountTimeLevel())+"&commentTime="+String(self.musicDatas.getLastCommentTimeLevel())+"&scoreTime="+String(self.musicDatas.getLastScoreTimeLevel()))!
-        print("URL=\(url)")
+        let url = URL(string:AppDelegate.PHPURL+"?req=music-Fc&musicFavoriteTime="+String(self.musicDatas.getLastFavoriteCountTimeMusic()))!
+        // print("URL=\(url)")
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if let error = error {
-                print("PlayFavoriteCountLoad-error") //エラー
+                // print("FavoriteCountLoad-error") //エラー
                 callback(error)
                 return
             }
-            print("downloaded")
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            // print("downloaded")
             guard let data = data else { return }
             //ロードしたlevelデータを処理
-            let htRet = String(data: data, encoding:.utf8)!
+            let htRet = String(decoding: data, as: UTF8.self)
             //print(htRet)
             if htRet == "latest" {
                 callback(nil)
                 return
             }
             do {
-                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = try decodeStringDictionaryArray(from: data)
                 for dic in jsonArray {
-                    self.musicDatas.setLevel_PlaycountFavorite( sqlID: Int(dic["id"]!)!,
-                                              playCount: Int(dic["playCount"] ?? "-1")!,
-                                              playCountTime: Int(dic["playCountTime"] ?? "-1")!,
-                                              favoriteCount: Int(dic["favorite"] ?? "-1")!,
-                                              favoriteCountTime: Int(dic["favoriteTime"] ?? "-1")!,
-                                              commentTime: Int(dic["commentTime"] ?? "-1")!,
-                                              scoreTime: Int(dic["scoreTime"] ?? "-1")!
+                    self.musicDatas.setMusic_Favoritecount( sqlID: try requiredJSONInt(dic, key: "id"),
+                                              favoriteCount: dic["favorite"].flatMap(Int.init) ?? -1,
+                                              favoriteCountTime: dic["favoriteTime"].flatMap(Int.init) ?? -1
                     )
                 }
                 //保存データも更新
@@ -428,7 +419,56 @@ class ServerDataHandler {
                 callback(nil)
 
             } catch (let e) {
-                print(e)
+                // print(e)
+                //Jsonではなかった。何か他の結果が帰ってきた
+                callback(e)
+            }
+        }
+        task.resume()
+    }
+    func Download_level_PlayLikeCountData(callback: @escaping (Error?) -> Void ) -> Void {
+        let session = URLSession(configuration: URLSessionConfiguration.default)
+        let url = URL(string:AppDelegate.PHPURL+"?req=level-PcLcCtSt&playcountTime="+String(self.musicDatas.getLastPlayCountTimeLevel())+"&likeTime="+String(self.musicDatas.getLastLikeCountTimeLevel())+"&commentTime="+String(self.musicDatas.getLastCommentTimeLevel())+"&scoreTime="+String(self.musicDatas.getLastScoreTimeLevel()))!
+        // print("URL=\(url)")
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: req){(data,response,error) in
+            if let error = error {
+                // print("PlayLikeCountLoad-error") //エラー
+                callback(error)
+                return
+            }
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            // print("downloaded")
+            guard let data = data else { return }
+            //ロードしたlevelデータを処理
+            let htRet = String(decoding: data, as: UTF8.self)
+            //print(htRet)
+            if htRet == "latest" {
+                callback(nil)
+                return
+            }
+            do {
+                let jsonArray = try decodeStringDictionaryArray(from: data)
+                for dic in jsonArray {
+                    self.musicDatas.setLevel_PlaycountLike( sqlID: try requiredJSONInt(dic, key: "id"),
+                                                                playCount: dic["playCount"].flatMap(Int.init) ?? -1,
+                                                                playCountTime: dic["playCountTime"].flatMap(Int.init) ?? -1,
+                                                                commentTime: dic["commentTime"].flatMap(Int.init) ?? -1,
+                                                                scoreTime: dic["scoreTime"].flatMap(Int.init) ?? -1,
+                                                                likeCount: dic["poslike"].flatMap(Int.init) ?? -1,
+                                                                dislikeCount: dic["dislike"].flatMap(Int.init) ?? -1,
+                                                                likeCountTime: dic["likeTime"].flatMap(Int.init) ?? -1
+                    )
+                }
+                //保存データも更新
+                UserData.sharedInstance.LevelsJson = self.musicDatas.toLevelsJsonString()
+                callback(nil)
+
+            } catch (let e) {
+                // print(e)
                 //Jsonではなかった。何か他の結果が帰ってきた
                 callback(e)
             }
@@ -440,26 +480,43 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL( string:AppDelegate.PHPURL+"?req=timetag&id=\(level.sqlID!)")!
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if let error = error {
-                print("notesLoad-error")//エラー。例えばオフラインとか
+                // print("notesLoad-error")//エラー。例えばオフラインとか
                 callback(error)
                 return
             }
-            guard let data = data else { return }
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            guard let data = data else {
+                let error = NSError(domain: "NicoFlick.DownloadTimetag",
+                                    code: 1,
+                                    userInfo: [NSLocalizedDescriptionKey: "譜面データが返されませんでした"])
+                callback(error)
+                return
+            }
             
             do {
-                let jsonDic = (try JSONSerialization.jsonObject(with: data, options: [])) as! Dictionary<String,String>
+                guard let jsonDic = try JSONSerialization.jsonObject(with: data, options: []) as? Dictionary<String, String>,
+                      let notes = jsonDic["notes"] else {
+                    let error = NSError(domain: "NicoFlick.DownloadTimetag",
+                                        code: 2,
+                                        userInfo: [NSLocalizedDescriptionKey: "有効な譜面データを取得できませんでした"])
+                    callback(error)
+                    return
+                }
                 //musicDatasに保存（次回からロードしなくなる）
-                level.noteData = jsonDic["notes"]
+                level.noteData = notes
                 
                 //保存データも更新
                 UserData.sharedInstance.LevelsJson = self.musicDatas.toLevelsJsonString()
-                print("Notes Download")
+                // print("Notes Download")
                 callback(nil)
                 
             } catch (let e) {
-                print(e)
+                // print(e)
                 //Jsonではなかった。何か他の結果が帰ってきた
                 callback(e)
             }
@@ -469,33 +526,40 @@ class ServerDataHandler {
     }
     func DownloadScoreData(levelID:Int, callback: @escaping (Error?) -> Void ) -> Void {
         //データベース接続
-        let session = URLSession(configuration: URLSessionConfiguration.default)
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForResource = 30
+        let session = URLSession(configuration: configuration)
         let url = URL(string:AppDelegate.PHPURL+"?req=scorez&levelID=\(levelID)&time=\(scoreDatas.getLastUpdateTime(levelID: levelID))")!
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
+            defer { session.finishTasksAndInvalidate() }
             if let error = error {
-                print("DownloadScoreData-error")//エラー。例えばオフラインとか
+                // print("DownloadScoreData-error")//エラー。例えばオフラインとか
                 callback(error)
                 return
             }
-            print("downloaded")
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            // print("downloaded")
             guard let data = data else { return }
             //print(String(data: data!, encoding:.utf8)!)
             do{
-                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = try decodeStringDictionaryArray(from: data)
                 for dic in jsonArray {
-                    self.scoreDatas.setScore(sqlID: Int(dic["id"]!)!,
+                    self.scoreDatas.setScore(sqlID: try requiredJSONInt(dic, key: "id"),
                                              levelID: levelID,
-                                             score: Int(dic["score"]!)!,
-                                             userID: dic["userID"]!,
-                                             updateTime: Int(dic["updateTime"]!)!
+                                             score: try requiredJSONInt(dic, key: "score"),
+                                             userID: try requiredJSONString(dic, key: "userID"),
+                                             updateTime: try requiredJSONInt(dic, key: "updateTime")
                     )
                 }
                 //保存データも更新
                 UserData.sharedInstance.ScoresJson = self.scoreDatas.toScoresJsonString()
                 callback(nil)
             }catch(let e){
-                print(e)
+                // print(e)
                 callback(e)
             }
             return
@@ -504,168 +568,185 @@ class ServerDataHandler {
     }
     func DownloadCommentData(levelID:Int, callback: @escaping (Error?) -> Void ) -> Void {
         //データベース接続
-        let session = URLSession(configuration: URLSessionConfiguration.default)
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForResource = 30
+        let session = URLSession(configuration: configuration)
         let url = URL(string:AppDelegate.PHPURL+"?req=commentz&levelID=\(levelID)&time=\(commentDatas.getLastUpdateTime(levelID: levelID))")!
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
+            defer { session.finishTasksAndInvalidate() }
             if let error = error {
-                print("DownloadCommentData-error")//エラー。例えばオフラインとか
+                // print("DownloadCommentData-error")//エラー。例えばオフラインとか
                 callback(error)
                 return
             }
-            print("downloaded")
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            // print("downloaded")
             guard let data = data else { return }
             //print(String(data: data!, encoding:.utf8)!)
             do{
-                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
+                let jsonArray = try decodeStringDictionaryArray(from: data)
                 for dic in jsonArray {
-                    self.commentDatas.setComment(sqlID: Int(dic["id"]!)!,
+                    self.commentDatas.setComment(sqlID: try requiredJSONInt(dic, key: "id"),
                                                  levelID: levelID,
-                                                 comment: dic["comment"]!,
-                                                 userID: dic["userID"]!,
-                                                 updateTime: Int(dic["updateTime"]!)!
+                                                 comment: try requiredJSONString(dic, key: "comment"),
+                                                 userID: try requiredJSONString(dic, key: "userID"),
+                                                 updateTime: try requiredJSONInt(dic, key: "updateTime")
                     )
                 }
                 //保存データも更新
                 UserData.sharedInstance.CommentsJson = self.commentDatas.toCommentsJsonString()
                 callback(nil)
             }catch(let e){
-                print(e)
+                // print(e)
                 callback(e)
             }
         }
         task.resume()
     }
-    func DownloadUserNameData(callback: @escaping (Error?) -> Void ) -> Void {
+    func DownloadUserNameData(callback: @escaping (Error?) -> Void) {
+        Self.userNameDownloadLock.lock()
+        Self.userNameDownloadCallbacks.append(callback)
+        let shouldStart = Self.userNameDownloadCallbacks.count == 1
+        Self.userNameDownloadLock.unlock()
+        guard shouldStart else { return }
+
+        userNameDatas.restoreIfNeeded()
+        downloadUserNames(generation: userNameDatas.generation) { error in
+            Self.userNameDownloadLock.lock()
+            let callbacks = Self.userNameDownloadCallbacks
+            Self.userNameDownloadCallbacks.removeAll()
+            Self.userNameDownloadLock.unlock()
+            // Do not invoke client code while holding the coordination lock.
+            callbacks.forEach { $0(error) }
+        }
+    }
+
+    private func downloadUserNames(generation: Int, allowChunk: Bool = true, callback: @escaping (Error?) -> Void) {
         //データベース接続
-        let session = URLSession(configuration: URLSessionConfiguration.default)
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForResource = 30
+        let session = URLSession(configuration: configuration)
         var updateTime = userNameDatas.getLastUpdateTime()
         if userNameDatas.usernameJsonNumCount >= 0 {
             updateTime = 0
         }
         let url = URL(string:AppDelegate.PHPURL+"?req=usernamez&time=\(updateTime)")!
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
+            defer { session.finishTasksAndInvalidate() }
             if let error = error {
-                print("DownloadUserName-error")//エラー。例えばオフラインとか
+                // print("DownloadUserName-error")//エラー。例えばオフラインとか
                 callback(error)
                 return
             }
-            print("downloaded")
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            // print("downloaded")
             guard let data = data else { return }
-            let htRet = String(data: data, encoding:.utf8)!
+            let htRet = String(decoding: data, as: UTF8.self)
             //print(htRet)
             if htRet == "latest" {
                 callback(nil)
                 return
             }else if htRet.hasPrefix("[{\"server-url\":"){
                 
+                // Avoid an endless reconciliation loop if the server keeps returning a snapshot.
+                guard allowChunk else {
+                    callback(ServerResponseError.invalidResponse)
+                    return
+                }
                 //(サブ)サーバにファイルを取りに行く
                 do{
-                    let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
+                    let jsonArray = try decodeStringDictionaryArray(from: data)
+                    guard !jsonArray.isEmpty else { throw ServerResponseError.noData }
                     for dic in jsonArray {
-                        let serverURL = dic["server-url"]!
-                        let createTime = Int(dic["createTime"]!)!
-                        print(serverURL)
-                        print(createTime)
-                        if self.userNameDatas.usernameJsonCreateTime == 0 {
-                            self.userNameDatas.usernameJsonCreateTime = createTime
-                        }else if self.userNameDatas.usernameJsonCreateTime != createTime {
-                            self.userNameDatas.reset()
-                            self.userNameDatas.usernameJsonCreateTime = createTime
-                        }
-                        
-                        self.DownloadUserNameData_FirstData( serverURL: serverURL, callback: callback )
+                        let serverURL = try requiredJSONString(dic, key: "server-url")
+                        let createTime = try requiredJSONInt(dic, key: "createTime")
+                        // print(serverURL)
+                        // print(createTime)
+                        let previousTime = self.userNameDatas.usernameJsonCreateTime
+                        let chunk = previousTime != 0 && previousTime != createTime
+                            ? 0 : max(0, self.userNameDatas.usernameJsonNumCount)
+                        self.downloadUserNameChunk(serverURL: serverURL, chunk: chunk,
+                                                   createTime: createTime, generation: generation,
+                                                   callback: callback)
                         break
                     }
                     
                 }catch(let e){
-                    print(e)
+                    // print(e)
                     callback(e)
                 }
                 return
             }
             do{
-                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
-                for dic in jsonArray {
-                    self.userNameDatas.setUserName(sqlID: Int(dic["id"]!)!,
-                                                   userID: dic["userID"]!,
-                                                   userName: dic["name"]!,
-                                                   updateTime: Int(dic["updateTime"]!)!
-                    )
-                }
-                //保存データも更新
-                UserData.sharedInstance.UserNamesJson = self.userNameDatas.toUserNamesJsonString()
-                UserData.sharedInstance.UserNamesServerJsonNumCount = self.userNameDatas.usernameJsonNumCount
-                UserData.sharedInstance.UserNamesServerJsonCreateTime = self.userNameDatas.usernameJsonCreateTime
+                try self.userNameDatas.applyDownloadedData(data, generation: generation)
                 callback(nil)
             }catch(let e){
-                print(e)
+                // print(e)
                 callback(e)
             }
         }
         task.resume()
     }
-    func DownloadUserNameData_FirstData(serverURL:String, callback: @escaping (Error?) -> Void ) -> Void {
+    private func downloadUserNameChunk(serverURL: String, chunk: Int, createTime: Int,
+                                       generation: Int, callback: @escaping (Error?) -> Void) {
         //データベース接続
-        let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:serverURL+"usernameJson\(userNameDatas.usernameJsonNumCount)")!
-        print(url)
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForResource = 30
+        let session = URLSession(configuration: configuration)
+        let url = URL(string:serverURL+"usernameJson\(chunk)")!
+        // print(url)
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
+            defer { session.finishTasksAndInvalidate() }
             if let error = error {
-                print("DownloadUserName-error")//エラー。例えばオフラインとか
+                // print("DownloadUserName-error")//エラー。例えばオフラインとか
                 callback(error)
                 return
             }
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
             guard var data = data else { return }
-            print("downloaded")
+            // print("downloaded")
             
-            let start = data.index(after: data.count - 7)
-            let end = data.endIndex
-            var nextFlg = false
-            if String(data: data.subdata(in: start ..< end), encoding:.utf8)! == "//next" {
-                print("//next")
-                nextFlg = true
-                data = data.subdata(in: data.startIndex ..< start) //nextを外す
+            let nextMarker = Data("//next".utf8)
+            let nextFlg = data.suffix(nextMarker.count) == nextMarker
+            if nextFlg {
+                // print("//next")
+                data.removeLast(nextMarker.count)
             }else{
-                print("//finish")
+                // print("//finish")
             }
             
             //print(String(data: data!, encoding:.utf8)!)
             do{
-                let jsonArray = (try JSONSerialization.jsonObject(with: data, options: [])) as! Array<Dictionary<String,String>>
-                for dic in jsonArray {
-                    self.userNameDatas.setUserName(sqlID: Int(dic["id"]!)!,
-                                                   userID: dic["userID"]!,
-                                                   userName: dic["name"]!,
-                                                   updateTime: Int(dic["updateTime"]!)!
-                    )
-                }
-                if nextFlg {
-                    self.userNameDatas.usernameJsonNumCount += 1
-                }else{
-                    self.userNameDatas.usernameJsonNumCount = -1
-                }
-                //保存データも更新
-                UserData.sharedInstance.UserNamesJson = self.userNameDatas.toUserNamesJsonString()
-                UserData.sharedInstance.UserNamesServerJsonNumCount = self.userNameDatas.usernameJsonNumCount
-                UserData.sharedInstance.UserNamesServerJsonCreateTime = self.userNameDatas.usernameJsonCreateTime
+                try self.userNameDatas.applyDownloadedData(data, generation: generation, chunk: chunk,
+                                                          createTime: createTime, nextDataExists: nextFlg)
                 if !nextFlg {
                     //分割Jsonの最後まで来た。もう一度通常取得を試みてFirstデータにない残りを取得。
-                    self.DownloadUserNameData(callback: callback)
+                    self.downloadUserNames(generation: generation, allowChunk: false, callback: callback)
                 }else{
                     callback(nil)
                 }
                 
             }catch(let e){
-                print(e)
+                // print(e)
                 callback(e)
             }
         }
         task.resume()
     }
     func Chance_DownloadUserNameData_FirstData(callback: @escaping (Error?) -> Void ) -> Void {
+        userNameDatas.restoreIfNeeded()
         if userNameDatas.usernameJsonNumCount == -1 {
             callback(nil)
             return
@@ -674,67 +755,33 @@ class ServerDataHandler {
     }
     
     
-    func getScoreData(levelID:Int, callback: @escaping (Array<Dictionary<String,String>>?) -> Void ) -> Void {
-        //データベース接続
-        let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL+"?req=score&levelID=\(levelID)")!
-        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
-            if error != nil {
-                print("getScoreData-error")//エラー。例えばオフラインとか
-                callback(nil)
-                return
-            }
-            guard let data = data else { return }
-            do {
-                if let scoreData = (try JSONSerialization.jsonObject(with: data, options: [])) as? Array<Dictionary<String,String>> {
-                    callback(scoreData)
-                }
-            }catch _ {
-                //
-            }
-        }
-        task.resume()
-    }
     func getMusicScoreData(musicID:Int, userID:String, callback: @escaping (Dictionary<String,String>?) -> Void ) -> Void {
         //データベース接続
-        let session = URLSession(configuration: URLSessionConfiguration.default)
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForResource = 30
+        let session = URLSession(configuration: configuration)
         let url = URL(string:AppDelegate.PHPURL+"?req=mscore&musicID=\(musicID)&userID=\(userID)")!
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
+            defer { session.finishTasksAndInvalidate() }
             if error != nil {
-                print("getScoreData-error")//エラー。例えばオフラインとか
+                // print("getScoreData-error")//エラー。例えばオフラインとか
                 callback( nil )
                 return
             }
-            guard let data = data else { return }
-            do {
-                if let scoreData = (try JSONSerialization.jsonObject(with: data, options: [])) as? Dictionary<String,String> {
-                    callback(scoreData)
-                }
-            }catch _ {
-                callback( [:] )
-            }
-        }
-        task.resume()
-    }
-    func getCommentData(levelID:Int, callback: @escaping (Array<Dictionary<String,String>>?) -> Void ) -> Void {
-        let session = URLSession(configuration: URLSessionConfiguration.default)
-        let url = URL(string:AppDelegate.PHPURL+"?req=comment&levelID=\(levelID)")!
-        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
-            if error != nil {
-                print("getCommentData-error")//エラー。例えばオフラインとか
+            if self.validateHTTPResponse(response, data: data) != nil {
                 callback(nil)
                 return
             }
             guard let data = data else { return }
             do {
-                if let commentData = (try JSONSerialization.jsonObject(with: data, options: [])) as? Array<Dictionary<String,String>> {
-                    callback(commentData)
+                guard let scoreData = try JSONSerialization.jsonObject(with: data) as? [String: String] else {
+                    callback(nil)
+                    return
                 }
+                callback(scoreData)
             }catch _ {
-                //
+                callback(nil)
             }
         }
         task.resume()
@@ -745,15 +792,19 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=level-passCheckz&id=\(id)&userPASS=\(pass)&userID=\(userID)")!
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if error != nil {
-                print("checkLevelPass-error") //エラー。例えばオフラインとか
+                // print("checkLevelPass-error") //エラー。例えばオフラインとか
+                callback(false)
+                return
+            }
+            if self.validateHTTPResponse(response, data: data) != nil {
                 callback(false)
                 return
             }
             guard let data = data else { return }
-            print(String(data: data, encoding:.utf8)!)
-            callback(String(data: data, encoding:.utf8)! == "true")
+            // print(String(decoding: data, as: UTF8.self))
+            callback(String(decoding: data, as: UTF8.self) == "true")
         }
         task.resume()
     }
@@ -765,15 +816,19 @@ class ServerDataHandler {
         let body = "req=userName-add&id="+userID+"&name="+name.urlEncoded
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if error != nil {
-                print("postUserName-error")//エラー。例えばオフラインとか
+                // print("postUserName-error")//エラー。例えばオフラインとか
+                callback(false)
+                return
+            }
+            if self.validateHTTPResponse(response, data: data) != nil {
                 callback(false)
                 return
             }
             guard let data = data else { return }
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
-            print(str)
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
             if str.hasPrefix("success userName-add UserNameSqlID="){ //Ver.1.4〜
                 UserData.sharedInstance.UserNameID = Int(str.pregMatche_firstString(pattern: "UserNameSqlID=(\\d+)")) ?? 0
                 callback(true)
@@ -786,7 +841,7 @@ class ServerDataHandler {
     //Ver.1.4未満のケア
     func getUserNameSqlID(userID:String, callback: @escaping () -> Void ) -> Void {
         if UserData.sharedInstance.UserName == "" || UserData.sharedInstance.UserNameID != 0 { //名前登録してるけど、まだIDを取得していなときだけ実行する（Ver.1.4未満）
-            print("usernameid=\( UserData.sharedInstance.UserNameID )")
+            // print("usernameid=\( UserData.sharedInstance.UserNameID )")
             callback()
             return
         }
@@ -794,15 +849,19 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=userNameID&id=\(userID)")!
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if error != nil {
-                print("getUserNameID-error")//エラー。例えばオフラインとか
+                // print("getUserNameID-error")//エラー。例えばオフラインとか
+                callback()
+                return
+            }
+            if self.validateHTTPResponse(response, data: data) != nil {
                 callback()
                 return
             }
             guard let data = data else { return }
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
-            print(str)
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
             if str.hasPrefix("success UserNameSqlID="){ //Ver.1.4〜
                 UserData.sharedInstance.UserNameID = Int(str.pregMatche_firstString(pattern: "UserNameSqlID=(\\d+)")) ?? 0
             }
@@ -816,12 +875,16 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let body = "req=scorez-add&userID=\(userID)&userNameID=\(UserData.sharedInstance.UserNameID)&scoreset=\(scoreset)&pass=\(Crypt.init().encriptx_urlsafe(plainText: "ニコFlick", pass: userID))"
+        let body = "req=scorem-add&userID=\(userID)&userNameID=\(UserData.sharedInstance.UserNameID)&scoreset=\(scoreset)&pass=\(Crypt.init().encriptx_urlsafe(plainText: "ニコFlick", pass: userID))"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        print(body)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        // print(body)
+        let task = session.dataTask(with: req){(data,response,error) in
             if (error != nil) {
+                callback(false)
+                return
+            }
+            if self.validateHTTPResponse(response, data: data) != nil {
                 callback(false)
                 return
             }
@@ -829,13 +892,13 @@ class ServerDataHandler {
                 callback(false)
                 return
             }
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
-            print(str)
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
             if str.contains("success score-add"){ //php warningが追記されていたとき怖いので「==」じゃなくて「含む」にしとく
-                print("スコア送信成功")
+                // print("スコア送信成功")
                 callback(true)
             }else {
-                print("スコア送信失敗")
+                // print("スコア送信失敗")
                 callback(false)
             }
         }
@@ -849,76 +912,119 @@ class ServerDataHandler {
         let body = "req=playcount-add&playcountset=\(playcountset)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if (error != nil) {
                 callback(false)
                 return
             }
+            if self.validateHTTPResponse(response, data: data) != nil {
+                callback(false)
+                return
+            }
             guard let data = data else { return }
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
-            print(str)
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
             if str == "success playcount-add" {
                 callback(true)
             }else{
-                print("playcount送信失敗")
+                // print("playcount送信失敗")
                 callback(false)
             }
         }
         task.resume()
     }
-    func postFavoriteCountData(favoritecountset:String, callback: @escaping (Bool) -> Void ) -> Void {
+    func postMusicFavoriteCountData(musicfavoritecountset:String, callback: @escaping (Bool) -> Void ) -> Void {
         //  登録
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let body = "req=favoritez-add&favoritecountset=\(favoritecountset)"
+        let body = "req=musicfavorite-add&musicfavoritecountset=\(musicfavoritecountset)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if (error != nil) {
                 callback(false)
                 return
             }
+            if self.validateHTTPResponse(response, data: data) != nil {
+                callback(false)
+                return
+            }
             guard let data = data else { return }
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
-            print(str)
-            if str == "success favorite-add" {
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
+            if str == "success musicfavorite-add" {
                 callback(true)
             }else{
-                print("favorite送信失敗")
+                // print("musicfavorite送信失敗")
                 callback(false)
             }
         }
         task.resume()
     }
-    func postPlayFavoriteCountData(pfcountset:String, callback: @escaping (Bool) -> Void ) -> Void {
+    func postLikeCountData(likecountset:String, callback: @escaping (Bool) -> Void ) -> Void {
         //  登録
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let body = "req=PlaycountFavoritez-add&PFcountset=\(pfcountset)"
+        let body = "req=likecount-add&likecountset=\(likecountset)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if (error != nil) {
                 callback(false)
                 return
             }
+            if self.validateHTTPResponse(response, data: data) != nil {
+                callback(false)
+                return
+            }
             guard let data = data else { return }
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
-            print(str)
-            if str == "success PFcount-add" {
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
+            if str == "success likecount-add" {
                 callback(true)
             }else{
-                print("PFcount送信失敗")
+                // print("like送信失敗")
                 callback(false)
             }
         }
         task.resume()
     }
-    func postComment(comment:String, levelID:Int, userID:String, callback: @escaping () -> Void ) -> Void {
+    func postDislikeCountData(dislikecountset:String, callback: @escaping (Bool) -> Void ) -> Void {
         //  登録
         let session = URLSession(configuration: URLSessionConfiguration.default)
+        let url = URL(string:AppDelegate.PHPURL)!
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let body = "req=dislikecount-add&dislikecountset=\(dislikecountset)"
+        req.httpMethod = "POST"
+        req.httpBody = body.data(using: String.Encoding.utf8)
+        let task = session.dataTask(with: req){(data,response,error) in
+            if (error != nil) {
+                callback(false)
+                return
+            }
+            if self.validateHTTPResponse(response, data: data) != nil {
+                callback(false)
+                return
+            }
+            guard let data = data else { return }
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
+            if str == "success dislikecount-add" {
+                callback(true)
+            }else{
+                // print("dislike送信失敗")
+                callback(false)
+            }
+        }
+        task.resume()
+    }
+    func postComment(comment:String, levelID:Int, userID:String, callback: @escaping (Bool) -> Void ) -> Void {
+        //  登録
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForResource = 30
+        let session = URLSession(configuration: configuration)
         let url = URL(string:AppDelegate.PHPURL)!
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let urlEncodeComment:String = comment.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)!
@@ -926,10 +1032,69 @@ class ServerDataHandler {
         //print(body)
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
-            callback()
+        let task = session.dataTask(with: req){(data,response,error) in
+            defer { session.finishTasksAndInvalidate() }
+            if error != nil || self.validateHTTPResponse(response, data: data) != nil {
+                callback(false)
+                return
+            }
+            guard let data = data else { return }
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
+            if str == "success comment-add" {
+                callback(true)
+            }else{
+                // print("dislike送信失敗")
+                callback(false)
+            }
         }
         task.resume()
+    }
+    func postUserCountData(){
+        let playcountset = UserData.sharedInstance.PlayCount.getSendPlayCountStr() //送信するデータ
+        // print("playcountset="+playcountset)
+        if playcountset != "" {
+            // プレイ回数 送信
+            ServerDataHandler().postPlayCountData(playcountset: playcountset) { (bool) in
+                if bool {
+                    //プレイ回数データを保存する(初期化データになる)
+                    UserData.sharedInstance.PlayCount.setSended()
+                }
+            }
+        }
+        let likecountset = UserData.sharedInstance.LikeCount.getSendLikeCountStr() //送信するデータ
+        // print("likecountset="+likecountset)
+        if likecountset != "" {
+            // お気に入り回数 送信
+            ServerDataHandler().postLikeCountData(likecountset: likecountset) { (bool) in
+                if bool {
+                    //お気に入り回数データを保存する(初期化データになる)
+                    UserData.sharedInstance.LikeCount.setSended()
+                }
+            }
+        }
+        let dislikecountset = UserData.sharedInstance.DislikeCount.getSendLikeCountStr() //送信するデータ
+        // print("dislikecountset="+dislikecountset)
+        if dislikecountset != "" {
+            // お気に入り回数 送信
+            ServerDataHandler().postDislikeCountData(dislikecountset: dislikecountset) { (bool) in
+                if bool {
+                    //お気に入り回数データを保存する(初期化データになる)
+                    UserData.sharedInstance.DislikeCount.setSended()
+                }
+            }
+        }
+        let musicfavoritecountset = UserData.sharedInstance.MusicFavoriteCount.getSendMusicFavoriteCountStr() //送信するデータ
+        // print("musicfavoritecountset="+musicfavoritecountset)
+        if musicfavoritecountset != "" {
+            // お気に入り回数 送信
+            ServerDataHandler().postMusicFavoriteCountData(musicfavoritecountset: musicfavoritecountset) { (bool) in
+                if bool {
+                    //お気に入り回数データを保存する(初期化データになる)
+                    UserData.sharedInstance.MusicFavoriteCount.setSended()
+                }
+            }
+        }
     }
     
     func postMusicInsert(nicoURL:String, thumbnailURL:String, title:String, artist:String, timeLength:String, tags:String, userPASS:String, callback: @escaping (String, Error?) -> Void) -> Void {
@@ -939,13 +1104,17 @@ class ServerDataHandler {
         let body = "req=music-insert&movieURL=\(nicoURL)&thumbnailURL=\(thumbnailURL)&title=\(title.urlEncoded)&artist=\(artist.urlEncoded)&movieLength=\(timeLength)&tags=\(tags.urlEncoded)&userPASS=\(userPASS)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if let error = error {
                 callback("",error)
                 return
             }
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback("", responseError)
+                return
+            }
             guard let data = data else { return }
-            let retStr:String = String(data: data, encoding: String.Encoding.utf8)!
+            let retStr:String = String(decoding: data, as: UTF8.self)
             //print(retStr)
             callback(retStr, nil)
         }
@@ -960,20 +1129,50 @@ class ServerDataHandler {
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
         //print(body)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if (error != nil) {
                 callback(false)
                 return
             }
+            if self.validateHTTPResponse(response, data: data) != nil {
+                callback(false)
+                return
+            }
             guard let data = data else { return }
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
-            print(str)
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
             if str == "success musictag-update"{
                 callback(true)
             }else {
-                print("musicタグ送信失敗")
+                // print("musicタグ送信失敗")
                 callback(false)
             }
+        }
+        task.resume()
+    }
+    func postMusicThumbnailUpdate(id:Int, thumbnailURL:String, userID:String, callback: @escaping (Bool) -> Void ) -> Void {
+        let session = URLSession(configuration: URLSessionConfiguration.default)
+        let url = URL(string:AppDelegate.PHPURL)!
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let pass = Crypt.init().encriptx_urlsafe(plainText: "ニコFlick", pass: userID)
+        let body = "req=musicThumbnail-update&id=\(id)&thumbnailURL=\(thumbnailURL.urlEncoded)&userID=\(userID)&pass=\(pass)"
+        req.httpMethod = "POST"
+        req.httpBody = body.data(using: String.Encoding.utf8)
+        let task = session.dataTask(with: req){(data,response,error) in
+            if error != nil {
+                callback(false)
+                return
+            }
+            if self.validateHTTPResponse(response, data: data) != nil {
+                callback(false)
+                return
+            }
+            guard let data = data else {
+                callback(false)
+                return
+            }
+            let str = String(decoding: data, as: UTF8.self)
+            callback(str == "success musicthumbnail-update")
         }
         task.resume()
     }
@@ -985,13 +1184,17 @@ class ServerDataHandler {
         let body = "req=levelz-insert&movieURL=\(nicoURL)&level=\(level)&creator=\(creator.urlEncoded)&description=\(description.urlEncoded)&speed=\(speed)&notes=\(notes.urlEncoded)&userPASS=\(userPASS)&userID=\(userID)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if let error = error {
                 callback("",error)
                 return
             }
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback("", responseError)
+                return
+            }
             guard let data = data else { return }
-            let retStr:String = String(data: data, encoding: String.Encoding.utf8)!
+            let retStr:String = String(decoding: data, as: UTF8.self)
             //print(retStr)
             callback(retStr, nil)
         }
@@ -1005,13 +1208,17 @@ class ServerDataHandler {
         let body = "req=level-update&id=\(sqlID)&movieURL=\(nicoURL)&level=\(level)&creator=\(creator.urlEncoded)&description=\(description.urlEncoded)&speed=\(speed)&notes=\(notes.urlEncoded)&userPASS=\(userPASS)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if let error = error {
                 callback("",error)
                 return
             }
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback("", responseError)
+                return
+            }
             guard let data = data else { return }
-            let retStr:String = String(data: data, encoding: String.Encoding.utf8)!
+            let retStr:String = String(decoding: data, as: UTF8.self)
             //print(retStr)
             callback(retStr, nil)
         }
@@ -1025,13 +1232,17 @@ class ServerDataHandler {
         let body = "req=level-delete&id=\(sqlID)&userPASS=\(userPASS)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if let error = error {
                 callback("",error)
                 return
             }
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback("", responseError)
+                return
+            }
             guard let data = data else { return }
-            let retStr:String = String(data: data, encoding: String.Encoding.utf8)!
+            let retStr:String = String(decoding: data, as: UTF8.self)
             //print(retStr)
             callback(retStr, nil)
         }
@@ -1044,21 +1255,25 @@ class ServerDataHandler {
         let url = URL(string:AppDelegate.PHPURL)!
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         let urlEncodeComment:String = comment.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)!
-        print("urlEncodeComment")
-        print(urlEncodeComment)
+        // print("urlEncodeComment")
+        // print(urlEncodeComment)
         let body = "req=report&userID=\(userID)&musicID=\(musicID)&comment=\(urlEncodeComment)"
         //print(body)
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if error != nil {
-                print("postReport-error")//エラー。例えばオフラインとか
+                // print("postReport-error")//エラー。例えばオフラインとか
+                callback(false)
+                return
+            }
+            if self.validateHTTPResponse(response, data: data) != nil {
                 callback(false)
                 return
             }
             guard let data = data else { return }
-            let retStr:String = String(data: data, encoding: String.Encoding.utf8)!
-            print(retStr)
+            let retStr:String = String(decoding: data, as: UTF8.self)
+            // print(retStr)
             if retStr == "success report" {
                 callback(true)
             }else {
@@ -1072,14 +1287,17 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=getReport&musicID=\(musicID)&pass=nicoflick_lzmys")!
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if error != nil {
-                print("getReport-error")//エラー。例えばオフラインとか
+                // print("getReport-error")//エラー。例えばオフラインとか
+                return
+            }
+            if self.validateHTTPResponse(response, data: data) != nil {
                 return
             }
             guard let data = data else { return }
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
-            print(str)
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
             if str.hasPrefix("success num="){
                 let num = Int(str.pregMatche_firstString(pattern: "num=(\\d+)&")) ?? -1
                 let comm = str.pregMatche_firstString(pattern: "comment=(.*)$")
@@ -1093,14 +1311,17 @@ class ServerDataHandler {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL+"?req=music-delete&musicID=\(musicID)&masterPASS=\(masterPass)")!
         let req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
             if error != nil {
-                print("postMusicDelete-error")//エラー。例えばオフラインとか
+                // print("postMusicDelete-error")//エラー。例えばオフラインとか
+                return
+            }
+            if self.validateHTTPResponse(response, data: data) != nil {
                 return
             }
             guard let data = data else { return }
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
-            print(str)
+            let str:String = String(decoding: data, as: UTF8.self)
+            // print(str)
             if str.pregMatche(pattern: "message=Success"){
                 callback()
             }
@@ -1115,11 +1336,14 @@ class ServerDataHandler {
         let body = "req=tagsToMusics&tags="+tags.urlEncoded+"&musics="+musicsStr.urlEncoded
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
-        let task = session.dataTask(with: req){(data,responce,error) in
+        let task = session.dataTask(with: req){(data,response,error) in
+            if error != nil || self.validateHTTPResponse(response, data: data) != nil {
+                callback()
+                return
+            }
             callback()
         }
         task.resume()
     }
     
 }
-

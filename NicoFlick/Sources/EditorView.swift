@@ -44,12 +44,20 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     var mySpoon = Spoons()
     var autoSaveMaeDate = Date()
     
+    var timetagOffsetMs = UserData.sharedInstance.timetagOffsetMs
+    var timetagRateFactor = UserData.sharedInstance.timetagRateFactor
+    var playingNoteSelectionOffsetMs = UserData.sharedInstance.playingNoteSelectionOffsetMs
+    
     //動画
     var cachedMovies:CachedMovies = CachedMovies.sharedInstance
     var moviePlayerViewController:AVPlayerViewController?
-    var timer:Timer!
+    private var periodicTimeObserver: Any?
+    private weak var observedPlayer: AVPlayer?
+    private var lastTextUpdateUptime: TimeInterval = 0
     //Indicator（ネット処理中 画面中央でくるくるさせる）
     private var activityIndicator:UIActivityIndicatorView!
+    private var addWordsViewRestingY: CGFloat?
+    private var keyboardOverlap: CGFloat = 0
 
     //遷移時に受け取り
     var selectMusic:musicData!
@@ -61,6 +69,9 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     
     //Slider Drag中
     var movieTimeSliding = false
+    
+    // GameView用データ
+    var practiceAutoPlay = false
     
     //UILabel サイズ、マージン
     let LabelSize:CGSize = CGSize(width: 24, height: 30)
@@ -108,15 +119,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             forwardButton.center.x += 15
         }
         
-        print(selectMusic)
-        print(selectLevel)
-        
-        //タイマー発動 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-        timer = Timer.scheduledTimer(timeInterval: 0.015, target: self, selector: #selector(self.update), userInfo: nil, repeats: true)
-        
-        RunLoop.current.add(timer, forMode: .commonModes)
-
-        timer.fire()
+        // print(selectMusic)
+        // print(selectLevel)
         
         //Movie呼び込み _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         var ans:[String]=[]
@@ -125,13 +129,17 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             smNum = ans[1]
         }
         MovieAccess.init().StreamingUrlNicoAccess(smNum: smNum){ nicodougaURL in
-            print(nicodougaURL)
+            // print(nicodougaURL)
             //session.dataTas後のサブスレッド内でviewを処理させると表示関連が後回しになるので、メインスレッドでaddSubviewする。
             DispatchQueue.main.async {
                 //UI処理はメインスレッドの必要あり
-                self.moviePlayerViewController = self.cachedMovies.access(url: URL(string: nicodougaURL)!, smNum: smNum)
+                guard let videoURL = URL(string: nicodougaURL) else { return }
+                self.moviePlayerViewController = self.cachedMovies.access(url: videoURL, smNum: smNum)
                 if let moviePlayerViewController = self.moviePlayerViewController {
                     moviePlayerViewController.player?.currentItem!.audioTimePitchAlgorithm = .spectral
+                    if let player = moviePlayerViewController.player {
+                        self.addPeriodicTimeObserver(to: player)
+                    }
                     //  add
                     self.movieView.addSubview(moviePlayerViewController.view)
                     self.movieView.sendSubview(toBack: moviePlayerViewController.view)
@@ -146,7 +154,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                 // 動画が終了した時に呼ばれるnotificationを登録
                 NotificationCenter.default.addObserver(forName: NSNotification.Name.AVPlayerItemDidPlayToEndTime, object: nil, queue: nil){ notification in
                     //再生終了したとき
-                    print("終了")
+                    // print("終了")
                     self.playerStop()
                 }
 
@@ -161,6 +169,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             // 前回エラー等で編集中データが残っていたとき、復旧する。
             
             mySpoon = Spoons(timetagText: maeSpoonString)
+            notesSwitch.isOn = mySpoon.spoons.contains { $0.note }
             //ラベル等の画面表示
             self.CreateScrollViewContents()
         }else{
@@ -172,7 +181,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             //サーバから music,level,userName データを順次取得。
             ServerDataHandler().DownloadMusicDataAndUserNameData { (error) in
                 if let error = error {
-                    print(error) //なんか失敗した。帰る。
+                    // print(error) //なんか失敗した。帰る。
                     DispatchQueue.main.async {
                         self.activityIndicator.stopAnimating()
                         let alert = UIAlertController(title:"NicoFlick データベース", message: "データ取得に失敗しました。", preferredStyle: UIAlertControllerStyle.alert)
@@ -188,7 +197,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                     if let error = error {
                         DispatchQueue.main.async {
                             self.activityIndicator.stopAnimating()
-                            print(error) //なんか失敗した。
+                            // print(error) //なんか失敗した。
                             self.dismiss(animated: true, completion: nil)
                             return
                         }
@@ -227,6 +236,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                         // ラベル等の画面表示
                         DispatchQueue.main.async {
                             self.activityIndicator.stopAnimating()
+                            self.notesSwitch.isOn = self.mySpoon.spoons.contains { $0.note }
                             self.CreateScrollViewContents()
                         }
                     }else {
@@ -239,7 +249,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                             if let error = error {
                                 DispatchQueue.main.async {
                                     self.activityIndicator.stopAnimating()
-                                    print(error) //なんか失敗した。
+                                    // print(error) //なんか失敗した。
                                     self.dismiss(animated: true, completion: nil)
                                     return
                                 }
@@ -262,6 +272,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                             // ラベル等の画面表示
                             DispatchQueue.main.async {
                                 self.activityIndicator.stopAnimating()
+                                self.notesSwitch.isOn = self.mySpoon.spoons.contains { $0.note }
                                 self.CreateScrollViewContents()
                             }
                         }
@@ -271,7 +282,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         }
         
         if userData.lookedHowToEditor == false {
-            print("lhte-false")
+            // print("lhte-false")
             userData.lookedHowToEditor = true
             DispatchQueue.main.async { //？
                 self.performSegue(withIdentifier: "toHowToEditor", sender: nil)
@@ -279,8 +290,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         }
     }
     func CreateScrollViewContents() {
-        print("start")
-        print(Date())
+        // print("start")
+        // print(Date())
         let scale = scrollView.zoomScale
         let offset = scrollView.contentOffset
 
@@ -300,26 +311,26 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         viewInScrollView.frame = CGRect(x: 0, y: 0, width: MarginLeft + LabelBoxSize.width * CGFloat(mySpoon.maxRetu) + MarginRight, height: MarginTop + LabelBoxSize.height * CGFloat(mySpoon.maxGyo) + MarginBottom)
         
         
-        print(Date())
+        // print(Date())
         //scrollView.zoomScale = 1.0
         scrollView.minimumZoomScale = scrollView.frame.size.width / viewInScrollView.frame.size.width
 
         //
-        print(mySpoon.spoons.count)
+        // print(mySpoon.spoons.count)
         if mySpoon.spoons.count <= 1 {
             scrollView.isHidden = true
             return
         }
         scrollView.isHidden = false
         
-        print(Date())
+        // print(Date())
         scrollView.setZoomScale(scale, animated: false)
         scrollView.setContentOffset(offset, animated: false)
         
         // スクロール範囲
         scrollView.contentSize = viewInScrollView.frame.size
         
-        print(Date())
+        // print(Date())
         //ラベルの作成
         for (index,spoon) in mySpoon.spoons.enumerated() {
             if let label = spoon.label {
@@ -381,7 +392,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             }
         }
         
-        print(Date())
+        // print(Date())
         for (_,spoon) in mySpoon.spoons.enumerated() {
             if spoon.bottomBorder != nil && spoon.wakuBorder != nil {
                 //viewInScrollView.bringSubview(toFront: bottomBorder)
@@ -419,7 +430,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             }
         }
         
-        print(Date())
+        // print(Date())
         //カーソルの作成
         if mySpoon.cursorView == nil {
             let cursorView = UIView(frame: CGRect(origin: CGPoint(x: 0, y: 0), size: CGSize(width: LabelSize.width + 4, height: LabelSize.height)))
@@ -445,7 +456,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             viewInScrollView.addSubview(cursorView)
             mySpoon.cursorView = cursorView
         }
-        print(Date())
+        // print(Date())
         //履歴ボタンの登録
         mySpoon.rirekiUndoButton = UndoButton
         mySpoon.rirekiRedoButton = RedoButton
@@ -456,13 +467,21 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
+
+    deinit {
+        removePeriodicTimeObserver()
+    }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         self.configureObserver() //キーボード処理
+        if periodicTimeObserver == nil, let player = moviePlayerViewController?.player {
+            addPeriodicTimeObserver(to: player)
+        }
     }
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         self.removeObserver() // Notificationを画面が消えるときに削除
+        removePeriodicTimeObserver()
         if let player = moviePlayerViewController?.player {
             player.pause()
         }
@@ -473,7 +492,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         if sender.state != .ended {
             return
         }
-        print("tap")
+        // print("tap")
         mySpoon.setCursor(index: mySpoon.index(uiLabel: sender.view as! UILabel), scroll: true, scrollView: scrollView, animated: true)
         
         self.setText_CursorPosTimetagLabel()
@@ -484,7 +503,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         if sender.state != .ended {
             return
         }
-        print("double tap")
+        // print("double tap")
         /*
         mySpoon.setCursor(index: mySpoon.index(uiLabel: sender.view as! UILabel), scroll: true, scrollView: scrollView, animated: true)
         
@@ -508,7 +527,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         if addWordsView.isHidden == false {
             return
         }
-        print("longPress")
+        // print("longPress")
         mySpoon.setCursor(index: mySpoon.index(uiLabel: sender.view as! UILabel), scroll: true, scrollView: scrollView, animated: true)
         
         self.setText_CursorPosTimetagLabel()
@@ -518,7 +537,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     
     
     @IBAction func moviePlayButton(_ sender: UIButton) {
-        print("タップ")
+        // print("タップ")
         if moviePlayerViewController == nil {
             return
         }
@@ -627,7 +646,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             return
         }
         self.backDeleteLyrics()
-        print("touch down")
+        // print("touch down")
         timerCnt = 0
         let deleteFireTime = Date()
         timerBackDelete = Timer.scheduledTimer(withTimeInterval: 0.01, repeats: true) { (timer) in
@@ -646,7 +665,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         timerBackDelete?.fire()
     }
     @IBAction func lyricsBackDeleteButton_TouchUp(_ sender: Any) {
-        print("touch up")
+        // print("touch up")
         if let timer = timerBackDelete {
             timer.invalidate()
         }
@@ -662,7 +681,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         }
         let indexCursor = mySpoon.cursorIndex
         let maeSpoon = mySpoon.spoons[mySpoon.cursorIndex-1].copy()
-        print("bd \(mySpoon.cursorIndex-1), \(maeSpoon.word)")
+        // print("bd \(mySpoon.cursorIndex-1), \(maeSpoon.word)")
         if mySpoon.backDelete(cursorIndex: mySpoon.cursorIndex) == false {
             maeSpoonLabelXY = [:]
             return
@@ -703,11 +722,12 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                     //  Indicator隠す
                     self.activityIndicator.stopAnimating()
                     if error != nil {
-                        print("getlyrics-error")//エラー。例えばオフラインとか
+                        // print("getlyrics-error")//エラー。例えばオフラインとか
                         return
                     }
-                    let str:String = String(data: data!, encoding: String.Encoding.utf8)!
-                    print(str)
+                    guard let data else { return }
+                    let str = String(decoding: data, as: UTF8.self)
+                    // print(str)
                     let t = self.extractLyrics_fromMikuWikiHtml(html: str)
                     self.addWordsTextView.text = t
                 }
@@ -736,6 +756,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         self.closeAddWordView()
     }
     func closeAddWordView() {
+        addWordsViewRestingY = nil
+        keyboardOverlap = 0
         for subview in addWordsView.subviews{
             if let subview = subview as? UITextView {
                 //非表示にする。
@@ -770,29 +792,37 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         mySpoon.changeCursor(mode: .line)
         //スクロールビューのスクロールをここでする。
 
+        let restingY = view.bounds.height - view.safeAreaInsets.bottom - addWordsTextView2.frame.origin.y
+        addWordsViewRestingY = restingY
         UIView.animate(withDuration: 0.5) {
-            self.addWordsView.frame.origin.y = UIScreen.main.bounds.size.height - self.view.safeAreaInsets.bottom - self.addWordsTextView2.frame.origin.y
+            self.addWordsView.frame.origin.y = restingY - self.keyboardOverlap
         }
     }
     func ShowAddWordsView2() -> Void {
         addWordsTextView2.isHidden = false
         //全体上げスクロール
         
+        let restingY = view.bounds.height - view.safeAreaInsets.bottom - addWordsView.frame.size.height
+        addWordsViewRestingY = restingY
         UIView.animate(withDuration: 0.5) {
-            self.addWordsView.frame.origin.y = UIScreen.main.bounds.size.height - self.view.safeAreaInsets.bottom - self.addWordsView.frame.size.height
+            self.addWordsView.frame.origin.y = restingY - self.keyboardOverlap
         }
     }
     
     
+    private func currentPlaybackTime() -> CMTime? {
+        return moviePlayerViewController?.player?.currentTime()
+    }
+
     @IBAction func setTimetagButton_TouchDown(_ sender: UIButton) {
         if moviePlayerViewController == nil {
             return
         }
         if notesSwitch.isOn == false {
-            print("timetag")
-            if let currentTime = moviePlayerViewController?.player?.currentTime(),
-                let rate = moviePlayerViewController?.player?.rate {
-                var mirisec = Int(CMTimeGetSeconds(currentTime) * 1000 - 40.0 * Double(rate - 0.5) / 0.5)
+            // print("timetag")
+            if let currentTime = currentPlaybackTime(), let rate = moviePlayerViewController?.player?.rate {
+                //var mirisec = Int(CMTimeGetSeconds(currentTime) * 1000 - 40.0 * Double(rate - 0.5) / 0.5)
+                var mirisec = Int( (CMTimeGetSeconds(currentTime) + timetagRateFactor * (1.0 - Double(rate))) * 1000 + Double(timetagOffsetMs) )
                 if mirisec < 0 { mirisec = 0 }
                 let maeSpoon = mySpoon.spoons[mySpoon.cursorIndex].copy()
                 mySpoon.spoons[mySpoon.cursorIndex].setMirisec(mirisec: mirisec)
@@ -806,14 +836,16 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                 self.setText_CursorPosTimetagLabel()
             }
         }else {
-            print("note")
+            // print("note")
             guard let playing = moviePlayerViewController?.player?.isPlaying else {
                 return
             }
             if playing {
-                if let currentTime = moviePlayerViewController?.player?.currentTime() {
+                if let currentTime = currentPlaybackTime(), let rate = moviePlayerViewController?.player?.rate {
                     let judgeOffset = Int(self.mySpoon.atTag["Offset"] ?? "0")!
-                    let (retIndex, maeSpoon) = mySpoon.setNotes_NearTimePos(mirisec: Int(CMTimeGetSeconds(currentTime) * 1000) - judgeOffset)
+                    var mirisec = Int( (CMTimeGetSeconds(currentTime) + timetagRateFactor * (1.0 - Double(rate))) * 1000 + Double(timetagOffsetMs) ) - judgeOffset + playingNoteSelectionOffsetMs
+                    if mirisec < 0 { mirisec = 0 }
+                    let (retIndex, maeSpoon) = mySpoon.setNotes_NearTimePos(mirisec: mirisec)
                     if retIndex != nil && maeSpoon != nil {
                         mySpoon.setCursor(index: retIndex!, scroll: true, scrollView: scrollView, animated: false)
                         mySpoon.setRireki(index: mySpoon.cursorIndex,
@@ -836,9 +868,9 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     }
     
     @IBAction func minusTimetagButton_TouchDown(_ sender: UIButton) {
-        print("minus")
+        // print("minus")
         if notesSwitch.isOn == false {
-            print("timetag")
+            // print("timetag")
             if mySpoon.setCursorPrevTimetaged(scrollView: scrollView, animated: false) {
                 
                 if let rate = moviePlayerViewController?.player?.rate {
@@ -862,7 +894,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                 self.setText_CursorPosTimetagLabel()
             }
         }else {
-            print("note")
+            // print("note")
             if mySpoon.setCursorPrevNoted(scrollView: scrollView, animated: false) {
                 
                 let maeSpoon = mySpoon.spoons[mySpoon.cursorIndex].copy()
@@ -878,13 +910,14 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         self.autoSave()
     }
     @IBAction func rewindButton(_ sender: UIButton) {
-        playerRewind()
+        _ = playerRewind()
     }
-    func playerRewind() {
+    func playerRewind() -> Double {
+        var seconds = 0.0
         if let currentTime = moviePlayerViewController?.player?.currentTime(),
            let rate = moviePlayerViewController?.player?.rate {
             
-            var seconds = CMTimeGetSeconds(currentTime) - Double(3 * rate)
+            seconds = CMTimeGetSeconds(currentTime) - Double(3 * rate)
             if seconds < 0 {
                 seconds = 0.0
             }
@@ -895,20 +928,24 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             )
         }
         self.autoSave()
+        return seconds
     }
     @IBAction func forwardButton_TouchDown(_ sender: UIButton) {
-        playerForward()
+        _ = playerForward()
     }
-    func playerForward() {
+    func playerForward() -> Double {
+        var seconds = 0.0
         if let currentTime = moviePlayerViewController?.player?.currentTime(),
             let rate = moviePlayerViewController?.player?.rate {
+            seconds = CMTimeGetSeconds(currentTime) + Double(3 * rate)
             moviePlayerViewController?.player?.seek(to:
-                CMTime(seconds: CMTimeGetSeconds(currentTime) + Double(3 * rate), preferredTimescale: Int32(NSEC_PER_SEC)),
+                CMTime(seconds: seconds, preferredTimescale: Int32(NSEC_PER_SEC)),
                                                    toleranceBefore: kCMTimeZero,
                                                    toleranceAfter: kCMTimeZero
             )
         }
         self.autoSave()
+        return seconds
     }
     
     @IBAction func notesSwitch(_ sender: UISwitch) {
@@ -986,57 +1023,99 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     }
     
     
-    //タイマー（ノート進行表示） _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-    @objc func update(tm: Timer) {
-        guard let controller = moviePlayerViewController else {
+    //AVPlayerの再生時刻に合わせたノート進行表示
+    private func addPeriodicTimeObserver(to player: AVPlayer) {
+        removePeriodicTimeObserver()
+
+        let interval = CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600)
+        observedPlayer = player
+        periodicTimeObserver = player.addPeriodicTimeObserver(
+            forInterval: interval,
+            queue: .main
+        ) { [weak self] currentTime in
+            self?.updatePlayback(currentTime: currentTime)
+        }
+    }
+
+    private func removePeriodicTimeObserver() {
+        guard let observer = periodicTimeObserver else {
             return
         }
+        observedPlayer?.removeTimeObserver(observer)
+        periodicTimeObserver = nil
+        observedPlayer = nil
+    }
+
+    private func updatePlayback(currentTime: CMTime) {
         guard let player = moviePlayerViewController?.player else {
             return
+        }
+
+        let uptime = ProcessInfo.processInfo.systemUptime
+        let shouldUpdateText = uptime - lastTextUpdateUptime >= 1.0 / 15.0
+        if shouldUpdateText {
+            lastTextUpdateUptime = uptime
         }
         
         //ムービーロード状況
         if let loadedTime = player.currentItem?.loadedTimeRanges.asTimeRanges.first?.end,
-            let duration = player.currentItem?.duration,
-            let currentTime = controller.player?.currentTime()
+            let duration = player.currentItem?.duration
         {
             //print("\(CMTimeGetSeconds(currentTime))|\(CMTimeGetSeconds(loadedTime))/\(CMTimeGetSeconds(duration))")
             
             if !movieTimeSliding {
-                if  movieTimeSlider.frame.size.width != movieTimeSliderOriginWidth {
+                if movieTimeSlider.frame.size.width != movieTimeSliderOriginWidth {
                     // TimeSlider：ロードに応じて長さを伸ばす
                     movieTimeSlider.frame.size.width = movieTimeSliderOriginWidth * CGFloat(CMTimeGetSeconds(loadedTime)/CMTimeGetSeconds(duration))
                     movieTimeSlider.maximumValue = Float(CGFloat(CMTimeGetSeconds(loadedTime)/CMTimeGetSeconds(duration)))
                 }
-                if movieDurationTimeLabel.text == "/ 99:99:99" {
-                    movieDurationTimeLabel.text = "/ " + String.secondsToTimetag(seconds: Double(CMTimeGetSeconds(duration)), noBrackets: true)
-                }
-                
-                // 再生時間：スライダーとラベルの更新
+
+                // 再生位置スライダーの更新
                 if CMTimeGetSeconds(currentTime) >= 0 {
-                    movieTimeSlider.value = Float(CGFloat(CMTimeGetSeconds(currentTime)/CMTimeGetSeconds(duration)))
-                    movieCurrentTimeLabel.text = String.secondsToTimetag(seconds: Double(CMTimeGetSeconds(currentTime)), noBrackets: true)
+                    let sliderValue = Float(CGFloat(CMTimeGetSeconds(currentTime)/CMTimeGetSeconds(duration)))
+                    if movieTimeSlider.value != sliderValue {
+                        movieTimeSlider.value = sliderValue
+                    }
+                }
+                if shouldUpdateText {
+                    if movieDurationTimeLabel.text == "/ 99:99:99" {
+                        movieDurationTimeLabel.text = "/ " + String.secondsToTimetag(seconds: Double(CMTimeGetSeconds(duration)), noBrackets: true)
+                    }
+                    if CMTimeGetSeconds(currentTime) >= 0 {
+                        let currentTimeText = String.secondsToTimetag(seconds: Double(CMTimeGetSeconds(currentTime)), noBrackets: true)
+                        if movieCurrentTimeLabel.text != currentTimeText {
+                            movieCurrentTimeLabel.text = currentTimeText
+                        }
+                    }
                 }
             }
             if CMTimeGetSeconds(currentTime) >= 0 {
-                mySpoon.pushCurrentTime(mirisec: Int(Double(CMTimeGetSeconds(currentTime))*1000))
+                updateTimelineProgress(currentTime: currentTime)
             }
         }
-        //let time = CMTimeGetSeconds(currentTime!)
-        if notesSwitch.isOn && player.isPlaying {
-            if let currentTime = controller.player?.currentTime() {
-                let judgeOffset = Int(self.mySpoon.atTag["Offset"] ?? "0")!
-                var judgeOffset_str = ""
-                if judgeOffset != 0 {
-                    judgeOffset_str = " \(-judgeOffset)ms"
-                    if judgeOffset < 0 {
-                        judgeOffset_str = " +\(-judgeOffset)ms"
-                    }
-                }
-                self.setText_setTimetagButton(timetag: String.secondsToTimetag(seconds: CMTimeGetSeconds(currentTime), noBrackets: false)+judgeOffset_str)
-                
+        if shouldUpdateText && notesSwitch.isOn && player.isPlaying {
+            updateTimetagButtonDisplay(currentTime: currentTime)
+        }
+    }
+
+    private func updateTimelineProgress(currentTime: CMTime) {
+        mySpoon.pushCurrentTime(mirisec: Int(CMTimeGetSeconds(currentTime) * 1000))
+    }
+
+    private func updateTimetagButtonDisplay(currentTime: CMTime) {
+        let judgeOffset = Int(self.mySpoon.atTag["Offset"] ?? "0")!
+        var judgeOffsetText = ""
+        if judgeOffset != 0 {
+            judgeOffsetText = " \(-judgeOffset)ms"
+            if judgeOffset < 0 {
+                judgeOffsetText = " +\(-judgeOffset)ms"
             }
         }
+        let currentTimeText = String.secondsToTimetag(
+            seconds: CMTimeGetSeconds(currentTime),
+            noBrackets: false
+        )
+        setText_setTimetagButton(timetag: currentTimeText + judgeOffsetText)
     }
     
     
@@ -1053,39 +1132,44 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         let notification = NotificationCenter.default
         notification.removeObserver(self)
     }
-    // キーボードが現れた時に、画面全体をずらす。
+    // 歌詞入力欄のキーボードが現れた時に、迫り出しViewだけをさらに上げる。
     @objc func keyboardWillShow(notification: Notification?) {
-        let rect = (notification?.userInfo?[UIKeyboardFrameBeginUserInfoKey] as? NSValue)?.cgRectValue
-        for subview in addWordsView.subviews{
-            if let subview = subview as? UITextView {
-                if(subview.isFirstResponder){
-                    if (subview.superview?.frame.origin.y)! + subview.frame.origin.y + subview.frame.size.height > (rect?.origin.y)! - (rect?.size.height)! {
-                        // ずらし処理
-                        let duration: TimeInterval? = notification?.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as? Double
-                        UIView.animate(withDuration: duration!, animations: { () in
-                            let transform = CGAffineTransform(translationX: 0, y: -(rect?.size.height)!)
-                            self.view.transform = transform
-                            
-                        })
-                    }
-                    break
-                }
-            }
+        guard !addWordsView.isHidden,
+              addWordsTextView.isFirstResponder || addWordsTextView2.isFirstResponder,
+              let restingY = addWordsViewRestingY,
+              let keyboardScreenFrame = notification?.userInfo?[UIKeyboardFrameEndUserInfoKey] as? NSValue else {
+            return
+        }
+
+        let keyboardFrame = view.convert(keyboardScreenFrame.cgRectValue, from: nil)
+        keyboardOverlap = max(0, view.bounds.intersection(keyboardFrame).height - view.safeAreaInsets.bottom)
+        animateWithKeyboard(notification: notification) {
+            self.addWordsView.frame.origin.y = restingY - self.keyboardOverlap
         }
     }
     
-    // キーボードが消えたときに、画面を戻す
+    // キーボードが消えたときに、迫り出しViewを元の位置へ戻す。
     @objc func keyboardWillHide(notification: Notification?) {
-        
-        let duration: TimeInterval? = notification?.userInfo?[UIKeyboardAnimationCurveUserInfoKey] as? Double
-        UIView.animate(withDuration: duration!, animations: { () in
-            
-            self.view.transform = CGAffineTransform.identity
-        })
+        keyboardOverlap = 0
+        guard !addWordsView.isHidden, let restingY = addWordsViewRestingY else {
+            return
+        }
+
+        animateWithKeyboard(notification: notification) {
+            self.addWordsView.frame.origin.y = restingY
+        }
+    }
+
+    private func animateWithKeyboard(notification: Notification?, animations: @escaping () -> Void) {
+        let userInfo = notification?.userInfo
+        let duration = userInfo?[UIKeyboardAnimationDurationUserInfoKey] as? TimeInterval ?? 0.25
+        let curveValue = userInfo?[UIKeyboardAnimationCurveUserInfoKey] as? UInt ?? 0
+        let options = UIViewAnimationOptions(rawValue: curveValue << 16)
+        UIView.animate(withDuration: duration, delay: 0, options: options, animations: animations)
     }
     //MARK: キーボードが出ている状態で、キーボード以外をタップしたらキーボードを閉じる
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        print("touchesBegan")
+        // print("touchesBegan")
         if addWordsView.isHidden {
             return
         }
@@ -1123,12 +1207,21 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             addWord = "\n\(timetag)"
         }
         
+        let title: String
+        let backgroundColor: UIColor
         if notesSwitch.isOn {
-            setTimetagButton.setTitle("フリック ノーツ" + addWord, for: .normal)
-            setTimetagButton.backgroundColor = UIColor(red: 1.0, green: 0.6, blue: 0.0, alpha: 1.0)
+            title = "フリック ノーツ" + addWord
+            backgroundColor = UIColor(red: 1.0, green: 0.6, blue: 0.0, alpha: 1.0)
         }else {
-            setTimetagButton.setTitle("Timetag", for: .normal)
-            setTimetagButton.backgroundColor = UIColor(red: 0.0, green: 0.85, blue: 0.5, alpha: 1.0)
+            title = "Timetag"
+            backgroundColor = UIColor(red: 0.0, green: 0.85, blue: 0.5, alpha: 1.0)
+        }
+
+        if setTimetagButton.title(for: .normal) != title {
+            setTimetagButton.setTitle(title, for: .normal)
+        }
+        if setTimetagButton.backgroundColor?.isEqual(backgroundColor) != true {
+            setTimetagButton.backgroundColor = backgroundColor
         }
         
     }
@@ -1146,148 +1239,188 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         return scrollView.subviews[0]
     }
     
-    func extractLyrics_fromMikuWikiHtml( html : String ) -> String {
-        let h3_h3 = html.pregMatche_firstString(pattern:"<h3 id=\"id_\\w+\">歌詞</h3>(.*?)<h3")
-        let h3_h4 = html.pregMatche_firstString(pattern:"<h3 id=\"id_\\w+\">歌詞</h3>(.*?)<h4")
-        let h3_table = html.pregMatche_firstString(pattern:"<h3 id=\"id_\\w+\">歌詞</h3>(.*?)<table")
-        
-        // 歌詞を取り出す
-        var lyrics = h3_h3
-        if h3_h4 != "" && lyrics.count > h3_h4.count {
-            lyrics = h3_h4
+    func extractLyrics_fromMikuWikiHtml(html: String) -> String {
+        guard var lyricsHTML = htmlSection(named: "歌詞", in: html) else {
+            return ""
         }
-        if h3_table != "" && lyrics.count > h3_table.count {
-            lyrics = h3_table
+
+        // 複数バージョンが掲載されている場合は、原曲を優先する。
+        if let originalLyricsHTML = htmlSection(named: "原曲", in: lyricsHTML) {
+            lyricsHTML = originalLyricsHTML
         }
-        
-        //転載注釈を外す
-        // ( )
-        var kakko = lyrics.pregMatche_firstString(pattern: "(\\(.*?\\))") // if let 使えたんだかどうか
-        if kakko != "" {
-            if(kakko.pregMatche(pattern: "転載")
-                || kakko.pregMatche(pattern: "動画")
-                || kakko.pregMatche(pattern: "ブログ")
-                || kakko.pregMatche(pattern: "歌詞")
-                || kakko.pregMatche(pattern: "書き起こし")
-                || kakko.pregMatche(pattern: "抜粋")
-                || kakko.pregMatche(pattern: "PV")
-            ){
-                lyrics = lyrics.pregReplace(pattern: kakko, with: "")
+
+        return plainLyrics(from: lyricsHTML)
+    }
+
+    /// 指定した見出しから、次の同じレベル以上の見出しまでを取り出す。
+    /// h3「歌詞」の中にある h4「原曲」など、入れ子のセクションにも対応する。
+    private func htmlSection(named sectionName: String, in html: String) -> String? {
+        let options: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
+        guard let headingRegex = try? NSRegularExpression(
+            pattern: #"<h([1-6])\b[^>]*>(.*?)</h\1\s*>"#,
+            options: options
+        ) else {
+            return nil
+        }
+
+        let nsHTML = html as NSString
+        let matches = headingRegex.matches(
+            in: html,
+            range: NSRange(location: 0, length: nsHTML.length)
+        )
+
+        for (index, match) in matches.enumerated() {
+            guard match.numberOfRanges >= 3,
+                  let level = Int(nsHTML.substring(with: match.range(at: 1))) else {
+                continue
             }
-        }else {
-            // （ ）
-            kakko = lyrics.pregMatche_firstString(pattern: "(（.*?）)") // if let 使えたんだかどうか
-            if kakko != "" {
-                if(kakko.pregMatche(pattern: "転載")
-                    || kakko.pregMatche(pattern: "動画")
-                    || kakko.pregMatche(pattern: "ブログ")
-                    || kakko.pregMatche(pattern: "歌詞")
-                    || kakko.pregMatche(pattern: "書き起こし")
-                    || kakko.pregMatche(pattern: "抜粋")
-                    || kakko.pregMatche(pattern: "PV")
-                ){
-                    lyrics = lyrics.pregReplace(pattern: kakko, with: "")
+
+            let headingHTML = nsHTML.substring(with: match.range(at: 2))
+            let headingText = plainHeadingText(from: headingHTML)
+            guard headingText == sectionName else {
+                continue
+            }
+
+            let sectionStart = NSMaxRange(match.range)
+            var sectionEnd = nsHTML.length
+
+            for followingMatch in matches.dropFirst(index + 1) {
+                guard let followingLevel = Int(nsHTML.substring(with: followingMatch.range(at: 1))) else {
+                    continue
+                }
+                if followingLevel <= level {
+                    sectionEnd = followingMatch.range.location
+                    break
                 }
             }
+
+            guard sectionEnd >= sectionStart else {
+                return nil
+            }
+            return nsHTML.substring(
+                with: NSRange(location: sectionStart, length: sectionEnd - sectionStart)
+            )
         }
-        
-        // ルビを取り出し、歌詞本体にする
-        lyrics = lyrics.pregReplace(pattern: "<ruby>.*?<rb>.*?</rb>.*?<rt>(.*?)</rt>.*?</ruby>", with: "$1")
-        
-        //HTMLテキストのdiv,改行,ルビ等を消す
-        //\n\n</div>は改行とする
-        lyrics = lyrics.pregReplace(pattern: "\n\n</div>", with: "<br />")
-        lyrics = lyrics.pregReplace(pattern: "<div>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</div>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "\r|(\r?\n)", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<rt>.*?</rt>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<rp>.*?</rp>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<rb>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</rb>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<ruby>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</ruby>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<span.*?>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</span>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<!\\-\\-.*?\\-\\->", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<a .*?>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</a>", with: "")
-        
-        lyrics = lyrics.pregReplace(pattern: "<p>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</p>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<font .*?>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</font>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<big>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</big>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<small>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</small>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<b>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</b>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<i>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</i>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<s>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</s>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<strike>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</strike>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<u>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</u>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<tt>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</tt>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<em>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</em>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<strong>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</strong>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<sup>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</sup>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<sub>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</sub>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<blockquote>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</blockquote>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<q>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</q>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<pre>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</pre>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "<code>", with: "")
-        lyrics = lyrics.pregReplace(pattern: "</code>", with: "")
-        //行末の空白文字を削除
-        lyrics = lyrics.pregReplace(pattern: "\\s*$", with: "")
-        lyrics = lyrics.pregReplace(pattern: "　*$", with: "")
-        
-        //<br />を改行にする
-        lyrics = lyrics.pregReplace(pattern: "<br />", with: "\n")
-        //行頭と行末の改行を削除
-        while lyrics.prefix(1) == "\n" {
-            lyrics = String(lyrics[lyrics.index(lyrics.startIndex, offsetBy: 1)...])
+
+        return nil
+    }
+
+    private func plainHeadingText(from html: String) -> String {
+        let withoutTags = html.pregReplace(
+            pattern: #"<[^>]+>"#,
+            with: "",
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        )
+        return withoutTags.htmlDecoded
+            .replacingOccurrences(of: "\u{00a0}", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func plainLyrics(from html: String) -> String {
+        let options: NSRegularExpression.Options = [.caseInsensitive, .dotMatchesLineSeparators]
+        var lyrics = html
+
+        lyrics = lyrics.pregReplace(pattern: #"<!--.*?-->"#, with: "", options: options)
+        lyrics = lyrics.pregReplace(
+            pattern: #"<(script|style|noscript)\b[^>]*>.*?</\1\s*>"#,
+            with: "",
+            options: options
+        )
+
+        // 表記ではなく読みを使う。rbタグがない新しいruby記法にも対応する。
+        lyrics = lyrics.pregReplace(
+            pattern: #"<ruby\b[^>]*>.*?<rt\b[^>]*>(.*?)</rt\s*>.*?</ruby\s*>"#,
+            with: "$1",
+            options: options
+        )
+        lyrics = lyrics.pregReplace(pattern: #"<rt\b[^>]*>.*?</rt\s*>"#, with: "", options: options)
+        lyrics = lyrics.pregReplace(pattern: #"<rp\b[^>]*>.*?</rp\s*>"#, with: "", options: options)
+
+        // HTMLデコードで改行が空白に畳み込まれないよう、意味のある改行を保護する。
+        let lineBreakMarker = "\u{E000}"
+        lyrics = lyrics.pregReplace(
+            pattern: #"<br\s*/?\s*>"#,
+            with: lineBreakMarker,
+            options: options
+        )
+        lyrics = lyrics.pregReplace(
+            pattern: #"</(?:p|div|li|blockquote|pre|h[1-6])\s*>"#,
+            with: lineBreakMarker,
+            options: options
+        )
+        lyrics = lyrics.pregReplace(pattern: #"<[^>]+>"#, with: "", options: options)
+
+        // HTMLソースを整形するための改行は、歌詞の改行として扱わない。
+        lyrics = lyrics.replacingOccurrences(of: "\r\n", with: "")
+        lyrics = lyrics.replacingOccurrences(of: "\r", with: "")
+        lyrics = lyrics.replacingOccurrences(of: "\n", with: "")
+        lyrics = lyrics.htmlDecoded
+            .replacingOccurrences(of: "\u{00a0}", with: " ")
+            .replacingOccurrences(of: lineBreakMarker, with: "\n")
+
+        let annotationWords = ["転載", "動画", "ブログ", "歌詞", "書き起こし", "抜粋", "PV"]
+        var resultLines: [String] = []
+        var previousLineWasEmpty = true
+        var hasFoundLyricsLine = false
+
+        for line in lyrics.components(separatedBy: "\n") {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            let isParenthesized = (trimmedLine.hasPrefix("(") && trimmedLine.hasSuffix(")"))
+                || (trimmedLine.hasPrefix("（") && trimmedLine.hasSuffix("）"))
+            let isLeadingAnnotation = !hasFoundLyricsLine
+                && isParenthesized
+                && annotationWords.contains {
+                    trimmedLine.localizedCaseInsensitiveContains($0)
+                }
+            if isLeadingAnnotation {
+                continue
+            }
+
+            if trimmedLine.isEmpty {
+                if !previousLineWasEmpty {
+                    resultLines.append("")
+                }
+                previousLineWasEmpty = true
+            } else {
+                resultLines.append(trimmedLine)
+                previousLineWasEmpty = false
+                hasFoundLyricsLine = true
+            }
         }
-        while lyrics.suffix(1) == "\n" {
-            lyrics = String(lyrics[..<lyrics.index(lyrics.endIndex, offsetBy: -1)])
+
+        while resultLines.last?.isEmpty == true {
+            resultLines.removeLast()
         }
-        //特殊文字
-        lyrics = lyrics.pregReplace(pattern: "&lt;", with: "<")
-        lyrics = lyrics.pregReplace(pattern: "&gt;", with: ">")
-        lyrics = lyrics.pregReplace(pattern: "&nbsp;", with: " ")
-        lyrics = lyrics.pregReplace(pattern: "&quot;", with: "\"")
-        lyrics = lyrics.pregReplace(pattern: "&amp;", with: "&")
-        
-        return lyrics
+        return resultLines.joined(separator: "\n")
     }
     
     @IBAction func returnToMe(segue: UIStoryboardSegue){
         //print(segue.identifier)
         if segue.identifier == "fromEditMenu" {
-            print("fromEditMenu")
-            print(nidankaiModoru)
+            // print("fromEditMenu")
+            // print(nidankaiModoru)
             if nidankaiModoru {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: {
                     self.performSegue(withIdentifier: "fromEditView", sender: nil)
                 })
             }
         }
+        
+        // print("return to me")
+        // print(timetagOffsetMs)
+        // print(timetagRateFactor)
     }
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        print("prepare")
+        // print("prepare")
         //print(segue.identifier as String!)
         //データ保存
         if segue.identifier == "fromEditView" {
+            // Selectorへ戻すプレイヤーに編集時の再生位置を残さない
+            if let player = moviePlayerViewController?.player {
+                player.pause()
+                player.seek(to: CMTime(seconds: 0, preferredTimescale: Int32(NSEC_PER_SEC)))
+            }
+
             // userDataに現在編集中のデータを保存。 <- DB送信成功後にnil消去する
             self.autoSave() // userData.MySpoonSet[selectLevel.sqlID] = mySpoon.export(mode: .UserData)
             
@@ -1325,7 +1458,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             if let sp = mySpoon.atTag["Speed"] {
                 speed = Int(sp)!
             }
-            print("post note")
+            // print("post note")
             ServerDataHandler().postLevelUpdate(
                 sqlID: selectLevel.sqlID,
                 nicoURL: selectMusic.movieURL,
@@ -1337,17 +1470,17 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                 userPASS: password,
                 callback: { (retStr, error) in
                     if error != nil {
-                        print("preDataPost error")
+                        // print("preDataPost error")
                         return
                     }
                     if retStr.pregMatche(pattern: "<!--EchoHtmlMes_OK-->"){
                         //送信成功したらuserDataを消す。
-                        print("preDataPost OK")
+                        // print("preDataPost OK")
                         self.userData.MySpoonSet[self.selectLevel.sqlID] = nil
                         //取得データの更新
                         ServerDataHandler().DownloadMusicDataAndUserNameData { (error) in
                             if let error = error {
-                                print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
+                                // print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
                             }
                             if let vc = segue.destination as? Selector {
                                 vc.SetMusicToCarousel()
@@ -1355,17 +1488,17 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                             return
                         }
                     }
-                    print(retStr) //何らかの理由で失敗。userData残る。
+                    // print(retStr) //何らかの理由で失敗。userData残る。
                 }
             )
             
         }else if segue.identifier == "toEditorMenu" {
-            print("toEditorMenu")
+            // print("toEditorMenu")
             let editorMenuController:EditorMenu = segue.destination as! EditorMenu
             editorMenuController.editorViewController = self
             
         }else if segue.identifier == "toEditorGame" {
-            print("toEditorGame")
+            // print("toEditorGame")
             self.autoSave()
             
             let editorGameController:EditorGame = segue.destination as! EditorGame

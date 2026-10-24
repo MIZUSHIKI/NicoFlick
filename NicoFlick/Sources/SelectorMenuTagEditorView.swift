@@ -25,7 +25,7 @@ class TagEditor: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        print(tableviewForTagController.list)
+        // print(tableviewForTagController.list)
         maeText = tableviewForTagController.list.joined(separator: " ")
         textView.text = maeText
         //Indicatorを作成
@@ -52,7 +52,7 @@ class TagEditor: UIViewController {
         if maeText != textView.text {
             maeText = textView.text
             let postText = textView.text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " ").pregReplace(pattern: "\\s+", with: " ")// replacingOccurrences(of: "  ", with: " ")
-            print(textView.text)
+            // print(textView.text)
             
             if let id = tableviewForTagController.currentMusic.sqlID {
                 segueing = true //遷移中であることを記憶。しないと遷移中に連続タップで何回もデータロードされる。
@@ -75,7 +75,7 @@ class TagEditor: UIViewController {
                     //データベース接続 1：まずmusicデータロード。
                     ServerDataHandler().DownloadMusicData { (error) in
                         if let error = error {
-                            print(error)
+                            // print(error)
                             //callback(error)
                             //return
                         }
@@ -111,14 +111,20 @@ class TagEditor: UIViewController {
         let req = URLRequest(url: url!, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
         session.dataTask(with: req){(data,responce,error) in
             if (error != nil) {
-                print("error") //エラー。例えばオフラインとか
+                // print("error") //エラー。例えばオフラインとか
                 DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
                     //Indicator隠す
                     self.activityIndicator.stopAnimating()
                 }
                 return
             }
-            let resText = String(data: data!, encoding:.utf8)!
+            guard let data else {
+                DispatchQueue.main.async {
+                    self.activityIndicator.stopAnimating()
+                }
+                return
+            }
+            let resText = String(decoding: data, as: UTF8.self)
             if resText.pregMatche(pattern: "<nicovideo_thumb_response status=\"ok\">") {
                 DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
                     //self.movieURLTextField.text = resText.pregMatche_firstString(pattern: "<watch_url>(.*?)</watch_url>")
@@ -145,7 +151,7 @@ class TagEditor: UIViewController {
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        print("seg")
+        // print("seg")
     }
     //遷移の許可
     override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {

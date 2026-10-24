@@ -55,7 +55,7 @@ class Spoon {
         self.oya = oya
     }
     deinit {
-        print("deinit")
+        // print("deinit")
         label?.removeFromSuperview()
         wakuBorder?.removeFromSuperview()
         bottomBorder?.removeFromSuperview()
@@ -117,7 +117,7 @@ class Spoon {
 class Spoons {
     var spoons:[Spoon] = [] {
         didSet {
-            print("spoons didset")
+            // print("spoons didset")
             if cursorIndex >= spoons.count {
                 cursorIndex = spoons.count - 1
             }
@@ -164,7 +164,7 @@ class Spoons {
         var ofs = 0
         if str_.pregMatche(pattern: "^@(.*?)\\s*=\\s*(.*?)$", matches:&ans) {
             for index in 0..<(ans.count/3) {
-                print("あっと\(ans[index*3+1]) = \(ans[index*3+2])")
+                // print("あっと\(ans[index*3+1]) = \(ans[index*3+2])")
                 if ans[index*3+1] == "OffsetWhenPosted" {
                     ofs = Int( ans[index*3+2] ) ?? 0
                 }
@@ -178,9 +178,9 @@ class Spoons {
             // [**:**.**]とかでnoteだけの記録にも対応しとく
             return
         }
-        print(ans)
+        // print(ans)
         for an in ans {
-            print(an)
+            // print(an)
             if an.count == 10 {//Timetag
                 if maeTimetag != "" {
                     let spoon = Spoon(word: "",
@@ -207,7 +207,7 @@ class Spoons {
             }
         }
         //テキスト末尾の連続改行を削る
-        print(self.spoons.count)
+        // print(self.spoons.count)
         if self.spoons.count >= 2 {
             for _ in 2...self.spoons.count {
                 if self.spoons[self.spoons.count - 2].word == "\n" && self.spoons[self.spoons.count - 1].word == "\n" {
@@ -232,7 +232,7 @@ class Spoons {
         if cursorIndex <= 0 || spoons.count <= cursorIndex {
             return false
         }
-        print("remove")
+        // print("remove")
         spoons.remove(at: cursorIndex-1)
         GyoDataKosin()
         return true
@@ -459,7 +459,7 @@ class Spoons {
         guard let label = spoons[cursorIndex].label else {
             return
         }
-        print("x: \(label.frame.origin.x - 50 / view.zoomScale),y: \(label.frame.origin.y - 50 / view.zoomScale),width:\(label.frame.size.width + 200 / view.zoomScale),height: \(label.frame.size.height + 200 / view.zoomScale)")
+        // print("x: \(label.frame.origin.x - 50 / view.zoomScale),y: \(label.frame.origin.y - 50 / view.zoomScale),width:\(label.frame.size.width + 200 / view.zoomScale),height: \(label.frame.size.height + 200 / view.zoomScale)")
         view.scrollRectToVisible(
             CGRect(x: label.frame.origin.x * view.zoomScale - 50,
                    y: label.frame.origin.y * view.zoomScale - 50,
@@ -621,20 +621,192 @@ class Spoons {
             }
             let jikanSa = spoon.miriSec - maeMirisec
             maeMirisec = spoon.miriSec
-            if jikanSa >= 3000 { continue }
+            // 時系列を逆行する不正なタイムタグと、3秒以上の休符は平均から除外する。
+            if jikanSa < 0 || jikanSa >= 3000 { continue }
             sumJikanSa += jikanSa
             count += 1
         }
         if count == 0 { return 1 }
         let avgJikanSa = Double(sumJikanSa / count)
-        var speed = 150
-        if let sp = atTag["speed"] {
-            speed = Int(sp)!
-        }
-        var hoshi = Int(round( (15 - sqrt((avgJikanSa + 50) / 10)) * (1.0 + Double(speed - 150) / 500) ))
+        var hoshi = Int(round(15 - sqrt((avgJikanSa + 50) / 10)))
         if hoshi < 1 { hoshi = 1 }
         if hoshi > 10 { hoshi = 10 }
         return hoshi
+    }
+    
+    /// ノーツ間隔・入力内容・密集の頻度から、譜面の参考難易度（星1〜20）を求める。
+    ///
+    /// 要点:
+    /// - 星1〜7は旧式を返し、星8以上をこの密度評価で細分化する。
+    /// - 通常の忙しさ50%、難所35%、繰り返し現れる2秒密集15%で基礎点を作る。
+    /// - タップ文字と反復入力は少し易しく扱う。
+    /// - 星8〜13は直線、星14〜20は段差のない平方根曲線で高難度ほど厳しくする。
+    ///
+    /// 詳細:
+    /// 1. FULLがfalseなら、旧式と同じ条件でゲーム対象ノーツだけを抽出する。
+    /// 2. 入力の重みは通常フリック1.0、中央タップ0.82、同字連続はさらに0.78倍、
+    ///    2〜4文字周期の反復はさらに0.90倍とする。
+    /// 3. 隣接ノーツ間隔を1秒あたりの重み付き入力数へ変換する。
+    ///    80ms未満は80msとして上限を設け、3秒以上の間隔は休符として除外する。
+    /// 4. 間隔密度の75パーセンタイル（持続的な忙しさ）と90パーセンタイル
+    ///    （上位10%の難所）を求める。
+    /// 5. 曲全体を500ms刻みで走査し、直前2秒間の密度の90パーセンタイルを求める。
+    ///    最大値ではないため、一度だけの密集より繰り返す密集を高く評価する。
+    /// 6. difficulty = P75×0.50 + P90×0.35 + 2秒窓P90×0.15。
+    ///    linearStar = 1 + difficulty×1.75 とし、13を超えた部分を平方根型に圧縮する。
+    ///    この曲線では直線評価25が星20となり、最後に星8〜20へ丸める。
+    func getLevelStarReferencevalueV2(FULL: Bool = false) -> Int {
+        // 星1〜7は旧式の値をそのまま返し、不要なV2計算を省略する。
+        let currentStar = getLevelStarReferencevalue(FULL: FULL)
+        if currentStar <= 7 {
+            return currentStar
+        }
+
+        // 実譜面との比較で調整する値は、ここに集約する。
+        let tapWeight = 0.82
+        let sameCharacterWeight = 0.78
+        let repeatedPhraseWeight = 0.90
+        let minimumInterval = 80
+        let ignoredInterval = 3000
+        let burstWindow = 2000
+        let burstSampleInterval = 500
+
+        var latestTargetTime = -1
+        let targetSpoons = spoons.filter {
+            if $0.miriSec < 0 {
+                return false
+            }
+            if !(FULL || !$0.isCheckableWord || $0.note) {
+                return false
+            }
+            // 2秒窓は時刻昇順が前提。末尾の[00:00.00]など、逆行する異常値を除外する。
+            if $0.miriSec < latestTargetTime {
+                return false
+            }
+            latestTargetTime = $0.miriSec
+            return true
+        }
+        guard targetSpoons.count >= 2 else {
+            return 1
+        }
+
+        func normalizedWord(_ word: String) -> String {
+            return word.applyingTransform(.hiraganaToKatakana, reverse: true) ?? word
+        }
+
+        // かな入力で中央をタップする文字。濁音・半濁音も同じ操作量として扱う。
+        let tapCharacters = "あかさたなはまやらわがざだばぱアカサタナハマヤラワガザダバパ"
+        func inputWeight(at index: Int) -> Double {
+            let word = normalizedWord(targetSpoons[index].word)
+            var weight = tapCharacters.contains(word) ? tapWeight : 1.0
+
+            if index > 0 && word == normalizedWord(targetSpoons[index - 1].word) {
+                weight *= sameCharacterWeight
+            } else {
+                // 「はいはい」のような2〜4文字周期の反復を、初見の文字列より少し易しくする。
+                for distance in 2...4 where index >= distance {
+                    if word == normalizedWord(targetSpoons[index - distance].word) {
+                        weight *= repeatedPhraseWeight
+                        break
+                    }
+                }
+            }
+            return weight
+        }
+
+        var strains: [Double] = []
+        var timedWeights: [(time: Int, weight: Double)] = []
+
+        for index in targetSpoons.indices {
+            let weight = inputWeight(at: index)
+            timedWeights.append((targetSpoons[index].miriSec, weight))
+
+            guard index > 0 else {
+                continue
+            }
+            let interval = targetSpoons[index].miriSec - targetSpoons[index - 1].miriSec
+            guard interval >= 0 && interval < ignoredInterval else {
+                continue
+            }
+
+            // 前後両方の操作を考慮し、異常に短い同時刻ノーツは上限付きで評価する。
+            let transitionWeight = (inputWeight(at: index - 1) + weight) / 2.0
+            let actionsPerSecond = 1000.0 / Double(max(interval, minimumInterval))
+            strains.append(actionsPerSecond * transitionWeight)
+        }
+        guard !strains.isEmpty else {
+            return 1
+        }
+
+        let sortedStrains = strains.sorted()
+        func percentile(of sortedValues: [Double], at value: Double) -> Double {
+            let position = Int(round(Double(sortedValues.count - 1) * value))
+            return sortedValues[position]
+        }
+
+        // 曲全体を一定間隔で走査し、各時点から直前2秒間の重み付き入力密度を求める。
+        // ノーツごとの窓ではなく時間軸上の窓にすることで、密集の回数と継続時間を反映する。
+        var burstRates: [Double] = []
+        var burstStart = 0
+        var burstEnd = 0
+        var burstWeight = 0.0
+        var sampleTime = timedWeights[0].time
+        let lastTime = timedWeights[timedWeights.count - 1].time
+
+        while sampleTime <= lastTime {
+            while burstEnd < timedWeights.count && timedWeights[burstEnd].time <= sampleTime {
+                burstWeight += timedWeights[burstEnd].weight
+                burstEnd += 1
+            }
+            while burstStart < burstEnd
+                && timedWeights[burstStart].time < sampleTime - burstWindow {
+                burstWeight -= timedWeights[burstStart].weight
+                burstStart += 1
+            }
+            burstRates.append(
+                burstWeight * 1000.0 / Double(burstWindow)
+            )
+            sampleTime += burstSampleInterval
+        }
+
+        // 最後のノーツがサンプル時刻と一致しない場合も、終端の2秒窓を評価する。
+        if (lastTime - timedWeights[0].time) % burstSampleInterval != 0 {
+            while burstEnd < timedWeights.count {
+                burstWeight += timedWeights[burstEnd].weight
+                burstEnd += 1
+            }
+            while burstStart < burstEnd
+                && timedWeights[burstStart].time < lastTime - burstWindow {
+                burstWeight -= timedWeights[burstStart].weight
+                burstStart += 1
+            }
+            burstRates.append(
+                burstWeight * 1000.0 / Double(burstWindow)
+            )
+        }
+
+        let sortedBurstRates = burstRates.sorted()
+
+        // 持続力50%、難所35%、繰り返し現れる2秒密集15%。
+        let difficulty = percentile(of: sortedStrains, at: 0.75) * 0.50
+            + percentile(of: sortedStrains, at: 0.90) * 0.35
+            + percentile(of: sortedBurstRates, at: 0.90) * 0.15
+
+        // 以前の3.2倍では約4.4入力/秒で星15に飽和していたため、傾きを緩める。
+        let linearStar = 1.0 + difficulty * 1.75
+
+        // 星13までは直線評価をそのまま使い、それ以降は緩やかな平方根型に圧縮する。
+        // 13の境界では値と傾きがともに連続するため、難易度の段差は生じない。
+        // 曲線係数は、直線評価の星25が曲線評価の星20になるように決めている。
+        let curveStartStar = 13.0
+        let excessOverCurveStart = max(0.0, linearStar - curveStartStar)
+        let highDifficultyCurve = 95.0 / 588.0
+        let curvedStar = linearStar <= curveStartStar
+            ? linearStar
+            : curveStartStar + excessOverCurveStart
+                / sqrt(1.0 + highDifficultyCurve * excessOverCurveStart)
+        let estimatedStar = Int(round(curvedStar))
+        return min(20, max(8, estimatedStar))
     }
     
     //履歴
@@ -696,7 +868,7 @@ class Spoons {
         }
         rirekiNowIndex -= 1
         let rirekiSpoon = rirekiSpoonSets[rirekiNowIndex]
-        print("rireki \(rirekiSpoon.index-1)")
+        // print("rireki \(rirekiSpoon.index-1)")
         let ri = rirekiSpoon.index-1
         var retIndex = rirekiSpoon.index
         
@@ -714,9 +886,9 @@ class Spoons {
                 }
                 //Spoon追加
                 let tempSpoons = Spoons(timetagText: timetagText)
-                print("ri \(ri)")
-                print("ret \(retIndex)")
-                print("undo \(rirekiSpoon.index-1)")
+                // print("ri \(ri)")
+                // print("ret \(retIndex)")
+                // print("undo \(rirekiSpoon.index-1)")
                 self.insert(spoons: tempSpoons, index: rirekiSpoon.index-1)
                 retIndex -= 1
             }else {
@@ -727,7 +899,7 @@ class Spoons {
                 GyoDataKosin()
                 retIndex -= 1
             }
-            print("word")
+            // print("word")
         default:
             break
         }
@@ -769,7 +941,7 @@ class Spoons {
         case .Note:
             spoons[rirekiSpoon.index].note = rirekiSpoon.new[0].note
         case .Word:
-            print("word")
+            // print("word")
             if rirekiSpoon.new.count == 0 {
                 // BackDeleteをした（から削除）
                 for _ in 0 ..< rirekiSpoon.mae.count {

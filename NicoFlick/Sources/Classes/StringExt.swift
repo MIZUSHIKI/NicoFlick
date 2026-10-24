@@ -5,6 +5,14 @@ extension String {
         let string_NS = self as NSString
         return string_NS.length
     }
+    // 改行でテキストを分割
+    var lines: [String] {
+        var lines = [String]()
+        self.enumerateLines { line, stop in
+            lines.append(line)
+        }
+        return lines
+    }
     
     var urlEncoded: String {
         // 半角英数字 + "/?-._~" のキャラクタセットを定義
@@ -74,6 +82,7 @@ extension String {
         return matches[1]
     }
     //正規表現の検索結果を利用できます
+    // pregMatche_strings [0]全体, [1](), [2](), ...
     func pregMatche_strings(pattern: String, options: NSRegularExpression.Options = [NSRegularExpression.Options.dotMatchesLineSeparators,NSRegularExpression.Options.anchorsMatchLines]) -> [String] {
         var matches:[String] = []
         guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
@@ -139,7 +148,7 @@ extension String {
             let attributedString = try NSAttributedString(data: encodedData, options: attributedOptions, documentAttributes: nil)
             self = attributedString.string
         } catch {
-            print("Error: \(error)")
+            // print("Error: \(error)")
             
         }
     }
@@ -180,7 +189,7 @@ extension String {
     }
     func timetagToSeconds() -> Double {
         var ans:[String] = []
-        print(self)
+        // print(self)
         if self.pregMatche(pattern: "\\[(\\d\\d)\\:(\\d\\d)[\\:|\\.](\\d\\d)\\]", matches: &ans){
             return Double(ans[1])!*60 + Double(ans[2])! + Double(ans[3])!/100
         }
@@ -188,7 +197,7 @@ extension String {
     }
     func timeToSec(FailureValue:Int = -1) -> Int {
         var ans:[String] = []
-        print(self)
+        // print(self)
         if self.pregMatche(pattern: "(\\d+)\\:(\\d+)", matches: &ans){
             return Int(ans[1])!*60 + Int(ans[2])!
         }
@@ -203,7 +212,7 @@ extension String {
         var tameoki = ""
         let words = self.map { String($0) }
         for word in words {
-            print(word)
+            // print(word)
             if word.isKanji || word.isHiragana {
                 tameoki += word
             }else{
@@ -307,9 +316,9 @@ final class TextConverter {
  var text = "Swwwwift"
  
  if text.pregMatche(pattern: "Sw*ift"){
- print("マッチしました")
+ // print("マッチしました")
  }else{
- print("マッチしていません")
+ // print("マッチしていません")
  }
  　　↓
  マッチしました
@@ -320,11 +329,11 @@ final class TextConverter {
  var text = "Swwwwift"
  var ans: [String] = []
  if text.pregMatche(pattern: "S(w+)ift", matches: &ans) {
- print("マッチしました")
+ // print("マッチしました")
  }else {
- print("マッチしていません")
+ // print("マッチしていません")
  }
- print(ans)
+ // print(ans)
  　　↓
  マッチしました
  ["Swwwwift","wwww"]
@@ -333,7 +342,7 @@ final class TextConverter {
  置換
  var text = "SwwwwiftLove"
  let ans = text.pregReplace(pattern: "Sw*ift", with: "")
- print(ans)
+ // print(ans)
  　　↓
  Love
  */

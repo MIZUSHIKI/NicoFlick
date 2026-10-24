@@ -158,6 +158,30 @@ class UIDecorationLabel: UILabel {
     @IBInspectable var strokeShadowX: CGFloat = 0
     @IBInspectable var strokeShadowY: CGFloat = 0
     @IBInspectable var strokeShadowColor: UIColor = UIColor.clear
+
+    private let referenceWidth: CGFloat = 375
+    private let minimumFontSize: CGFloat = 40
+    private let maximumFontSize: CGFloat = 80
+    private var referenceFontSize: CGFloat?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+
+        if referenceFontSize == nil {
+            referenceFontSize = font.pointSize
+        }
+
+        guard let referenceFontSize, bounds.width > 0 else {
+            return
+        }
+
+        let scaledFontSize = referenceFontSize * bounds.width / referenceWidth
+        let fontSize = min(max(scaledFontSize, minimumFontSize), maximumFontSize)
+
+        if abs(font.pointSize - fontSize) > 0.1 {
+            font = font.withSize(fontSize)
+        }
+    }
     
     override func drawText(in rect: CGRect) {
         // stroke
@@ -299,6 +323,7 @@ class UICustomButton: UIButton {
     @IBInspectable var borderColor: UIColor = .clear
     @IBInspectable var borderWidth: CGFloat = 0
     @IBInspectable var cornerRadius: CGFloat = 0
+    @IBInspectable var usesCapsuleCornerRadius: Bool = false
     @IBInspectable var shadowColor: UIColor = .clear
     @IBInspectable var shadowOffset: CGFloat = 0
     @IBInspectable var shadowOpacity: Float = 0
@@ -320,7 +345,7 @@ class UICustomButton: UIButton {
         self.layer.borderWidth = self.borderWidth
         self.layer.borderColor = self.borderColor.cgColor
         
-        self.layer.cornerRadius = self.cornerRadius
+        self.layer.cornerRadius = self.usesCapsuleCornerRadius ? self.bounds.height / 2 : self.cornerRadius
         
         self.layer.shadowColor = self.shadowColor.cgColor
         self.layer.shadowRadius = 1
@@ -361,6 +386,170 @@ class UICustomView: UIView {
         self.layer.shadowRadius = 1
         self.layer.shadowOffset = CGSize(width: self.shadowOffset, height: self.shadowOffset)
         self.layer.shadowOpacity = self.shadowOpacity
+    }
+}
+
+@IBDesignable
+final class OutlinedLabel: UILabel {
+    @IBInspectable var outlineColor: UIColor = .black {
+        didSet {
+            setNeedsDisplay()
+        }
+    }
+    @IBInspectable var outlineWidth: CGFloat = 0 {
+        didSet {
+            invalidateIntrinsicContentSize()
+            setNeedsDisplay()
+        }
+    }
+
+    @IBInspectable var shadeColor: UIColor = .black {
+        didSet { setNeedsDisplay() }
+    }
+
+    @IBInspectable var shadeRadius: CGFloat = 0 {
+        didSet { setNeedsDisplay() }
+    }
+
+    @IBInspectable var shadeOpacity: CGFloat = 0.8 {
+        didSet { setNeedsDisplay() }
+    }
+
+    override var intrinsicContentSize: CGSize {
+        let size = super.intrinsicContentSize
+        guard outlineWidth > 0 else { return size }
+
+        let padding = outlineInset * 2
+        return CGSize(width: size.width + padding, height: size.height + padding)
+    }
+
+    private var outlineInset: CGFloat {
+        let displayScale = max(traitCollection.displayScale, 1)
+        return ceil(outlineWidth / 2) + (1 / displayScale)
+    }
+
+    override func drawText(in rect: CGRect) {
+        guard let context = UIGraphicsGetCurrentContext() else {
+            super.drawText(in: rect)
+            return
+        }
+
+        // 描画領域を狭めるとフォントの縮小や末尾省略が発生するため、
+        // 幅は維持したまま、文字寄せに応じて描画位置だけをずらす。
+        let inset = outlineWidth > 0 ? outlineInset : 0
+        let horizontalOffset: CGFloat
+        switch textAlignment {
+        case .left:
+            horizontalOffset = inset
+        case .right:
+            horizontalOffset = -inset
+        case .natural:
+            horizontalOffset = effectiveUserInterfaceLayoutDirection == .rightToLeft
+                ? -inset
+                : inset
+        default:
+            horizontalOffset = 0
+        }
+        let drawingRect = rect.offsetBy(dx: horizontalOffset, dy: 0)
+
+        let originalTextColor = textColor
+        let originalShadowOffset = shadowOffset
+
+        context.saveGState()
+
+        if shadeRadius > 0, shadeOpacity > 0 {
+            let resolvedShadeColor = shadeColor.resolvedColor(with: traitCollection)
+            let opacity = min(max(shadeOpacity, 0), 1)
+            let shadowColor = resolvedShadeColor.withAlphaComponent(
+                resolvedShadeColor.cgColor.alpha * opacity
+            )
+            context.setShadow(offset: .zero, blur: shadeRadius, color: shadowColor.cgColor)
+            shadowOffset = .zero
+            super.drawText(in: drawingRect)
+            context.setShadow(offset: .zero, blur: 0, color: nil)
+        }
+
+        if outlineWidth > 0 {
+            // 縁取りを不透明な色で一度描き、レイヤー全体へ透明度を適用する。
+            // 文字同士の輪郭が重なる部分で透明度が重複するのを防ぐ。
+            let resolvedOutlineColor = outlineColor.resolvedColor(with: traitCollection)
+            let outlineAlpha = resolvedOutlineColor.cgColor.alpha
+
+            context.setLineWidth(outlineWidth)
+            context.setLineJoin(.round)
+            context.setTextDrawingMode(.stroke)
+
+            context.saveGState()
+            context.setAlpha(outlineAlpha)
+            context.beginTransparencyLayer(auxiliaryInfo: nil)
+            textColor = resolvedOutlineColor.withAlphaComponent(1)
+            shadowOffset = .zero
+            super.drawText(in: drawingRect)
+            context.endTransparencyLayer()
+            context.restoreGState()
+        }
+
+        // 文字本体を描画
+        context.setTextDrawingMode(.fill)
+
+        textColor = originalTextColor
+        shadowOffset = originalShadowOffset
+        super.drawText(in: drawingRect)
+
+        context.restoreGState()
+    }
+}
+
+@IBDesignable
+final class OutlinedButton: UIButton {
+    @IBInspectable var outlineColor: UIColor = .black {
+        didSet {
+            updateOutlinedTitles()
+        }
+    }
+
+    @IBInspectable var outlineWidth: CGFloat = 2 {
+        didSet {
+            updateOutlinedTitles()
+        }
+    }
+
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        updateOutlinedTitles()
+    }
+
+    override func prepareForInterfaceBuilder() {
+        super.prepareForInterfaceBuilder()
+        updateOutlinedTitles()
+    }
+
+    private func updateOutlinedTitles() {
+        let states: [UIControl.State] = [
+            .normal,
+            .highlighted,
+            .disabled,
+            .selected,
+            [.selected, .highlighted]
+        ]
+
+        for state in states {
+            guard let title = title(for: state) else {
+                continue
+            }
+
+            let titleColor = titleColor(for: state) ?? tintColor ?? .white
+            let attributes: [NSAttributedString.Key: Any] = [
+                .foregroundColor: titleColor,
+                .strokeColor: outlineColor,
+                .strokeWidth: -abs(outlineWidth)
+            ]
+
+            setAttributedTitle(
+                NSAttributedString(string: title, attributes: attributes),
+                for: state
+            )
+        }
     }
 }
 

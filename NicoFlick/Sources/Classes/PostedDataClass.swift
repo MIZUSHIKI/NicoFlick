@@ -36,95 +36,115 @@ class commentData {
 
 
 class userNameDataLists {
-    
     static let sharedInstance = userNameDataLists()
-    var userNames: [String:userNameData] = [:]
-    
-    //初期データ取得管理用フラグ
-    var usernameJsonNumCount = 0
-    var usernameJsonCreateTime = 0
 
-    func reset(){
-        userNames = [:]
-        usernameJsonNumCount = 0
-        usernameJsonCreateTime = 0
+    private struct Record: Codable {
+        let sqlID: Int
+        let name: String
+        let updateTime: Int
     }
-    func setUserName(sqlID:Int, userID:String, userName:String, updateTime:Int){
-        if userNames[userID] != nil {
-            userNames[userID]?.name = userName
-            userNames[userID]?.sqlUpdateTime = updateTime
-            return
-        }
-        let usernamedata = userNameData()
-        usernamedata.sqlID = sqlID
-        usernamedata.name = userName
-        usernamedata.sqlUpdateTime = updateTime
-        
-        userNames[userID] = usernamedata
-        //print(userID)
-        //print(String(format: "userNamesCount=%d", userNames.count))
+
+    private struct Snapshot: Codable {
+        var names: [String: Record] = [:]
+        var nextChunk = 0
+        var createTime = 0
     }
-    
-    func getUserName(userID:String) -> String {
-        if let usernamedata = userNames[userID] {
-            if usernamedata.name == "" {
-                return "NO_NAME"
+
+    // All reads, batch commits and cache resets use the same lock. Records are values,
+    // so no mutable objects escape to UI readers.
+    private let lock = NSLock()
+    private var snapshot = Snapshot()
+    private var restored = false
+    private var revision = 0
+    private let storageKey = "UserNamesSnapshot"
+
+    var usernameJsonNumCount: Int { synchronized { snapshot.nextChunk } }
+    var usernameJsonCreateTime: Int { synchronized { snapshot.createTime } }
+    var generation: Int { synchronized { revision } }
+
+    private func synchronized<T>(_ body: () throws -> T) rethrows -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return try body()
+    }
+
+    func restoreIfNeeded() {
+        synchronized {
+            guard !restored else { return }
+            restored = true
+            if let saved = LargeValueStore.read(storageKey),
+               let decoded = try? JSONDecoder().decode(Snapshot.self, from: Data(saved.utf8)) {
+                snapshot = decoded
+                return
             }
-            return usernamedata.name
-        }else {
-            return "NO_NAME"
+            // Migrate the existing cache on the next successful commit.
+            let userData = UserData.sharedInstance
+            if let records = try? decodeRecords(Data(userData.UserNamesJson.utf8)) {
+                snapshot.names = records
+                snapshot.nextChunk = userData.UserNamesServerJsonNumCount
+                snapshot.createTime = userData.UserNamesServerJsonCreateTime
+            }
         }
     }
-    
+
+    func reset() {
+        synchronized {
+            revision += 1 // Reject any response that started before this reset.
+            snapshot = Snapshot()
+            restored = true
+            if let data = try? JSONEncoder().encode(snapshot) {
+                LargeValueStore.write(String(decoding: data, as: UTF8.self), key: storageKey)
+            }
+        }
+    }
+
+    func getUserName(userID: String) -> String {
+        synchronized {
+            guard let name = snapshot.names[userID]?.name, !name.isEmpty else { return "NO_NAME" }
+            return name
+        }
+    }
+
     func getLastUpdateTime() -> Int {
-        var time = 0
-        for (_,userName) in userNames {
-            if time < userName.sqlUpdateTime {
-                time = userName.sqlUpdateTime
-            }
-        }
-        return time
+        synchronized { snapshot.names.values.map { $0.updateTime }.max() ?? 0 }
     }
-    
-    // username Json化。UserData保存用
-    func toUserNamesJsonString() -> String {
-        var jArray:[[String:String]] = []
-        for (userID,usernamedata) in userNames {
-            var jObject:[String:String] = [:]
-            jObject["id"] = String(usernamedata.sqlID)
-            jObject["userID"] = userID
-            jObject["name"] = usernamedata.name
-            jObject["updateTime"] = String(usernamedata.sqlUpdateTime)
-            
-            jArray.append(jObject)
+
+    private func decodeRecords(_ data: Data) throws -> [String: Record] {
+        var records: [String: Record] = [:]
+        for item in try decodeStringDictionaryArray(from: data) {
+            let userID = try requiredJSONString(item, key: "userID")
+            records[userID] = Record(sqlID: try requiredJSONInt(item, key: "id"),
+                                     name: try requiredJSONString(item, key: "name"),
+                                     updateTime: try requiredJSONInt(item, key: "updateTime"))
         }
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: jArray, options: [])
-            let jsonStr = String(bytes: jsonData, encoding: .utf8)!
-            //print(jsonStr)
-            return jsonStr
-        } catch (let e) {
-            print(e)
-            return ""
-        }
+        return records
     }
-    //保存データから読み込み
-    func loadUserNamesJsonString(jsonStr:String){
-        if( jsonStr=="" ){ return }
-        let jsonData: Data =  jsonStr.data(using: String.Encoding.utf8)!
-        do{
-            //ロードしたusernameデータを処理
-            let jsonArray = (try JSONSerialization.jsonObject(with: jsonData, options: [])) as! Array<Dictionary<String,String>>
-            for dic in jsonArray {
-                self.setUserName(
-                    sqlID: Int(dic["id"]!)!,
-                    userID: dic["userID"]!,
-                    userName: dic["name"]!,
-                    updateTime: Int(dic["updateTime"]!)!
-                )
+
+    func applyDownloadedData(_ data: Data, generation: Int,
+                             chunk: Int? = nil, createTime: Int? = nil,
+                             nextDataExists: Bool? = nil) throws {
+        // Validate the entire response before changing the last-update watermark.
+        let records = try decodeRecords(data)
+        try synchronized {
+            guard generation == revision else { throw URLError(.cancelled) }
+            var updated = snapshot
+            if let createTime {
+                if updated.createTime != 0 && updated.createTime != createTime {
+                    updated = Snapshot()
+                }
+                updated.createTime = createTime
             }
-        }catch (let e) {
-            print(e)
+            for (id, record) in records { updated.names[id] = record }
+            if let chunk, let nextDataExists {
+                updated.nextChunk = nextDataExists ? chunk + 1 : -1
+            }
+            // Names and the resume position are one atomically replaced file.
+            // A failed save leaves both the in-memory and persisted watermark unchanged.
+            let encoded = try JSONEncoder().encode(updated)
+            guard LargeValueStore.write(String(decoding: encoded, as: UTF8.self), key: storageKey) else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            snapshot = updated
         }
     }
 }
@@ -193,7 +213,7 @@ class ScoreDataLists {
             let jsonStr = String(bytes: jsonData, encoding: .utf8)!
             return jsonStr
         } catch (let e) {
-            print(e)
+            // print(e)
             return ""
         }
     }
@@ -203,16 +223,16 @@ class ScoreDataLists {
         let jsonData: Data =  jsonStr.data(using: String.Encoding.utf8)!
         do{
             //ロードしたusernameデータを処理
-            let jsonArray = (try JSONSerialization.jsonObject(with: jsonData, options: [])) as! Array<Dictionary<String,String>>
+            let jsonArray = try decodeStringDictionaryArray(from: jsonData)
             for dic in jsonArray {
-                self.setScore(sqlID: Int(dic["id"]!)!,
-                              levelID: Int(dic["levelID"]!)!,
-                              score: Int(dic["score"]!)!,
-                              userID: dic["userID"]!,
-                              updateTime: Int(dic["updateTime"]!)!)
+                self.setScore(sqlID: try requiredJSONInt(dic, key: "id"),
+                              levelID: try requiredJSONInt(dic, key: "levelID"),
+                              score: try requiredJSONInt(dic, key: "score"),
+                              userID: try requiredJSONString(dic, key: "userID"),
+                              updateTime: try requiredJSONInt(dic, key: "updateTime"))
             }
         }catch (let e) {
-            print(e)
+            // print(e)
         }
     }
 }
@@ -280,7 +300,7 @@ class CommentDataLists {
             let jsonStr = String(bytes: jsonData, encoding: .utf8)!
             return jsonStr
         } catch (let e) {
-            print(e)
+            // print(e)
             return ""
         }
     }
@@ -290,17 +310,17 @@ class CommentDataLists {
         let jsonData: Data =  jsonStr.data(using: String.Encoding.utf8)!
         do{
             //ロードしたusernameデータを処理
-            let jsonArray = (try JSONSerialization.jsonObject(with: jsonData, options: [])) as! Array<Dictionary<String,String>>
+            let jsonArray = try decodeStringDictionaryArray(from: jsonData)
             for dic in jsonArray {
                 self.setComment(
-                    sqlID: Int(dic["id"]!)!,
-                    levelID: Int(dic["levelID"]!)!,
-                    comment: dic["comment"]!,
-                    userID: dic["userID"]!,
-                    updateTime: Int(dic["updateTime"]!)!)
+                    sqlID: try requiredJSONInt(dic, key: "id"),
+                    levelID: try requiredJSONInt(dic, key: "levelID"),
+                    comment: try requiredJSONString(dic, key: "comment"),
+                    userID: try requiredJSONString(dic, key: "userID"),
+                    updateTime: try requiredJSONInt(dic, key: "updateTime"))
             }
         }catch (let e) {
-            print(e)
+            // print(e)
         }
     }
 }

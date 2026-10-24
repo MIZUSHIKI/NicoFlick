@@ -42,14 +42,14 @@ class Notes{
         noteString = noteString.pregReplace(pattern: "\r", with: "改")
         //@タグは全消去(NicoFlick=2(atTagExpMode.PreNicoFlickDB)のとき Offsetだけ反映)
         var offset = 0
-        print(noteString)
+        // print(noteString)
         if noteString.pregMatche(pattern: "@NicoFlick\\s*=\\s*2(改|$)") {
             let offset_str = noteString.pregMatche_firstString(pattern: "@Offset\\s*=\\s*(.*?)(改|$)")
             if offset_str != "" {
                 offset = Int(offset_str)!
             }
         }
-        print("offset= \(offset)")
+        // print("offset= \(offset)")
         noteString = noteString.pregReplace(pattern: "@.*?(改|$)", with: "")
         //先頭にタイムタグが付いてなかったら付いてるところまで削る
         noteString = noteString.pregReplace(pattern: "^.*?(\\[\\d\\d\\:\\d\\d[\\:|\\.]\\d\\d\\])", with: "$1")
@@ -146,6 +146,7 @@ class Notes{
             note.flicked = false
             note.flickedTime = -1.0
             note.judge = Note.NORMAL
+            note.comboCount = 0
             if note.isFlickable {
                 note.setFlickableFont()
             }else {
@@ -166,7 +167,7 @@ class Notes{
                 count+=1
             }
         }
-        print(String(format: "cnt=%d, flickableNoteNum=%d", count,flickableNoteNum))
+        // print(String(format: "cnt=%d, flickableNoteNum=%d", count,flickableNoteNum))
          */
         return flickableNoteNum
     }
@@ -253,154 +254,144 @@ class Note{
     var flicked:Bool! = false
     var flickedTime:Double! = -1.0
     var judge:Int! = Note.NORMAL
+    var comboCount:Int! = 0
     
     var label:UILabel!
+
+    private let flickableAttributedText: NSAttributedString
+    private let unFlickableAttributedText: NSAttributedString
     
     init(word:String){
         self.word = word
+        flickableAttributedText = NSAttributedString(
+            string: word,
+            attributes: [
+                NSAttributedStringKey.foregroundColor: UIColor.black,
+                NSAttributedStringKey.strokeColor: UIColor.white,
+                NSAttributedStringKey.strokeWidth: -2.0
+            ]
+        )
+        unFlickableAttributedText = NSAttributedString(
+            string: word,
+            attributes: [
+                NSAttributedStringKey.foregroundColor: UIColor.white,
+                NSAttributedStringKey.strokeColor: UIColor.darkGray,
+                NSAttributedStringKey.strokeWidth: -2.0
+            ]
+        )
     }
     
     func setFlickableFont(){
-        label.textColor = UIColor.black
-        let text = NSAttributedString(string: word, attributes: [NSAttributedStringKey.foregroundColor : UIColor.black, NSAttributedStringKey.strokeColor:UIColor.white, NSAttributedStringKey.strokeWidth : -2.0])
-        label.attributedText = text
+        label.attributedText = flickableAttributedText
         label.alpha = 1.0
     }
     func setUnFlickableFont(){
-        label.textColor = UIColor.lightGray
-        let text = NSAttributedString(string: word, attributes: [NSAttributedStringKey.foregroundColor : UIColor.white, NSAttributedStringKey.strokeColor:UIColor.darkGray, NSAttributedStringKey.strokeWidth : -2.0])
-        label.attributedText = text
+        label.attributedText = unFlickableAttributedText
         label.alpha = 0.5
     }
     
     func judgeWord(flickWord:String) -> Int{
         var flickWord = flickWord
         var noteWord = word!
-        noteWord = noteWord.applyingTransform(.hiraganaToKatakana, reverse: true)!
         //1段回目
-        switch noteWord {
-        case "ぁ": noteWord = "あ"; break
-        case "ぃ": noteWord = "い"; break
-        case "ぅ": noteWord = "う"; break
-        case "ぇ": noteWord = "え"; break
-        case "ぉ": noteWord = "お"; break
-        case "が": noteWord = "か"; break
-        case "ぎ": noteWord = "き"; break
-        case "ぐ": noteWord = "く"; break
-        case "げ": noteWord = "け"; break
-        case "ご": noteWord = "こ"; break
-        case "ざ": noteWord = "さ"; break
-        case "じ": noteWord = "し"; break
-        case "ず": noteWord = "す"; break
-        case "ぜ": noteWord = "せ"; break
-        case "ぞ": noteWord = "そ"; break
-        case "だ": noteWord = "た"; break
-        case "ぢ": noteWord = "ち"; break
-        case "づ": noteWord = "つ"; break
-        case "で": noteWord = "て"; break
-        case "ど": noteWord = "と"; break
-        case "ば": noteWord = "は"; break
-        case "び": noteWord = "ひ"; break
-        case "ぶ": noteWord = "ふ"; break
-        case "べ": noteWord = "へ"; break
-        case "ぼ": noteWord = "ほ"; break
-        case "ぱ": noteWord = "は"; break
-        case "ぴ": noteWord = "ひ"; break
-        case "ぷ": noteWord = "ふ"; break
-        case "ぺ": noteWord = "へ"; break
-        case "ぽ": noteWord = "ほ"; break
-        case "ゔ": noteWord = "う"; break
-        default: break
-        }
-        if noteWord==flickWord {
+        noteWord = judgeWorder(noteWord: noteWord, level: 1)
+        if noteWord == flickWord {
             //print(String(format: "OK-note:flick = %@:%@", noteWord,flickWord))
             return Note.NORMAL
         }
         
         //2段回目
-        switch noteWord {
-        case "い": noteWord = "あ"; break
-        case "う": noteWord = "あ"; break
-        case "え": noteWord = "あ"; break
-        case "お": noteWord = "あ"; break
-        case "き": noteWord = "か"; break
-        case "く": noteWord = "か"; break
-        case "け": noteWord = "か"; break
-        case "こ": noteWord = "か"; break
-        case "し": noteWord = "さ"; break
-        case "す": noteWord = "さ"; break
-        case "せ": noteWord = "さ"; break
-        case "そ": noteWord = "さ"; break
-        case "ち": noteWord = "た"; break
-        case "つ": noteWord = "た"; break
-        case "て": noteWord = "た"; break
-        case "と": noteWord = "た"; break
-        case "に": noteWord = "な"; break
-        case "ぬ": noteWord = "な"; break
-        case "ね": noteWord = "な"; break
-        case "の": noteWord = "な"; break
-        case "ひ": noteWord = "は"; break
-        case "ふ": noteWord = "は"; break
-        case "へ": noteWord = "は"; break
-        case "ほ": noteWord = "は"; break
-        case "み": noteWord = "ま"; break
-        case "む": noteWord = "ま"; break
-        case "め": noteWord = "ま"; break
-        case "も": noteWord = "ま"; break
-        case "ゆ": noteWord = "や"; break
-        case "よ": noteWord = "や"; break
-        case "り": noteWord = "ら"; break
-        case "る": noteWord = "ら"; break
-        case "れ": noteWord = "ら"; break
-        case "ろ": noteWord = "ら"; break
-        case "ん": noteWord = "わ"; break
-        default: break
-        }
-        switch flickWord {
-        case "い": flickWord = "あ"; break
-        case "う": flickWord = "あ"; break
-        case "え": flickWord = "あ"; break
-        case "お": flickWord = "あ"; break
-        case "き": flickWord = "か"; break
-        case "く": flickWord = "か"; break
-        case "け": flickWord = "か"; break
-        case "こ": flickWord = "か"; break
-        case "し": flickWord = "さ"; break
-        case "す": flickWord = "さ"; break
-        case "せ": flickWord = "さ"; break
-        case "そ": flickWord = "さ"; break
-        case "ち": flickWord = "た"; break
-        case "つ": flickWord = "た"; break
-        case "て": flickWord = "た"; break
-        case "と": flickWord = "た"; break
-        case "に": flickWord = "な"; break
-        case "ぬ": flickWord = "な"; break
-        case "ね": flickWord = "な"; break
-        case "の": flickWord = "な"; break
-        case "ひ": flickWord = "は"; break
-        case "ふ": flickWord = "は"; break
-        case "へ": flickWord = "は"; break
-        case "ほ": flickWord = "は"; break
-        case "み": flickWord = "ま"; break
-        case "む": flickWord = "ま"; break
-        case "め": flickWord = "ま"; break
-        case "も": flickWord = "ま"; break
-        case "ゆ": flickWord = "や"; break
-        case "よ": flickWord = "や"; break
-        case "り": flickWord = "ら"; break
-        case "る": flickWord = "ら"; break
-        case "れ": flickWord = "ら"; break
-        case "ろ": flickWord = "ら"; break
-        case "ん": flickWord = "わ"; break
-        default: break
-        }
-        if noteWord==flickWord {
+        noteWord = judgeWorder(noteWord: noteWord, level: 2)
+        flickWord = judgeWorder(noteWord: flickWord, level: 2)
+        if noteWord == flickWord {
             //print(String(format: "SAFE-note:flick = %@:%@", noteWord,flickWord))
             return Note.SAFE
         }
-        
+
         //print(String(format: "BAD-note:flick = %@:%@", noteWord,flickWord))
         return Note.BAD
+    }
+    
+    func judgeWorder(noteWord: String, level: Int = 1) -> String {
+        // レベル1
+        if level == 1 {
+            let noteTransWord = noteWord.applyingTransform(.hiraganaToKatakana, reverse: true)!
+            switch noteTransWord {
+            case "ぁ": return "あ"
+            case "ぃ": return "い"
+            case "ぅ": return "う"
+            case "ぇ": return "え"
+            case "ぉ": return "お"
+            case "が": return "か"
+            case "ぎ": return "き"
+            case "ぐ": return "く"
+            case "げ": return "け"
+            case "ご": return "こ"
+            case "ざ": return "さ"
+            case "じ": return "し"
+            case "ず": return "す"
+            case "ぜ": return "せ"
+            case "ぞ": return "そ"
+            case "だ": return "た"
+            case "ぢ": return "ち"
+            case "づ": return "つ"
+            case "で": return "て"
+            case "ど": return "と"
+            case "ば": return "は"
+            case "び": return "ひ"
+            case "ぶ": return "ふ"
+            case "べ": return "へ"
+            case "ぼ": return "ほ"
+            case "ぱ": return "は"
+            case "ぴ": return "ひ"
+            case "ぷ": return "ふ"
+            case "ぺ": return "へ"
+            case "ぽ": return "ほ"
+            case "ゔ": return "う"
+            default: break
+            }
+            return noteTransWord
+        }
+        // レベル2: 2段階目はレベル1実行済み想定なのでtransform必要無し
+        switch noteWord {
+        case "い": return "あ"
+        case "う": return "あ"
+        case "え": return "あ"
+        case "お": return "あ"
+        case "き": return "か"
+        case "く": return "か"
+        case "け": return "か"
+        case "こ": return "か"
+        case "し": return "さ"
+        case "す": return "さ"
+        case "せ": return "さ"
+        case "そ": return "さ"
+        case "ち": return "た"
+        case "つ": return "た"
+        case "て": return "た"
+        case "と": return "た"
+        case "に": return "な"
+        case "ぬ": return "な"
+        case "ね": return "な"
+        case "の": return "な"
+        case "ひ": return "は"
+        case "ふ": return "は"
+        case "へ": return "は"
+        case "ほ": return "は"
+        case "み": return "ま"
+        case "む": return "ま"
+        case "め": return "ま"
+        case "も": return "ま"
+        case "ゆ": return "や"
+        case "よ": return "や"
+        case "り": return "ら"
+        case "る": return "ら"
+        case "れ": return "ら"
+        case "ろ": return "ら"
+        case "ん": return "わ"
+        default: break
+        }
+        return noteWord
     }
 }
 
@@ -455,11 +446,13 @@ class Score {
             stageScore += Score.BAD
             comboCounter = 0
             borderScore -= 100.0/(0.8*Double(flickableNoteNum))*2
+            if borderScore < 0 { borderScore = 0 }
             break
         case Note.MISS:
             stageScore += Score.MISS
             comboCounter = 0
             borderScore -= 100.0/(0.4*Double(flickableNoteNum))*2
+            if borderScore < 0 { borderScore = 0 }
             break
         default:
             break
@@ -493,5 +486,52 @@ class Score {
             comboMax = comboCounter
         }
         //print("borderScore=\(borderScore)")
+    }
+    // 練習モード用で戻って再フリックしたとき用に前回取得した点数を引く
+    func subScore(maeJudge:Int, maeComboCount:Int) {
+        switch maeJudge {
+        case Note.GREAT:
+            stageScore -= Score.GREAT
+            break
+        case Note.GOOD:
+            stageScore -= Score.GOOD
+            break
+        case Note.SAFE:
+            stageScore -= Score.SAFE
+            break
+        case Note.BAD:
+            stageScore -= Score.BAD
+            break
+        case Note.MISS:
+            stageScore -= Score.MISS
+            break
+        default:
+            break
+        }
+        if 95 <= maeComboCount {
+            comboScore -= 500
+        }else if 85 <= maeComboCount {
+            comboScore -= 450
+        }else if 75 <= maeComboCount {
+            comboScore -= 400
+        }else if 65 <= maeComboCount {
+            comboScore -= 350
+        }else if 55 <= maeComboCount {
+            comboScore -= 300
+        }else if 45 <= maeComboCount {
+            comboScore -= 250
+        }else if 35 <= maeComboCount {
+            comboScore -= 200
+        }else if 25 <= maeComboCount {
+            comboScore -= 150
+        }else if 15 <= maeComboCount {
+            comboScore -= 100
+        }else if 5 <= maeComboCount {
+            comboScore -= 50
+        }
+        if maeComboCount >= 100{
+            stageScore -= 200
+        }
+        totalScore = stageScore + comboScore
     }
 }

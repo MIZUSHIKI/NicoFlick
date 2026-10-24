@@ -10,31 +10,34 @@ import UIKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    var window: UIWindow?
     
     static let PHPURL = "https://timetag.main.jp/nicoflick/nicoflick.php"
-    //static let PHPURL = "http://192.168.11.7/nicoflick_20201103/nicoflick.php" //windows xampp
+    //static let PHPURL = "http://192.168.11.6/nicoflick_20260921/nicoflick.php" //windows xampp
     //static let PHPURL = "http://127.0.0.1:8888/nicoflick.php" //mac mamp PC
     //static let PHPURL = "http://MacBook.local:8000/nicoflick.php" //mac mamp スマホ
     
     static let NICOFLICK_PATH = "https://timetag.main.jp/nicoflick/"
-    //static let NICOFLICK_PATH = "http://192.168.11.7/nicoflick_20201103/"
+    //static let NICOFLICK_PATH = "http://192.168.11.6/nicoflick_20260921/"
     
     static let NicoApiURL_GetThumbInfo = "https://ext.nicovideo.jp/api/getthumbinfo/"
-    static let Version = 1909
+    static let Version = 2001
     static var ServerErrorMessage = ""
+    static var serverErrorTitle = "サーバーエラー"
     static var DidEnterBackgroundTime:Date?
+    static var thumbnailRepairAttemptedMusicIDs = Set<Int>()
 
     static let MIZUSHIKI_IDxxx = "358ED61B-F5F1-4A70-BF39-************"
+    
+    static var isNicoLogout = false
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         return true
     }
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        print(app)
-        print(url)
-        print(options)
+        // print(app)
+        // print(url)
+        // print(options)
         // Your other open URL handlers follow […]
         return false
     }
@@ -55,7 +58,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if let backDate = AppDelegate.DidEnterBackgroundTime {
             if backDate.timeIntervalSinceNow < -60.0 {
                 //アプリ閉じて60秒以上立ってたら動画のキャッシュを削除する
-                print("Cached(Thumb)Movies削除")
+                // print("Cached(Thumb)Movies削除")
                 CachedMovies.sharedInstance.cachedMovies = [] //HeartBeat切れるとアクセス出来なくなる
                 CachedThumbMovies.sharedInstance.cachedMovies = [] //HeartBeatすらしてない(ver.1.9.1〜してる可能性あり)
             }
@@ -72,4 +75,3 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
 }
-

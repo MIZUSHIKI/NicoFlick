@@ -80,7 +80,7 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
         first_attack = false
         //iOS16以降?
         if let oyaView = levelPicker.superview {
-            print("kitayo")
+            // print("kitayo")
             levelPicker.frame = oyaView.bounds
         }
         
@@ -123,7 +123,7 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
         
     }
     @IBAction func postButton(_ sender: Any) {
-        print("post")
+        // print("post")
         let alert = UIAlertController(title:"NicoFlick データベース", message: "データベースに送信します。", preferredStyle: UIAlertControllerStyle.alert)
         alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: {
             (action: UIAlertAction!) in
@@ -151,7 +151,7 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
                 userPASS: self.editorViewController.password,
                 callback: { (retStr, error) in
                     if error != nil {
-                        print("DataPost error")
+                        // print("DataPost error")
                         DispatchQueue.main.async {
                             //Indicator隠す
                             self.activityIndicator.stopAnimating()
@@ -163,17 +163,17 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
                     }
                     if retStr.pregMatche(pattern: "<!--EchoHtmlMes_OK-->"){
                         //送信成功したらuserDataを消す。
-                        print("DataPost OK")
+                        // print("DataPost OK")
                         
                         //取得データの更新
                         ServerDataHandler().DownloadMusicDataAndUserNameData { (error) in
                             if let error = error {
-                                print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
+                                // print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
                             }
                             DispatchQueue.main.async {
                                 //Indicator隠す
                                 self.activityIndicator.stopAnimating()
-                                let alert = UIAlertController(title:"NicoFlick データベース", message: "送信しました。", preferredStyle: UIAlertControllerStyle.alert)
+                                let alert = UIAlertController(title:"NicoFlick データベース", message: "送信しました。\n\n投稿したデータは メニュー ＞ 編集 からいつでも編集/削除ができます", preferredStyle: UIAlertControllerStyle.alert)
                                 alert.addAction(UIAlertAction(title: "OK", style: .cancel, handler: { (uiAlertAction) in
                                     
                                     self.dismiss(animated: true, completion: {
@@ -190,7 +190,7 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
                             return
                         }
                     }else {
-                        print(retStr) //何らかの理由で失敗。
+                        // print(retStr) //何らかの理由で失敗。
                         DispatchQueue.main.async {
                             //Indicator隠す
                             self.activityIndicator.stopAnimating()
@@ -210,7 +210,7 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
         self.present(alert, animated: true, completion: nil)
     }
     @IBAction func deleteButton(_ sender: Any) {
-        print("delete")
+        // print("delete")
         let alert = UIAlertController(title:"NicoFlick データベース", message: "本当に削除して良いですか？", preferredStyle: UIAlertControllerStyle.alert)
         alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: {
             (action: UIAlertAction!) in
@@ -224,7 +224,7 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
                 callback: { (retStr, error) in
                     
                     if error != nil {
-                        print("DataDelete error")
+                        // print("DataDelete error")
                         DispatchQueue.main.async {
                             //Indicator隠す
                             self.activityIndicator.stopAnimating()
@@ -236,12 +236,12 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
                     }
                     if retStr.pregMatche(pattern: "<!--EchoHtmlMes_OK-->"){
                         //送信成功したらuserDataを消す。
-                        print("DataDelete OK")
+                        // print("DataDelete OK")
                         
                         //取得データの更新
                         ServerDataHandler().DownloadMusicDataAndUserNameData { (error) in
                             if let error = error {
-                                print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
+                                // print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
                             }
                             DispatchQueue.main.async {
                                 //Indicator隠す
@@ -263,7 +263,7 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
                             return
                         }
                     }else {
-                        print(retStr) //何らかの理由で失敗。
+                        // print(retStr) //何らかの理由で失敗。
                         DispatchQueue.main.async {
                             //Indicator隠す
                             self.activityIndicator.stopAnimating()
@@ -294,7 +294,7 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         //print("prepare")
         //print(segue.identifier as String!)
-        //繊維前に保存
+        // 遷移前に保存
         var level = levelPicker.selectedRow(inComponent: 0) + 1
         if level >= 11 { level = 100 }
         editorViewController.mySpoon.atTag["Level"] = "\(level)"
@@ -307,6 +307,12 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
         if speed < 50 || 500 < speed { speed = 150 }
         editorViewController.mySpoon.atTag["Speed"] = "\(speed)"
         
+        // 設定
+        if segue.identifier == "toEditorSettings" {
+            // print("toEditorSettings")
+            let editorSettingsController:EditorSettings = segue.destination as! EditorSettings
+            editorSettingsController.editorViewController = editorViewController
+        }
     }
     //キーボード関連_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     //MARK: キーボードが出ている状態で、キーボード以外をタップしたらキーボードを閉じる

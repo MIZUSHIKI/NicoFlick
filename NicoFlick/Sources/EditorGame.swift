@@ -36,6 +36,8 @@ class EditorGame: UIViewController, UITextFieldDelegate {
     @IBOutlet weak var rateSlider: VerticalSlider!
     @IBOutlet weak var rateSliderView: UIView!
     
+    @IBOutlet weak var practiceAutoPlaySwitch: UISwitch!
+    
     //判定エフェクト用のView
     var greatViews:[UIView] = []
     var greatActionCount = 0
@@ -49,15 +51,22 @@ class EditorGame: UIViewController, UITextFieldDelegate {
     var missActionCount = 0
     var flickViews:[UIView] = []
     var flickActionCount = 0
+    private weak var previousFlickView: UIView?
+    let effectViewsNum = 10
+    private var nextEffectZPosition: CGFloat = 1
     var comboFrameOriginY:CGFloat = 360.0
     
     //ゲーム  表示,判定 定数データ
     @IBOutlet var nodeLine: UIView!
+    @IBOutlet private weak var dotCircleView: UIView!
     var nodeLineFlameOriginY:CGFloat = 345.0
     static let GameViewWidth = 375.0 //
     static let FlickPointX = 50.0
-    let gameviewWidth = GameViewWidth
-    let flickPointX = FlickPointX
+    private var gameviewWidth = GameViewWidth
+    private var flickPointX = FlickPointX
+    private var lastDisplayedNoteTime: Double?
+    // EditorGame専用の調整値。GameViewとは独立して変更できる。
+    private let visualFlickCenterRatio: CGFloat = 70.0 / 375.0
     let nodeSize = CGSize(width: 40, height: 40)
     let greatLine:[Double] = [-0.080, 0.080]
     let goodLine:[Double] = [-0.200, 0.200]
@@ -65,9 +74,16 @@ class EditorGame: UIViewController, UITextFieldDelegate {
     var judgeOffset = 0.0
     var xps:Double = 0.0 //ノートが一秒間に進む距離(あとで計算する)
     
+    var waitingForFlickAfterMovieTimeSeek = false
+    var timetagRateFactor = 0.07
+    
     //動画
     var moviePlayerViewController:AVPlayerViewController!
-    var timer:Timer!
+    private var displayLink: CADisplayLink?
+    private var autoPlayTimeObserver: Any?
+    private weak var autoPlayObserverPlayer: AVPlayer?
+    private var nextAutoPlayIndex = 0
+    private var nextMissCheckIndex = 0
     //効果音プレイヤー(シングルトン)
     var seAudio:SEAudio = SEAudio.sharedInstance
     
@@ -104,8 +120,14 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         if let rate = editorViewController.moviePlayerViewController?.player?.rate {
             rateSlider.value = rate
         }
+        practiceAutoPlaySwitch.isOn = editorViewController.practiceAutoPlay
+        practiceAutoPlaySwitch.addTarget(
+            self,
+            action: #selector(practiceAutoPlayValueChanged(_:)),
+            for: .valueChanged
+        )
         
-        xps = (gameviewWidth-flickPointX)*Double(speedSlider.value)/300 //一秒で進む距離
+        updateNoteLaneLayout()
        
         //初期位置設定修正
         nodeLineFlameOriginY = nodeLine.frame.origin.y
@@ -124,13 +146,12 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         //ipad対策（対象じゃないけど）
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow(_:)), name: .UIKeyboardDidShow, object: nil)
         
-        //計算しておく
-        xps = (gameviewWidth-flickPointX)*Double(selectLevel.speed)/300 //ノートが一秒間に進む距離
+        // 移動速度はupdateNoteLaneLayoutで現在の幅と速度スライダーから計算する。
         
         
         //ノートデータを解析、生成 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         noteData = Notes()
-        noteData.noteAnalyze(noteString: selectLevel.noteData, speed: selectLevel.speed, level_: selectLevel.level)
+        noteData.noteAnalyze(noteString: selectLevel.noteData, speed: selectLevel.speed, level_: editorViewController.notesSwitch.isOn ? selectLevel.level : 100)
         //ノートラベルも最初にすべて作ってしまう（移動だとか処理をさせるのは見えるやつだけにする）
         //「フリックしない文字」のLabel作成 -> 「フリックする文字」のLabel作成 の順にして、フリック文字が前面に出るようにする。
         for note in noteData.notes {
@@ -171,7 +192,7 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         
         //判定エフェクトView下準備。Great等を複製 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         // １つだけだと連続で判定されたとき複数表示されないので複製を作る(ImegeView化)
-        for i in (0 ..< 5) {
+        for i in (0 ..< effectViewsNum) {
             greatViews.append(self.greatView.GetImageView())
             self.nodeLine.addSubview(greatViews[i])
             goodViews.append(self.goodView.GetImageView())
@@ -186,18 +207,91 @@ class EditorGame: UIViewController, UITextFieldDelegate {
             self.nodeLine.addSubview(flickViews[i])
         }
         
-        //タイマー発動 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-        timer = Timer.scheduledTimer(timeInterval: TimeInterval(UserData.sharedInstance.DrawingUpdateInterval), target: self, selector: #selector(self.update), userInfo: nil, repeats: true)
-        timer.fire()
+        updateNoteLaneLayout()
+
+        // 画面を開いた時点より前のノートは、MISSにせず通過済みとして扱う
+        synchronizeTimelineToCurrentPlaybackTime()
+
+        //画面の更新をディスプレイのリフレッシュに同期させる
+        startDisplayLink()
+        configureAutoPlayObserver()
         
         //キーボードを開く _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         textField.becomeFirstResponder()
     }
     
-    override func viewWillDisappear(_ animated: Bool) {
-        if (timer != nil) {
-            timer.invalidate()
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateNoteLaneLayout()
+    }
+
+    // GameViewとは別に、編集画面の幅と操作感に合わせて配置する。
+    private func updateNoteLaneLayout() {
+        guard let nodeLine, let speedSlider, nodeLine.bounds.width > 0 else { return }
+
+        let width = Double(nodeLine.bounds.width)
+        let previousWidth = gameviewWidth
+        let previousSpeed = xps
+        gameviewWidth = width
+        flickPointX = width * Self.FlickPointX / Self.GameViewWidth
+        xps = (width - flickPointX) * Double(speedSlider.value) / 300
+
+        let centerX = nodeLine.bounds.width * visualFlickCenterRatio
+        let originals: [UIView?] = [
+            dotCircleView, greatView, goodView, safeView, badView, missView, flickView, comboView
+        ]
+        let effects = greatViews + goodViews + safeViews + badViews + missViews + flickViews
+        for effect in originals.compactMap({ $0 }) + effects {
+            guard let parent = effect.superview else { continue }
+            let x = parent.convert(CGPoint(x: centerX, y: 0), from: nodeLine).x
+            // 拡縮アニメーション中も大きさと縦位置は維持する。
+            if effect.center.x != x {
+                effect.center.x = x
+            }
         }
+
+        if previousWidth != width || previousSpeed != xps {
+            if let time = lastDisplayedNoteTime {
+                updateNotePositions(at: time)
+            }
+        }
+    }
+
+    private func updateNotePositions(at time: Double) {
+        guard let noteData else { return }
+        lastDisplayedNoteTime = time
+        for note in noteData.notes {
+            let x = (note.time - time) * xps + flickPointX
+            let shouldBeVisible = -100 < x && x < gameviewWidth + 25
+            if shouldBeVisible {
+                note.label.frame.origin.x = CGFloat(x)
+            }
+            if note.label.isHidden == shouldBeVisible {
+                note.label.isHidden = !shouldBeVisible
+            }
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        stopDisplayLink()
+        removeAutoPlayObserver()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        restoreEditorMovieLayout()
+    }
+
+    private func restoreEditorMovieLayout() {
+        guard let playerView = editorViewController.moviePlayerViewController?.view else {
+            return
+        }
+
+        editorViewController.movieView.addSubview(playerView)
+        editorViewController.movieView.sendSubview(toBack: playerView)
+        playerView.frame.origin = .zero
+        playerView.frame.size = editorViewController.movieView.frame.size
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -217,13 +311,14 @@ class EditorGame: UIViewController, UITextFieldDelegate {
             //強制終了(ランク算出に難あり)
             //performSegue(withIdentifier: "toResultView", sender: self)
         }
-        //フリックアクション
-        self.FlickAction()
         
         var flickTime = -1.0
         if let controller = editorViewController.moviePlayerViewController {
             if let currentTime = controller.player?.currentTime() {
                 flickTime = CMTimeGetSeconds(currentTime) - judgeOffset
+                if let rate = controller.player?.rate {
+                    flickTime -= timetagRateFactor * (1.0 - Double(rate))
+                }
                 if flickTime < 0 { flickTime = 0.0 }
             }
         }
@@ -241,123 +336,143 @@ class EditorGame: UIViewController, UITextFieldDelegate {
                         noteData.lastFlickedNum = i + 1
                     }
                 }
+                if diffTime > 1.0 { break }
             }
         }
         //着目noteがあったとき
-        if flickedNote != nil {
-            var string = string
-            //まずフリックした文字とnoteの文字があっているか判定して次にタイミング判定
-            var judge=(flickedNote?.judgeWord(flickWord: string))!
-            if string == "\n" || string == "☻" || string == "？" || string == "！" || string == "。" || string == "、" {
-                string = "＊"
-                judge = Note.NORMAL
-            }
-            if judge == Note.BAD{
-                //Bad
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.BAD
-                noteData.score.addScore(judge: Note.BAD)
-                //print("Bad")
-                //ゲージ
-                borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore/100)
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.BadAction()
-                //se
-                seAudio.badJinglePlay()
-                
-            }else if judge == Note.SAFE{
-                //Safe
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.SAFE
-                noteData.score.addScore(judge: Note.SAFE)
-                //print("Safe")
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.SafeAction()
-                //se
-                seAudio.safeJinglePlay()
-                
-            }else if greatLine[0]<=minDiffTime && minDiffTime<=greatLine[1] {
-                //Great!!
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.GREAT
-                noteData.score.addScore(judge: Note.GREAT)
-                //print("Great!!")
-                //let ft = flickTime - judgeOffset
-                //print("\(ft) / \(flickedNote?.time) : \(flickedNote?.word) ")
-                //ゲージ
-                borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore/100)
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.GreatAction()
-                //se
-                seAudio.okJinglePlay()
-                
-            }else if goodLine[0]<=minDiffTime && minDiffTime<=goodLine[1]{
-                //Good!
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.GOOD
-                noteData.score.addScore(judge: Note.GOOD)
-                //print("Good!")
-                //ゲージ
-                borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore/100)
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.GoodAction()
-                //se
-                seAudio.okJinglePlay()
-                
-            }else if safeLine[0]<=minDiffTime && minDiffTime<=safeLine[1]{
-                //Safe
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.SAFE
-                noteData.score.addScore(judge: Note.SAFE)
-                //print("Safe")
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.SafeAction()
-                //se
-                seAudio.safeJinglePlay()
-                
-            }else {
-                //何かしらには入ったはずだが、一応BAD
-                flickedNote?.flickedTime = flickTime
-                flickedNote?.flicked = true
-                flickedNote?.judge = Note.BAD
-                noteData.score.addScore(judge: Note.BAD)
-                //print("Bad")
-                //ゲージ
-                borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore/100)
-                //フリック済みフォントに設定
-                flickedNote?.setUnFlickableFont()
-                //エフェクト
-                self.BadAction()
-                //se
-                seAudio.badJinglePlay()
-            }
-            //print(String.init(format: "time(%f,%f) word(%@,%@) diff(%.3f)", (flickedNote?.time)!, flickTime,(flickedNote?.word)!,string, minDiffTime))
-            detailedJudgeLabel.text = String(format: "%.3fs, \(string), \(flickedNote!.word!), \(["NORMAL","GREAT","GOOD","SAFE","BAD","MISS"][(flickedNote?.judge)!])", minDiffTime) + "\n" + detailedJudgeLabel.text!.prefix(1024)
+        if let flickedNote {
+            JudgeFlick(flickedNote: flickedNote, flickWord: string, flickTime: flickTime, diffTime: minDiffTime)
         }
-        self.scoreLabel.text = "Score: "+String(noteData.score.totalScore)
-        //if (noteData.score.comboCounter % 10) == 0 && noteData.score.comboCounter > 0 {
-        self.ComboAction()
-        //}
+        //フリックアクション
+        self.FlickAction()
+        // 時間シークした後フラグが立ちフリックするまで保持 (過ぎ去りMISSが誤爆しないように)
+        if waitingForFlickAfterMovieTimeSeek {
+            waitingForFlickAfterMovieTimeSeek = false
+
+            for note in noteData.notes {
+                if !note.isFlickable { continue }
+                if note.flicked { continue }
+                // 再生開始位置より前のものは打てないNoteにする(シークバー離した時も設定しているが、その後のフリックまでの間の分)
+                if note.time <= flickTime {
+                    note.flicked = true
+                    note.setUnFlickableFont()
+                }else {
+                    break
+                }
+            }
+        }
         return false
     }
+
+    func JudgeFlick(flickedNote: Note, flickWord: String, flickTime: Double, diffTime: Double, updatesBorderView: Bool = true) {
+        let wildcardWords = ["\n", "☻", "？", "！", "。", "、"]
+        let displayedWord = wildcardWords.contains(flickWord) ? "＊" : flickWord
+        let wordJudge = wildcardWords.contains(flickWord) ? Note.NORMAL : flickedNote.judgeWord(flickWord: flickWord)
+
+        let judge: Int
+        
+        if flickTime == -1.0 {  // −1.0指定時は強制MISS
+            judge = Note.MISS
+        } else if wordJudge == Note.BAD {
+            judge = Note.BAD
+        } else if wordJudge == Note.SAFE {
+            judge = Note.SAFE
+        } else if greatLine[0] <= diffTime && diffTime <= greatLine[1] {
+            judge = Note.GREAT
+        } else if goodLine[0] <= diffTime && diffTime <= goodLine[1] {
+            judge = Note.GOOD
+        } else if safeLine[0] <= diffTime && diffTime <= safeLine[1] {
+            judge = Note.SAFE
+        } else {
+            judge = Note.BAD
+        }
+
+        flickedNote.flickedTime = flickTime
+        flickedNote.flicked = true
+        flickedNote.judge = judge
+        noteData.score.addScore(judge: judge)
+        flickedNote.comboCount = noteData.score.comboCounter
+
+        if updatesBorderView && judge != Note.SAFE {
+            borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore / 100)
+        }
+
+        switch judge {
+        case Note.GREAT:
+            flickedNote.setUnFlickableFont()
+            GreatAction()
+            seAudio.okJinglePlay()
+        case Note.GOOD:
+            flickedNote.setUnFlickableFont()
+            GoodAction()
+            seAudio.okJinglePlay()
+        case Note.SAFE:
+            flickedNote.setUnFlickableFont()
+            SafeAction()
+            seAudio.safeJinglePlay()
+        case Note.BAD:
+            flickedNote.setUnFlickableFont()
+            BadAction()
+            seAudio.badJinglePlay()
+        case Note.MISS:
+            //Fullバージョンのときはエフェクトしない（MISSとしてカウント。但しリザルトも表示は0にする。）
+            if selectLevel.level <= 10 {
+                flickedNote.setUnFlickableFont()
+                MissAction()
+            }
+        default: break
+        }
+
+        ComboAction()
+        if judge != Note.MISS {
+            let judgeNames = ["NORMAL", "GREAT", "GOOD", "SAFE", "BAD", "MISS"]
+            detailedJudgeLabel.text = String(
+                format: "%.3fs, \(displayedWord), \(flickedNote.word!), \(judgeNames[judge])",
+                diffTime
+            ) + "\n" + detailedJudgeLabel.text!.prefix(1024)
+        }
+    }
     
-    //タイマー（ノート進行表示） _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-    @objc func update(tm: Timer) {
+    private func synchronizeTimelineToCurrentPlaybackTime() {
+        guard let player = editorViewController.moviePlayerViewController?.player else {
+            return
+        }
+
+        let currentTime = max(0, CMTimeGetSeconds(player.currentTime()) - judgeOffset)
+        for note in noteData.notes where note.isFlickable && note.time <= currentTime {
+            note.flickedTime = -1.0
+            note.flicked = true
+            note.setUnFlickableFont()
+        }
+
+        resetTimelineCursors()
+        noteData.lastFlickedNum = nextMissCheckIndex
+    }
+
+    private func startDisplayLink() {
+        guard displayLink == nil else { return }
+
+        let displayLink = CADisplayLink(target: self, selector: #selector(updateFrame(_:)))
+        if #available(iOS 15.0, *) {
+            displayLink.preferredFrameRateRange = CAFrameRateRange(
+                minimum: 60,
+                maximum: 60,
+                preferred: 60
+            )
+        } else {
+            displayLink.preferredFramesPerSecond = 60
+        }
+        displayLink.add(to: .main, forMode: RunLoopMode.commonModes)
+        self.displayLink = displayLink
+    }
+
+    private func stopDisplayLink() {
+        displayLink?.invalidate()
+        displayLink = nil
+    }
+
+    //画面更新と、表示フレーム単位で十分なMISS確定を行う
+    @objc private func updateFrame(_ displayLink: CADisplayLink) {
         
         guard let controller = editorViewController.moviePlayerViewController else {
             return
@@ -367,59 +482,144 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         }
         var time = CMTimeGetSeconds(currentTime) - judgeOffset//ズレ
         if time < 0 { time = 0.0 }
-        //xps = (gameviewWidth-flickPointX)*Double(selectLevel.speed)/300 //ノートが一秒間に進む距離（View作成時に計算済み）
-        // speed=300が出現してから打つまでの時間が１秒。つまりspeed=100は出現してから打つまでの時間が３秒。
-        
-        let offsetX:Double = time * xps
-        //ノートをゾロ動かす
-        for note in noteData.notes {
-            let x = xps * note.time - offsetX + flickPointX
-            //もしオフセット後の表示位置が400(375+25)以内なら動かす
-            if -200<x && x<400 {
-                if -100<x {
-                    note.label.frame.origin.x = CGFloat(x)
-                    note.label.isHidden = false
-                }
-                
-                //過ぎ去りBad判定
-                if note.isFlickable && note.flicked==false  {
-                    let diffTime = note.time-(time)
-                    if diffTime < safeLine[0]{
-                        //Miss
-                        note.flickedTime = -1.0
-                        note.flicked = true
-                        note.judge = Note.MISS
-                        noteData.score.addScore(judge: Note.MISS)
-                        //print("Miss")
-                        //ゲージ
-                        borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore/100)
-                        if selectLevel.level<=10 {
-                            //フリック済みフォントに設定
-                            note.setUnFlickableFont()
-                            //エフェクト
-                            self.MissAction()
-                        }//Fullバージョンのときはエフェクトしない（MISSとしてカウント。但しリザルトも表示は0にする。）
-                        
-                        self.ComboAction()
-                    }
-                }
-                //左に消えたらビューも消す
-                //if x <= -50 {
-                //    note.label.isHidden = true
-                //}
-            }else {
-             if note.label.isHidden == false {
-                note.label.isHidden = true
-             }
+        processMissedNotes(at: time)
+        updateNotePositions(at: time)
+    }
+
+    private func processMissedNotes(at currentTime: Double) {
+        guard !waitingForFlickAfterMovieTimeSeek else { return }
+
+        while nextMissCheckIndex < noteData.notes.count {
+            let note = noteData.notes[nextMissCheckIndex]
+
+            guard note.isFlickable else {
+                nextMissCheckIndex += 1
+                continue
+            }
+            guard !note.flicked else {
+                nextMissCheckIndex += 1
+                continue
+            }
+
+            let diffTime = note.time - currentTime
+            guard diffTime < safeLine[0] else { break }
+
+            JudgeFlick(
+                flickedNote: note,
+                flickWord: note.word,
+                flickTime: -1.0,
+                diffTime: diffTime
+            )
+            nextMissCheckIndex += 1
+            
+            // lastFlickedNum にも反映 (lastFlickedというかnextFlickだけど)
+            if noteData.lastFlickedNum < nextMissCheckIndex {
+                noteData.lastFlickedNum = nextMissCheckIndex
             }
         }
-        
-        
+    }
+
+    private func configureAutoPlayObserver(from requestedStartTime: Double? = nil) {
+        removeAutoPlayObserver()
+
+        guard
+            practiceAutoPlaySwitch.isOn,
+            let player = editorViewController.moviePlayerViewController?.player
+        else {
+            return
+        }
+
+        let playerTime = CMTimeGetSeconds(player.currentTime())
+        let currentTime = requestedStartTime ?? max(0, playerTime - judgeOffset)
+        resetTimelineCursors()
+        processAutoPlayNotes(at: currentTime)
+
+        guard nextAutoPlayIndex < noteData.notes.count else { return }
+        let times = noteData.notes[nextAutoPlayIndex...].compactMap { note -> NSValue? in
+            guard note.isFlickable, !note.flicked, note.time > currentTime else { return nil }
+            let boundaryTime = max(0, note.time + judgeOffset)
+            return NSValue(time: CMTime(seconds: boundaryTime, preferredTimescale: 600))
+        }
+        guard !times.isEmpty else { return }
+
+        autoPlayObserverPlayer = player
+        autoPlayTimeObserver = player.addBoundaryTimeObserver(forTimes: times, queue: .main) { [weak self, weak player] in
+            guard let self, let player else { return }
+            let time = max(0, CMTimeGetSeconds(player.currentTime()) - self.judgeOffset)
+            self.processAutoPlayNotes(at: time)
+        }
+    }
+
+    private func removeAutoPlayObserver() {
+        if let autoPlayTimeObserver, let autoPlayObserverPlayer {
+            autoPlayObserverPlayer.removeTimeObserver(autoPlayTimeObserver)
+        }
+        autoPlayTimeObserver = nil
+        autoPlayObserverPlayer = nil
+    }
+
+    private func processAutoPlayNotes(at currentTime: Double) {
+        guard practiceAutoPlaySwitch.isOn else { return }
+
+        let boundaryTolerance = 0.02
+        var processedNote = false
+
+        while nextAutoPlayIndex < noteData.notes.count {
+            let note = noteData.notes[nextAutoPlayIndex]
+
+            guard note.isFlickable else {
+                nextAutoPlayIndex += 1
+                continue
+            }
+            guard !note.flicked else {
+                nextAutoPlayIndex += 1
+                continue
+            }
+            guard note.time <= currentTime + boundaryTolerance else { break }
+
+            waitingForFlickAfterMovieTimeSeek = false
+            JudgeFlick(
+                flickedNote: note,
+                flickWord: note.judgeWorder(noteWord: note.word, level: 1),
+                flickTime: note.time,
+                diffTime: 0,
+                updatesBorderView: false
+            )
+            processedNote = true
+            nextAutoPlayIndex += 1
+        }
+
+        if processedNote {
+            borderView.frame.size.width = borderMaxView.frame.size.width * CGFloat(noteData.score.borderScore / 100)
+        }
+    }
+
+    private func resetTimelineCursors() {
+        let firstPendingIndex = noteData.notes.firstIndex {
+            $0.isFlickable && !$0.flicked
+        } ?? noteData.notes.count
+        nextAutoPlayIndex = firstPendingIndex
+        nextMissCheckIndex = firstPendingIndex
+    }
+
+    @objc private func practiceAutoPlayValueChanged(_ sender: UISwitch) {
+        editorViewController.practiceAutoPlay = sender.isOn
+        if sender.isOn {
+            configureAutoPlayObserver()
+        } else {
+            removeAutoPlayObserver()
+        }
     }
     
     //ゲームの描写 エフェクト処理 関数 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    private func prepareEffectView(_ view: UIView) {
+        view.layer.zPosition = nextEffectZPosition
+        nextEffectZPosition += 1
+    }
+
     func GreatAction(){
         let view = greatViews[greatActionCount]
+        prepareEffectView(view)
         view.frame.origin.y = greatView.frame.origin.y
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
@@ -432,10 +632,11 @@ class EditorGame: UIViewController, UITextFieldDelegate {
             })
         })
         greatActionCount += 1
-        greatActionCount = greatActionCount % 5
+        greatActionCount = greatActionCount % effectViewsNum
     }
     func GoodAction(){
         let view = goodViews[goodActionCount]
+        prepareEffectView(view)
         view.frame.origin.y = goodView.frame.origin.y
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
@@ -448,10 +649,11 @@ class EditorGame: UIViewController, UITextFieldDelegate {
             })
         })
         goodActionCount += 1
-        goodActionCount = goodActionCount % 5
+        goodActionCount = goodActionCount % effectViewsNum
     }
     func SafeAction(){
         let view = safeViews[safeActionCount]
+        prepareEffectView(view)
         view.frame.origin.y = safeView.frame.origin.y
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
@@ -464,10 +666,11 @@ class EditorGame: UIViewController, UITextFieldDelegate {
             })
         })
         safeActionCount += 1
-        safeActionCount = safeActionCount % 5
+        safeActionCount = safeActionCount % effectViewsNum
     }
     func BadAction(){
         let view = badViews[badActionCount]
+        prepareEffectView(view)
         view.frame.origin.y = badView.frame.origin.y
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
@@ -481,10 +684,11 @@ class EditorGame: UIViewController, UITextFieldDelegate {
             })
         })
         badActionCount += 1
-        badActionCount = badActionCount % 5
+        badActionCount = badActionCount % effectViewsNum
     }
     func MissAction(){
         let view = missViews[missActionCount]
+        prepareEffectView(view)
         view.frame.origin.y = missView.frame.origin.y
         view.isHidden = false
         UIView.animate(withDuration: 0.3, animations: {
@@ -497,14 +701,14 @@ class EditorGame: UIViewController, UITextFieldDelegate {
             })
         })
         missActionCount += 1
-        missActionCount = missActionCount % 5
+        missActionCount = missActionCount % effectViewsNum
     }
     func FlickAction(){
-        for view in flickViews {
-            //全部非表示にしてアクションが重ならないようにする
-            view.isHidden = true
-        }
+        //直前のViewだけを非表示にしてアクションが重ならないようにする
+        previousFlickView?.isHidden = true
+
         let view = flickViews[flickActionCount]
+        previousFlickView = view
         view.alpha = 0.0
         view.isHidden = false
         
@@ -533,7 +737,7 @@ class EditorGame: UIViewController, UITextFieldDelegate {
             
         })
         flickActionCount += 1
-        flickActionCount = flickActionCount % 5
+        flickActionCount = flickActionCount % effectViewsNum
     }
     func ComboAction(){
         let view = self.comboView!
@@ -574,6 +778,9 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         if ( (UIApplication.shared.keyWindow?.bounds.height)! - keyboardSize.height ) < ( nodeLineFlameOriginY + nodeLine.bounds.size.height ){
             nodeLine.frame.origin.y = (UIApplication.shared.keyWindow?.bounds.height)! - keyboardSize.height - nodeLine.bounds.size.height
         }
+        DispatchQueue.main.async { [weak self] in
+            self?.restoreEditorMovieLayout()
+        }
     }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
@@ -584,6 +791,7 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         //キーボードを閉じる _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
         textField.resignFirstResponder()
         
+        editorViewController.practiceAutoPlay = practiceAutoPlaySwitch.isOn
     }
     
     @IBAction func SpeedSlider(_ sender: UISlider) {
@@ -592,7 +800,7 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         selectLevel.speed = Int(sender.value)
         editorViewController.mySpoon.atTag["Speed"] = "\(Int(sender.value))"
         
-        xps = (gameviewWidth-flickPointX)*Double(speedSlider.value)/300 //一秒で進む距離
+        updateNoteLaneLayout()
     }
     
     @IBAction func OffsetSlider(_ sender: UISlider) {
@@ -600,6 +808,7 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         offsetLabel.text = "Offset: \(Int(sender.value))ms"
         judgeOffset = Double(sender.value) / 1000
         editorViewController.mySpoon.atTag["Offset"] = "\(Int(sender.value ))"
+        configureAutoPlayObserver()
     }
     
     @IBAction func RateSlider(_ sender: UISlider) {
@@ -608,25 +817,39 @@ class EditorGame: UIViewController, UITextFieldDelegate {
         editorViewController.setMovieRate(rate: rate)
     }
     @IBAction func RewindButton(_ sender: UIButton) {
-        editorViewController.playerRewind()
-        UndoAllFlickedNote()
+        UndoAllFlickedNote( time: editorViewController.playerRewind() )
     }
     
     @IBAction func ForwardButton(_ sender: UIButton) {
-        editorViewController.playerForward()
-        UndoAllFlickedNote()
+        UndoAllFlickedNote( time: editorViewController.playerForward() )
     }
     
-    private func UndoAllFlickedNote() {
-        noteData.lastFlickedNum = 0
+    private func UndoAllFlickedNote(time:Double) {
+        waitingForFlickAfterMovieTimeSeek = true
+        let time = time - judgeOffset
         for note in noteData.notes {
-            if note.isFlickable && note.flicked {
+            if !note.isFlickable { continue }
+            if note.flicked {
                 note.flickedTime = -1.0
                 note.flicked = false
-                note.judge = Note.NORMAL
+                //note.judge = Note.NORMAL
                 note.setFlickableFont()
             }
+            // 再生開始位置より前のものは打てないNoteにする
+            if note.time <= time {
+                note.flicked = true
+                note.setUnFlickableFont()
+            }
         }
+        noteData.lastFlickedNum = 0
+        for (i, note) in noteData.notes.enumerated() {
+            if note.time > time {
+                noteData.lastFlickedNum = i
+                break
+            }
+        }
+        resetTimelineCursors()
+        configureAutoPlayObserver(from: max(0, time))
     }
     
     
@@ -640,4 +863,3 @@ private extension Collection where Iterator.Element == NSValue {
         })
     }
 }
-

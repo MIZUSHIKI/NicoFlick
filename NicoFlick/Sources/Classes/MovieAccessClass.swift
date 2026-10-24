@@ -28,21 +28,22 @@ class MovieAccess{
             return
         }
         let strURL = String.init(format: "https://www.nicovideo.jp/watch/%@",smNum);
-        let url = URL(string: strURL)
-        let task2 = self.session.dataTask(with: url!){  (data, responce, error) in
+        guard let url = URL(string: strURL) else { return }
+        let task2 = self.session.dataTask(with: url){  (data, responce, error) in
             if error != nil {
-                print("StreamingUrlNicoAccess-error")//エラー。例えばオフラインとか
+                // print("StreamingUrlNicoAccess-error")//エラー。例えばオフラインとか
                 return
             }
             guard let data = data else { return }
             //動画ページにアクセス。動画URLを取得
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
+            let str:String = String(decoding: data, as: UTF8.self)
             //ニコニコにログインしてたらログアウトする
-            if self.firstAttack && !str.contains("user.login_status = 'not_login';"){
+            if self.firstAttack && !str.contains("user.login_status = 'not_login';") && AppDelegate.isNicoLogout == false{
+                AppDelegate.isNicoLogout = true
                 //ニコニコから強制ログアウト（しないとURLSessionとAVURLAssetとでうまく噛み合わない？）
                 let url = URL(string:"https://account.nicovideo.jp/logout?site=spniconico&sec=header_spweb&cmnhd_ref=device%3Dsp%26site%3Dspniconico%26pos%3Duserpanel%26page%3Dtop")!
                 let task = self.session.dataTask(with: url){(data,responce,error) in
-                    print("ログアウト")
+                    // print("ログアウト")
                     //もう一度アクセス
                     self.StreamingUrlNicoAccess(smNum: smNum, callback: callback)
                 }
@@ -51,33 +52,33 @@ class MovieAccess{
             }
             self.firstAttack = false
             let watchTrackId = str.pregMatche_firstString(pattern: "&quot;watchTrackId&quot;:&quot;([a-zA-Z0-9_]+?)&quot;")
-            print(String.init(format: "watchTrackId=%@",watchTrackId))
+            // print(String.init(format: "watchTrackId=%@",watchTrackId))
             let accessRightKey = str.pregMatche_firstString(pattern: "&quot;accessRightKey&quot;:&quot;([a-zA-Z0-9_\\.-]+?)&quot;")
-            print(String.init(format: "accessRightKey=%@",accessRightKey))
+            // print(String.init(format: "accessRightKey=%@",accessRightKey))
             var videos:[String] = str.pregMatche_strings(pattern:  "&quot;id&quot;:&quot;(video-[a-zA-Z0-9]+-\\d+p(?:-low(?:est)?)?)&quot;,&quot;isAvailable&quot;:true")
             //dump(videos)
             var audios:[String] = str.pregMatche_strings(pattern:  "&quot;id&quot;:&quot;(audio-[a-zA-Z0-9]+-\\d+kbps)&quot;,&quot;isAvailable&quot;:true")
             //dump(audios)
             if watchTrackId != "" && accessRightKey != "" && !videos.isEmpty && !audios.isEmpty {
                 var video = ""
-                var audio = audios[1]
+                let audio = audios.count > 1 ? audios[1] : audios[0]
                 let reachability = AMReachability()
                 if (reachability?.isReachable)! {
-                    print("インターネット接続あり")
+                    // print("インターネット接続あり")
                     if (reachability?.isReachableViaWiFi)!{
-                        print("Wifi接続有り")
-                        video = videos[1]
+                        // print("Wifi接続有り")
+                        video = videos.count > 1 ? videos[1] : videos[0]
                     }else {
-                        print("Wifi接続なし")
+                        // print("Wifi接続なし")
                         video = videos[videos.count - 1]
                     }
                 } else {
-                    print("インターネット接続なし")
+                    // print("インターネット接続なし")
                     video = videos[videos.count - 1]
                 }
                 
-                let url = URL(string:"https://nvapi.nicovideo.jp/v1/watch/"+smNum+"/access-rights/hls?actionTrackId="+watchTrackId)!
-                print("https://nvapi.nicovideo.jp/v1/watch/"+smNum+"/access-rights/hls?actionTrackId="+watchTrackId)
+                guard let url = URL(string:"https://nvapi.nicovideo.jp/v1/watch/"+smNum+"/access-rights/hls?actionTrackId="+watchTrackId) else { return }
+                // print("https://nvapi.nicovideo.jp/v1/watch/"+smNum+"/access-rights/hls?actionTrackId="+watchTrackId)
                 var req = URLRequest(url: url, timeoutInterval: 21.0)
                 req.httpMethod = "POST"
                 req.setValue(accessRightKey, forHTTPHeaderField: "X-Access-Right-Key")
@@ -85,12 +86,12 @@ class MovieAccess{
                 req.setValue("0", forHTTPHeaderField: "X-Frontend-Version")
                 req.setValue("https://www.nicovideo.jp", forHTTPHeaderField: "X-Request-With")
                 let body = String.init(format: "{\"outputs\": [[\"%@\",\"%@\"]]}", video, audio)
-                print(body)
+                // print(body)
                 req.httpBody = body.data(using: String.Encoding.utf8)
-                print("CMAF:post")
+                // print("CMAF:post")
                 let task3 = self.session.dataTask(with: req){(data,responce,error) in
                     if error != nil {
-                        print("NicoAccess-error")//エラー。例えばオフラインとか
+                        // print("NicoAccess-error")//エラー。例えばオフラインとか
                         //callbackも返さないので、動画読み込み処理は途中で止まることになる。
                         return
                     }
@@ -101,8 +102,8 @@ class MovieAccess{
                         let fields = httpResponse.allHeaderFields as? [String: String]
                     else { return }
                     
-                    let str:String = String(data: data, encoding: String.Encoding.utf8)!
-                    print("CMAF:post:result")
+                    let str:String = String(decoding: data, as: UTF8.self)
+                    // print("CMAF:post:result")
                     //print(str)
                     let cookies = HTTPCookie.cookies(withResponseHeaderFields: fields, for: url)
                     HTTPCookieStorage.shared.setCookies(cookies, for: url, mainDocumentURL: nil)
@@ -121,7 +122,7 @@ class MovieAccess{
                         //print("name: \(cookie.name) value: \(cookie.value)")
                     }
                     let contentUrl = str.pregMatche_firstString(pattern: "\"contentUrl\":\"(.+?)\"")
-                    print(contentUrl)
+                    // print(contentUrl)
                     callback(contentUrl)
                 }
                 task3.resume()
@@ -139,21 +140,22 @@ class MovieAccess{
             return
         }
         let strURL = String.init(format: "https://www.nicovideo.jp/watch/%@",smNum);
-        let url = URL(string: strURL)
-        let task2 = self.session.dataTask(with: url!){  (data, responce, error) in
+        guard let url = URL(string: strURL) else { return }
+        let task2 = self.session.dataTask(with: url){  (data, responce, error) in
             if error != nil {
-                print("StreamingUrlNicoAccess-error")//エラー。例えばオフラインとか
+                // print("StreamingUrlNicoAccess-error")//エラー。例えばオフラインとか
                 return
             }
             guard let data = data else { return }
             //動画ページにアクセス。動画URLを取得
-            let str:String = String(data: data, encoding: String.Encoding.utf8)!
+            let str:String = String(decoding: data, as: UTF8.self)
             //ニコニコにログインしてたらログアウトする
-            if self.firstAttack && !str.contains("user.login_status = 'not_login';"){
+            if self.firstAttack && !str.contains("user.login_status = 'not_login';") && AppDelegate.isNicoLogout == false{
+                AppDelegate.isNicoLogout = true
                 //ニコニコから強制ログアウト（しないとURLSessionとAVURLAssetとでうまく噛み合わない？）
                 let url = URL(string:"https://account.nicovideo.jp/logout?site=spniconico&sec=header_spweb&cmnhd_ref=device%3Dsp%26site%3Dspniconico%26pos%3Duserpanel%26page%3Dtop")!
                 let task = self.session.dataTask(with: url){(data,responce,error) in
-                    print("ログアウト")
+                    // print("ログアウト")
                     //もう一度アクセス
                     self.StreamingUrlNicoAccessForThumbMovie(smNum: smNum, callback: callback)
                 }
@@ -162,19 +164,19 @@ class MovieAccess{
             }
             self.firstAttack = false
             let watchTrackId = str.pregMatche_firstString(pattern: "&quot;watchTrackId&quot;:&quot;([a-zA-Z0-9_]+?)&quot;")
-            print(String.init(format: "watchTrackId=%@",watchTrackId))
+            // print(String.init(format: "watchTrackId=%@",watchTrackId))
             let accessRightKey = str.pregMatche_firstString(pattern: "&quot;accessRightKey&quot;:&quot;([a-zA-Z0-9_\\.-]+?)&quot;")
-            print(String.init(format: "accessRightKey=%@",accessRightKey))
+            // print(String.init(format: "accessRightKey=%@",accessRightKey))
             var videos:[String] = str.pregMatche_strings(pattern:  "&quot;id&quot;:&quot;(video-[a-zA-Z0-9]+-\\d+p(?:-low(?:est)?)?)&quot;,&quot;isAvailable&quot;:true")
             //dump(videos)
             var audios:[String] = str.pregMatche_strings(pattern:  "&quot;id&quot;:&quot;(audio-[a-zA-Z0-9]+-\\d+kbps)&quot;,&quot;isAvailable&quot;:true")
             //dump(audios)
             if watchTrackId != "" && accessRightKey != "" && !videos.isEmpty && !audios.isEmpty {
                 let video = videos[videos.count - 1]  // thumb用は軽量で(360p)
-                let audio = audios[1]
+                let audio = audios.count > 1 ? audios[1] : audios[0]
                 
-                let url = URL(string:"https://nvapi.nicovideo.jp/v1/watch/"+smNum+"/access-rights/hls?actionTrackId="+watchTrackId)!
-                print("https://nvapi.nicovideo.jp/v1/watch/"+smNum+"/access-rights/hls?actionTrackId="+watchTrackId)
+                guard let url = URL(string:"https://nvapi.nicovideo.jp/v1/watch/"+smNum+"/access-rights/hls?actionTrackId="+watchTrackId) else { return }
+                // print("https://nvapi.nicovideo.jp/v1/watch/"+smNum+"/access-rights/hls?actionTrackId="+watchTrackId)
                 var req = URLRequest(url: url, timeoutInterval: 21.0)
                 req.httpMethod = "POST"
                 req.setValue(accessRightKey, forHTTPHeaderField: "X-Access-Right-Key")
@@ -182,12 +184,12 @@ class MovieAccess{
                 req.setValue("0", forHTTPHeaderField: "X-Frontend-Version")
                 req.setValue("https://www.nicovideo.jp", forHTTPHeaderField: "X-Request-With")
                 let body = String.init(format: "{\"outputs\": [[\"%@\",\"%@\"]]}", video, audio)
-                print(body)
+                // print(body)
                 req.httpBody = body.data(using: String.Encoding.utf8)
-                print("CMAF:post")
+                // print("CMAF:post")
                 let task3 = self.session.dataTask(with: req){(data,responce,error) in
                     if error != nil {
-                        print("NicoAccess-error")//エラー。例えばオフラインとか
+                        // print("NicoAccess-error")//エラー。例えばオフラインとか
                         //callbackも返さないので、動画読み込み処理は途中で止まることになる。
                         return
                     }
@@ -198,8 +200,8 @@ class MovieAccess{
                         let fields = httpResponse.allHeaderFields as? [String: String]
                     else { return }
                     
-                    let str:String = String(data: data, encoding: String.Encoding.utf8)!
-                    print("CMAF:post:result")
+                    let str:String = String(decoding: data, as: UTF8.self)
+                    // print("CMAF:post:result")
                     //print(str)
                     let cookies = HTTPCookie.cookies(withResponseHeaderFields: fields, for: url)
                     HTTPCookieStorage.shared.setCookies(cookies, for: url, mainDocumentURL: nil)
@@ -218,7 +220,7 @@ class MovieAccess{
                         //print("name: \(cookie.name) value: \(cookie.value)")
                     }
                     let contentUrl = str.pregMatche_firstString(pattern: "\"contentUrl\":\"(.+?)\"")
-                    print(contentUrl)
+                    // print(contentUrl)
                     callback(contentUrl)
                 }
                 task3.resume()

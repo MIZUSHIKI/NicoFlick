@@ -35,12 +35,7 @@ class WikipageWebkitView: UIViewController, WKUIDelegate, WKNavigationDelegate, 
         super.viewDidLoad()
         //遷移元への返り値を初期化
         selectorController.returnToMeString = ""
-        // Do any additional setup after loading the view, typically from a nib.
-        mainView.frame = CGRect(x: self.view.frame.origin.x,
-                                y: UIApplication.shared.keyWindow?.safeAreaInsets.top ?? 44.0,
-                                width: self.view.frame.size.width,
-                                height: self.view.frame.size.height - (UIApplication.shared.keyWindow?.safeAreaInsets.top ?? 44.0))
-        wkWebView.frame = CGRect(x: 0, y: 0, width: mainView.frame.size.width, height: mainView.frame.size.height)
+        wkWebView.translatesAutoresizingMaskIntoConstraints = false
         wkWebView.navigationDelegate = self
         wkWebView.uiDelegate = self
         
@@ -50,22 +45,15 @@ class WikipageWebkitView: UIViewController, WKUIDelegate, WKNavigationDelegate, 
         let urlRequest = URLRequest(url:URL(string:targetUrl)!)
         wkWebView.load(urlRequest)
         mainView.addSubview(wkWebView)
+
+        NSLayoutConstraint.activate([
+            wkWebView.topAnchor.constraint(equalTo: mainView.topAnchor),
+            wkWebView.leadingAnchor.constraint(equalTo: mainView.leadingAnchor),
+            wkWebView.trailingAnchor.constraint(equalTo: mainView.trailingAnchor),
+            wkWebView.bottomAnchor.constraint(equalTo: mainView.bottomAnchor)
+        ])
         
         createWebControlParts()
-    }
-    override func viewDidLayoutSubviews() {
-        if UIApplication.shared.keyWindow?.rootViewController?.view.safeAreaInsets.bottom == 0 {
-            tabBar.frame.origin.y += 34
-        }
-        /*
-        print("UIApplication.shared.keyWindow?.rootViewController?.view.safeAreaInsets.bottom=\(UIApplication.shared.keyWindow?.rootViewController?.view.safeAreaInsets.bottom)")
-        print("tabBar.frame.origin.y=\(tabBar.frame.origin.y)")
-        print("tabBar.frame.height")
-        tabBar.frame.origin.y = (UIApplication.shared.keyWindow?.rootViewController?.view.safeAreaInsets.bottom ?? 0) - tabBar.frame.height
-         */
-        /*
-        WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: Date(timeIntervalSince1970: 0), completionHandler: {})
-         */
     }
     
     override func didReceiveMemoryWarning() {
@@ -149,12 +137,12 @@ class WikipageWebkitView: UIViewController, WKUIDelegate, WKNavigationDelegate, 
             }
         """, completionHandler: nil)
         
-        let music = selectorController.currentMusics[selectorController.indexCarousel]
+        guard let music = selectorController.currentSelectedMusic() else { return }
         webView.evaluateJavaScript(
             "document.getElementById('SetMusicDataBtn_NicoFlick').id",
             completionHandler: { (html: Any?, error: Error?) in
                 guard let html = html as? String else { return }
-                print("html=\(html)")
+                // print("html=\(html)")
                 if !(html == "SetMusicDataBtn_NicoFlick") { return }
                 
                 webView.evaluateJavaScript("""
@@ -189,9 +177,9 @@ class WikipageWebkitView: UIViewController, WKUIDelegate, WKNavigationDelegate, 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         if let url = navigationAction.request.url {
             //
-            print(url.absoluteString)
+            // print(url.absoluteString)
             if url.absoluteString.hasPrefix("nicoflick://"){
-                print("いっち")
+                // print("いっち")
                 decisionHandler(.cancel)
                 selectorController.returnToMeString = url.absoluteString.removingPercentEncoding ?? ""
                 self.navigationController?.popViewController(animated: true)
@@ -206,18 +194,13 @@ class WikipageWebkitView: UIViewController, WKUIDelegate, WKNavigationDelegate, 
     /// 戻る・すすむボタン作成
     private func createWebControlParts() {
         
-        let buttonSize = CGSize(width:40,height:40)
-        let buttonPadding:CGFloat = 10
-        var yPos = tabBar.frame.origin.y + buttonPadding
-        if UIApplication.shared.keyWindow?.rootViewController?.view.safeAreaInsets.bottom == 0 {
-            yPos += 30
-        }
-        
-        let backButtonPos = CGPoint(x:UIScreen.main.bounds.width - (buttonSize.width*2 + buttonPadding*3), y:yPos)
-        let forwardButtonPos = CGPoint(x:UIScreen.main.bounds.width - (buttonSize.width + buttonPadding*2), y:yPos)
-        
-        backButton = UIButton(frame: CGRect(origin: backButtonPos, size: buttonSize))
-        forwadButton = UIButton(frame: CGRect(origin:forwardButtonPos, size:buttonSize))
+        backButton = UIButton(type: .system)
+        forwadButton = UIButton(type: .system)
+        backButton.translatesAutoresizingMaskIntoConstraints = false
+        forwadButton.translatesAutoresizingMaskIntoConstraints = false
+
+        let tabBarContentLayoutGuide = UILayoutGuide()
+        view.addLayoutGuide(tabBarContentLayoutGuide)
         
         if #available(iOS 13.0, *) {
             backButton.setImage(UIImage(systemName: "chevron.backward"), for: .normal)
@@ -250,6 +233,19 @@ class WikipageWebkitView: UIViewController, WKUIDelegate, WKNavigationDelegate, 
         //forwadButton.isHidden = true
         forwadButton.isEnabled = true
         view.addSubview(forwadButton)
+
+        NSLayoutConstraint.activate([
+            tabBarContentLayoutGuide.topAnchor.constraint(equalTo: tabBar.topAnchor),
+            tabBarContentLayoutGuide.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            forwadButton.widthAnchor.constraint(equalToConstant: 40),
+            forwadButton.heightAnchor.constraint(equalToConstant: 40),
+            forwadButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -40),
+            forwadButton.centerYAnchor.constraint(equalTo: tabBarContentLayoutGuide.centerYAnchor),
+            backButton.widthAnchor.constraint(equalToConstant: 40),
+            backButton.heightAnchor.constraint(equalToConstant: 40),
+            backButton.trailingAnchor.constraint(equalTo: forwadButton.leadingAnchor, constant: -10),
+            backButton.centerYAnchor.constraint(equalTo: tabBarContentLayoutGuide.centerYAnchor)
+        ])
         
     }
     
@@ -262,7 +258,7 @@ class WikipageWebkitView: UIViewController, WKUIDelegate, WKNavigationDelegate, 
     }
     
     func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
-        print("tabBarItem=\(item.tag)")
+        // print("tabBarItem=\(item.tag)")
         //self.dismiss(animated: true, completion: nil)
         selectorController.returnToMeString = "BackButton"
         self.navigationController?.popViewController(animated: true)
@@ -270,7 +266,6 @@ class WikipageWebkitView: UIViewController, WKUIDelegate, WKNavigationDelegate, 
         seSystemAudio.canselSePlay()
     }
     @IBAction func returnToMe(segue: UIStoryboardSegue){
-        print("returnToMe")
+        // print("returnToMe")
     }
 }
-

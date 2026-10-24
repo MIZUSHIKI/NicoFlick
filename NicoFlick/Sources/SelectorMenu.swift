@@ -152,7 +152,7 @@ class SelectorMenu: UIViewController {
             (action: UIAlertAction!) in
             //print("はいをタップした時の処理")
             
-            print(alert.textFields![0].text!)
+            // print(alert.textFields![0].text!)
             // データの削除
             if let music = self.selectMusic  {
                 ServerDataHandler().postMusicDelete(musicID: music.sqlID, masterPass: alert.textFields![0].text!) {
@@ -169,7 +169,7 @@ class SelectorMenu: UIViewController {
         //textfiledの追加
         alert.addTextField(configurationHandler: {(textField: UITextField!) in
             textField.isSecureTextEntry = true // for password input
-            textField.placeholder = "マスターパスワード"
+            textField.placeholder = "マスター: NicoFlickパス２"
         })
         self.present(alert, animated: true, completion: nil)
     }
@@ -190,15 +190,23 @@ class SelectorMenu: UIViewController {
             guard let url = URL(string: "https://www.nicovideo.jp/watch/sm35113435") else { return }
             UIApplication.shared.open(url)
         }) )
+        if selectorController.shouldOfferJapaneseKeyboardGuide {
+            alert.addAction(UIAlertAction(title: "Japanese Flick Keyboard Setup", style: .default, handler: { [weak self] _ in
+                guard let self = self else { return }
+                self.selectorController.dismiss(animated: true) {
+                    self.selectorController.showJapaneseKeyboardGuide()
+                }
+            }))
+        }
         alert.addAction( UIAlertAction(title: "キャンセル", style: .cancel, handler: nil) )
         self.present(alert, animated: true, completion: nil)
     }
     
     
     @IBAction func postLevelDataButton(_ sender: UIButton) {
-        if selectMusic == nil { return }
+        guard let selectedMusic = selectMusic else { return }
         //let music = selectorController.currentMusics[selectorController.indexCarousel]
-        let level = selectorController.currentLevels[selectorController.indexPicker]
+        guard let level = selectorController.currentSelectedLevel() else { return }
         let hoshi = level.level == 100 ? "FULL" : "☆\(level.level!)"
         let alert = UIAlertController(title:"ゲームデータの作成", message: "この楽曲の\n\n難易度：\(hoshi)\ncreator：\(level.creator!)\n\nを基にゲームデータの仮登録を行います。", preferredStyle: UIAlertControllerStyle.alert)
         alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: {
@@ -225,7 +233,7 @@ class SelectorMenu: UIViewController {
             }
             // ゲームデータの仮登録
             ServerDataHandler().postLevelInsert(
-                nicoURL: self.selectorController.currentMusics[self.selectorController.indexCarousel].movieURL,
+                nicoURL: selectedMusic.movieURL,
                 level: level.level,
                 creator: name,
                 description: "【編集中:\(UserData.sharedInstance.UserID.prefix(8))】",
@@ -249,7 +257,7 @@ class SelectorMenu: UIViewController {
                                     //サーバから music,level,userName データを順次取得。
                                     ServerDataHandler().DownloadMusicDataAndUserNameData { (error) in
                                         if let error = error {
-                                            print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
+                                            // print(error) //なんか失敗した。けど、とりあえずスルーして次へ。
                                         }
                                         DispatchQueue.main.async {
                                             //UI処理はメインスレッドの必要あり
@@ -273,14 +281,16 @@ class SelectorMenu: UIViewController {
         //textfiledの追加
         alert.addTextField(configurationHandler: {(textField: UITextField!) in
             textField.isSecureTextEntry = true // for password input
-            textField.placeholder = "パスワードを設定して下さい。"
+            textField.placeholder = "あなたの編集用パスワードを設定"
         })
         self.present(alert, animated: true, completion: nil)
     }
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){
-        print("return")
+        tagLabel.text = userData.SelectedMusicCondition.tags
+        sortLabel.text = userData.SelectedMusicCondition.sortItem
+        // print("return",segue.identifier as Any)
     }
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "toTableViewForTag" {
@@ -308,9 +318,11 @@ class SelectorMenu: UIViewController {
             
         }else if segue.identifier == "toEditor" {
             //現在選択中のデータをEditorViewに渡す
+            guard let selectedMusic = selectMusic,
+                  let selectedLevel = selectorController.currentSelectedLevel() else { return }
             let editorViewController:EditorView = segue.destination as! EditorView
-            editorViewController.selectMusic = selectorController.currentMusics[selectorController.indexCarousel]
-            editorViewController.selectLevel = selectorController.currentLevels[selectorController.indexPicker]
+            editorViewController.selectMusic = selectedMusic
+            editorViewController.selectLevel = selectedLevel
             editorViewController.password = password
             
             selectorController.ThumbMovieStop()
@@ -328,7 +340,7 @@ class SelectorMenu: UIViewController {
         if identifier == "toEditor" {
             if selectMusic == nil { return false }
             password = ""
-            let level = selectorController.currentLevels[selectorController.indexPicker]
+            guard let level = selectorController.currentSelectedLevel() else { return false }
             let hoshi = level.level == 100 ? "FULL" : "☆\(level.level!)"
             
             let alert = UIAlertController(title:"ゲームデータの編集", message: "難易度：\(hoshi)\ncreator：\(level.creator!)", preferredStyle: UIAlertControllerStyle.alert)

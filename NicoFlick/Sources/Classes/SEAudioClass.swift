@@ -23,9 +23,11 @@ class SEAudio {
     var badJingles:[AVAudioPlayer] = []
     private var badJingleCount = 0
     
+    private let jingleInstanceNum = 20
+    
     var volume:Float = 1.0 {
         didSet {
-            for i in 0..<10 {
+            for i in 0..<jingleInstanceNum {
                 okJingles[i].volume = 10.0 * volume
                 safeJingles[i].volume = 10.0 * volume
                 badJingles[i].volume = 5.0 * volume
@@ -44,35 +46,35 @@ class SEAudio {
             return
         }
         loadedGameSE = true
-        print("loadGameSE")
+        // print("loadGameSE")
         
         //okJingles
-        for _ in (0..<10){
+        for _ in (0..<jingleInstanceNum){
             do {
                 let audio = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceOkJingleFile), fileTypeHint:nil)
                 okJingles.append(audio)
             } catch {
-                print("AVAudioPlayerインスタンス作成失敗")
+                // print("AVAudioPlayerインスタンス作成失敗")
             }
             
         }
         //safeJingles
-        for _ in (0..<10){
+        for _ in (0..<jingleInstanceNum){
             do {
                 let audio = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceSafeJingleFile), fileTypeHint:nil)
                 safeJingles.append(audio)
             } catch {
-                print("AVAudioPlayerインスタンス作成失敗")
+                // print("AVAudioPlayerインスタンス作成失敗")
             }
             
         }
         //badJingles
-        for _ in (0..<10){
+        for _ in (0..<jingleInstanceNum){
             do {
                 let audio = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceBadJingleFile), fileTypeHint:nil)
                 badJingles.append(audio)
             } catch {
-                print("AVAudioPlayerインスタンス作成失敗")
+                // print("AVAudioPlayerインスタンス作成失敗")
             }
             
         }
@@ -83,17 +85,17 @@ class SEAudio {
     func okJinglePlay(){
         okJingles[okJingleCount].play()
         okJingleCount += 1
-        okJingleCount = okJingleCount % 10
+        okJingleCount = okJingleCount % jingleInstanceNum
     }
     func safeJinglePlay(){
         safeJingles[safeJingleCount].play()
         safeJingleCount += 1
-        safeJingleCount = safeJingleCount % 10
+        safeJingleCount = safeJingleCount % jingleInstanceNum
     }
     func badJinglePlay(){
         badJingles[badJingleCount].play()
         badJingleCount += 1
-        badJingleCount = badJingleCount % 10
+        badJingleCount = badJingleCount % jingleInstanceNum
     }
     
     private func GetSoundPath(file:String) -> URL {
@@ -165,7 +167,7 @@ class SESystemAudio {
             return
         }
         loadedSystemSE = true
-        print("loadedSystemSE")
+        // print("loadedSystemSE")
         
         //shuffleSes
         // AVAudioPlayerのインスタンスを作成
@@ -175,7 +177,7 @@ class SESystemAudio {
                 shuffleSes.append(audio)
 
             } catch {
-                print("AVAudioPlayerインスタンス作成失敗")
+                // print("AVAudioPlayerインスタンス作成失敗")
             }
             
         }
@@ -183,67 +185,67 @@ class SESystemAudio {
         do {
             drumRollSe = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceDrumRollSeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //rankSe
         do {
             rankSe = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceRankSeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //goSe
         do {
             goSe = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceGoSeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //canselSe
         do {
             canselSe = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceCanselSeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //canselSe
         do {
             cansel2Se = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceCansel2SeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //startSe
         do {
             startSe = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceStartSeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //start2Se
         do {
             start2Se = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceStart2SeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //gameMenuSe
         do {
             gameMenuSe = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceGameMenuSeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //openSe
         do {
             openSe = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceOpenSeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //openSubSe
         do {
             openSubSe = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceOpenSubSeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //openSelectorMenuSe
         do {
             openSelectorMenuSe = try AVAudioPlayer(contentsOf: GetSoundPath(file: resourceOpenSelectorMenuSeFile), fileTypeHint:nil)
         } catch {
-            print("AVAudioPlayerインスタンス作成失敗")
+            // print("AVAudioPlayerインスタンス作成失敗")
         }
         //set Volume
         self.volume = UserData.sharedInstance.SoundVolumeSystemSE

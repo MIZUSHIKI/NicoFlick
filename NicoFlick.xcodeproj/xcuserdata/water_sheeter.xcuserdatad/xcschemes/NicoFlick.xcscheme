@@ -37,26 +37,6 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "10B49C991EB4B4EF000C79D3"
-               BuildableName = "NicoFlickTests.xctest"
-               BlueprintName = "NicoFlickTests"
-               ReferencedContainer = "container:NicoFlick.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "10B49CA41EB4B4EF000C79D3"
-               BuildableName = "NicoFlickUITests.xctest"
-               BlueprintName = "NicoFlickUITests"
-               ReferencedContainer = "container:NicoFlick.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -79,6 +59,13 @@
             ReferencedContainer = "container:NicoFlick.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "IDEPreferLogStreaming"
+            value = "YES"
+            isEnabled = "NO">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

@@ -9,6 +9,36 @@
 import UIKit
 import ReplayKit
 
+// ResultViewからだけ呼ぶ。入力処理には推測・記録を追加しない。
+enum FlickOnlyReminder {
+    static let shownKey = "FlickOnlyReminderShown_v1"
+
+    static func isSuspicious(_ notes: [Note]) -> Bool {
+        let tapCharacters = Set("あかさたなはまやらわ".map(String.init))
+        var previous: Note?
+        var previousWord: String?
+        var safeCount = 0
+
+        for note in notes where note.isFlickable == true {
+            let word = (note.word ?? "").applyingTransform(.hiraganaToKatakana, reverse: true) ?? ""
+            // MISS/BADの直後は、同じ文字を続けて入力した証拠にしない。
+            let previousWasHit = previous.map {
+                $0.judge == Note.GREAT || $0.judge == Note.GOOD || $0.judge == Note.SAFE
+            } ?? false
+            if tapCharacters.contains(word), word == previousWord,
+               previousWasHit, note.judge == Note.SAFE {
+                safeCount += 1
+                // 1プレイで3回あれば案内する。同じ連打内のSAFEもそれぞれ数える。
+                if safeCount >= 3 { return true }
+            }
+            previous = note
+            previousWord = word
+        }
+        return false
+    }
+}
+
+
 class ResultView: UIViewController, RPPreviewViewControllerDelegate {
     
     @IBOutlet var thumbnailView: UIView!
@@ -39,6 +69,7 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
     
     @IBOutlet weak var usumaku: UIView!
     
+    private var shouldShowFlickOnlyReminder = false
     var updatedScore = false
     //効果音プレイヤー(シングルトン)
     var seSystemAudio:SESystemAudio = SESystemAudio.sharedInstance
@@ -191,24 +222,47 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
         
         //【編集中】データの場合、スコア等は保存・送信しないで終わる
         if selectLevel.isEditing /*|| true*/ {
-            self.HiScoreUpdate.text = "編集中データのため保存・送信は行われません。"
+            self.HiScoreUpdate.text = "編集中データのためスコアの保存・送信は行われません。"
+            self.HiScoreUpdate.isHidden = false
+            commentPostable = false
+            return
+        }
+        
+        //保存データ
+        let userData = UserData.sharedInstance
+        
+        // 今回のスコア保存前に確認する。保存済みスコアが20件未満の人だけ調べる。
+        if !gameViewController.practiceMode,
+           noteData.score.borderScore > 0,
+           !UserDefaults.standard.bool(forKey: FlickOnlyReminder.shownKey),
+           userData.Score.scores.count < 20 {
+            shouldShowFlickOnlyReminder = FlickOnlyReminder.isSuspicious(noteData.notes)
+        }
+
+        //  プレイ回数データ
+        userData.PlayCount.addPlayCount(levelID: selectLevel.sqlID)
+        // 判定中はフラグだけを立て、ゲーム終了後に端末内の履歴を保存する
+        gameViewController.recordPlayHistoryIfNeeded()
+        
+        // 練習モードの場合、スコア等は保存・送信しないで終わる
+        if gameViewController.practiceMode {
+            self.HiScoreUpdate.text = "練習モードのためスコアの保存・送信は行われません。"
             self.HiScoreUpdate.isHidden = false
             return
         }
+        
         //
         //ユーザースコアの保存->送信、プレイ回数のカウント->送信
         //
-        //保存データ
-        let userData = UserData.sharedInstance
         //  ユーザースコア
         updatedScore = userData.Score.setScore(levelID: selectLevel.sqlID,
                                                score: noteData.score.totalScore,
-                                               rank: noteData.getJudgeRank() )
+                                               rank: noteData.getJudgeRank(),
+                                               level: selectLevel.level ?? 0)
         userData.JustPlayedScore.setScore(levelID: selectLevel.sqlID,
                                           score: noteData.score.totalScore,
-                                          rank: noteData.getJudgeRank() )
-        //  プレイ回数データ
-        userData.PlayCount.addPlayCount(levelID: selectLevel.sqlID)
+                                          rank: noteData.getJudgeRank(),
+                                          level: selectLevel.level ?? 0)
         
         //スコアをデータベースに送信する(送信済みでないもの)
         var scoreset = userData.Score.getSendScoresStr() //送信するデータ
@@ -224,39 +278,8 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
             }
         }
         //プレイ回数をデータベースに送信する(送信済みでないもの)
-        let pfcountset = PFCounter.init().getSendPlayFavoriteCountStr()
-        if pfcountset != "" {
-            // プレイ回数 送信
-            ServerDataHandler().postPlayFavoriteCountData(pfcountset: pfcountset) { (bool) in
-                if bool {
-                    //プレイ回数データを保存する(初期化データになる)
-                    UserData.sharedInstance.PlayCount.setSended()
-                    UserData.sharedInstance.FavoriteCount.setSended()
-                }
-            }
-        }else{
-            let playcountset = UserData.sharedInstance.PlayCount.getSendPlayCountStr() //送信するデータ
-            if playcountset != "" {
-                // プレイ回数 送信
-                ServerDataHandler().postPlayCountData(playcountset: playcountset) { (bool) in
-                    if bool {
-                        //プレイ回数データを保存する(初期化データになる)
-                        UserData.sharedInstance.PlayCount.setSended()
-                    }
-                }
-            }
-            let favoritecountset = UserData.sharedInstance.FavoriteCount.getSendFavoriteCountStr() //送信するデータ
-            if favoritecountset != "" {
-                // プレイ回数 送信
-                ServerDataHandler().postFavoriteCountData(favoritecountset: favoritecountset) { (bool) in
-                    if bool {
-                        //プレイ回数データを保存する(初期化データになる)
-                        UserData.sharedInstance.FavoriteCount.setSended()
-                    }
-                }
-            }
-        }
-        
+        // playCount,like,dislike,musicFavorite の送信(成功したらカウントデータを初期化)
+        ServerDataHandler().postUserCountData()
     }
     
     override func didReceiveMemoryWarning() {
@@ -265,7 +288,7 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
     }
     
     @IBAction func TapView(_ sender: UITapGestureRecognizer) {
-        print("tap")
+        // print("tap")
         totalNotes.chainFinish()
         combo.chainFinish()
         great.chainFinish()
@@ -280,7 +303,7 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
     
     
     @IBAction func TweetButton(_ sender: UIButton) {
-        print("tw")
+        // print("tw")
         endRecording() //録画してたらtweetボタンでも終了させる
         
         //if !UIApplication.shared.canOpenURL(URL(string: "twitter://")!){ return }
@@ -298,7 +321,7 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
         do{
             try data.write(to: url, options: .atomic)
         }catch{
-            print("error")
+            // print("error")
             return
         }
         let vc = UIActivityViewController(activityItems: [url, "\n#NicoFlick "], applicationActivities: nil)
@@ -317,13 +340,13 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
     
     //画面遷移処理_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     @IBAction func returnToMe(segue: UIStoryboardSegue){
-        print("return")
+        // print("return")
     }
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        print("seg")
+        // print("seg")
         //print(segue.identifier)
         if segue.identifier == "toRankingTabBar" {
-            print("toRanking")
+            // print("toRanking")
             endRecording()
             //現在選択中のデータをRankingTabBarに渡す
             let destinationTabBarController = segue.destination as! UITabBarController
@@ -342,8 +365,11 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
 
         }
         if segue.identifier == "fromResultView" {
+            if shouldShowFlickOnlyReminder {
+                gameViewController.selectorController?.queueFlickOnlyReminder()
+            }
             //チェインFinishせずにOK押したときを考慮
-            print("chainbreak back")
+            // print("chainbreak back")
             totalNotes.chainBreak()
             combo.chainBreak()
             great.chainBreak()
@@ -364,8 +390,8 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
     }
     //遷移の許可
     override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {
-        print("should")
-        print(identifier)
+        // print("should")
+        // print(identifier)
         return true
     }
     //\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
@@ -374,33 +400,53 @@ class ResultView: UIViewController, RPPreviewViewControllerDelegate {
         // 録画中じゃないと終了しない
         guard RPScreenRecorder.shared().isRecording else { return }
         // 録画終了
-        RPScreenRecorder.shared().stopRecording(handler: { (previewViewController, error) in
+        RPScreenRecorder.shared().stopRecording { [weak self] previewViewController, error in
+            guard let self = self else { return }
+            if let error = error {
+                // print("録画終了エラー: \(error.localizedDescription)")
+                return
+            }
             guard let previewViewController = previewViewController else { return }
-            previewViewController.previewControllerDelegate = self //delegateを実装しないとdismissされない
-            previewViewController.modalPresentationStyle = .fullScreen
-            self.playPreviewViewController = previewViewController
-            // プレビューの表示
-            //self.present(previewViewController, animated: true, completion: nil)
-        })
+
+            DispatchQueue.main.async {
+                self.preparePreviewController(previewViewController)
+            }
+        }
     }
+
     func endRecordingAndPresent() {
-        //tweetButtonで既に録画終了しているとき
+        // tweetButtonで既に録画終了しているとき
         if let playPreviewViewController = playPreviewViewController {
-            // プレビューの表示
-            self.present(playPreviewViewController, animated: true, completion: nil)
+            presentPreviewController(playPreviewViewController)
             return
         }
         // 録画中じゃないと終了しない
         guard RPScreenRecorder.shared().isRecording else { return }
         // 録画終了
-        RPScreenRecorder.shared().stopRecording(handler: { (previewViewController, error) in
+        RPScreenRecorder.shared().stopRecording { [weak self] previewViewController, error in
+            guard let self = self else { return }
+            if let error = error {
+                // print("録画終了エラー: \(error.localizedDescription)")
+                return
+            }
             guard let previewViewController = previewViewController else { return }
-            previewViewController.previewControllerDelegate = self //delegateを実装しないとdismissされない
-            previewViewController.modalPresentationStyle = .fullScreen
-            self.playPreviewViewController = previewViewController
-            // プレビューの表示
-            self.present(previewViewController, animated: true, completion: nil)
-        })
+
+            DispatchQueue.main.async {
+                self.preparePreviewController(previewViewController)
+                self.presentPreviewController(previewViewController)
+            }
+        }
+    }
+
+    private func preparePreviewController(_ previewViewController: RPPreviewViewController) {
+        previewViewController.previewControllerDelegate = self
+        previewViewController.modalPresentationStyle = .pageSheet
+        playPreviewViewController = previewViewController
+    }
+
+    private func presentPreviewController(_ previewViewController: RPPreviewViewController) {
+        previewViewController.modalPresentationStyle = .pageSheet
+        present(previewViewController, animated: true, completion: nil)
     }
     func canselRecording() {
         guard RPScreenRecorder.shared().isRecording else { return }

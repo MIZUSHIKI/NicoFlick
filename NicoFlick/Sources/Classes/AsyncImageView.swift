@@ -8,6 +8,25 @@
 
 import UIKit
 
+enum AsyncImageLoadError: Error {
+    case invalidURL
+    case network(Error)
+    case invalidHTTPResponse
+    case httpStatus(Int)
+    case invalidImageData
+
+    var shouldRepairThumbnailURL: Bool {
+        switch self {
+        case .invalidURL, .invalidHTTPResponse, .invalidImageData:
+            return true
+        case .httpStatus(let statusCode):
+            return statusCode != 408 && statusCode != 429 && (400...499).contains(statusCode)
+        case .network:
+            return false
+        }
+    }
+}
+
 class AsyncImageView: UIImageView {
     let CACHE_SEC : TimeInterval = 60*24*7 * 60; //一週間キャッシュ
     
@@ -15,10 +34,13 @@ class AsyncImageView: UIImageView {
     var resizeY = 175.0
     
     //画像を非同期で読み込む
-    func loadImage(urlString: String, contentMode:UIImageView.ContentMode = .scaleAspectFit){
+    func loadImage(urlString: String, contentMode:UIImageView.ContentMode = .scaleAspectFit, completion: ((Result<Void, AsyncImageLoadError>) -> Void)? = nil){
+        loadImage(urlString: urlString, contentMode: contentMode, tryLargeThumbnail: true, completion: completion)
+    }
+
+    private func loadImage(urlString: String, contentMode: UIImageView.ContentMode, tryLargeThumbnail: Bool, completion: ((Result<Void, AsyncImageLoadError>) -> Void)?) {
         var urlString_ = urlString
         var ans:[String]=[]
-        var trimRect = CGRect(x: 0, y: 13, width: 130, height: 74)
         var flg = false
         if (urlString_.pregMatche(pattern: "/thumbnails/(\\d+)/", matches: &ans)){
             if Int(ans[1])! >= 16371845 {
@@ -30,12 +52,25 @@ class AsyncImageView: UIImageView {
                 flg = true
             }
         }
-        if flg {
+        if flg && tryLargeThumbnail {
             urlString_ = urlString + ".L"
-            trimRect = CGRect(x: 0, y: 35, width: 360, height: 200)
         }
-        print(urlString_)
-        let req = URLRequest(url: NSURL(string:urlString_)! as URL,
+        let retryWithoutLargeThumbnail: (AsyncImageLoadError) -> Void = { error in
+            if flg && tryLargeThumbnail {
+                self.loadImage(urlString: urlString, contentMode: contentMode, tryLargeThumbnail: false, completion: completion)
+            } else {
+                completion?(.failure(error))
+            }
+        }
+        // print(urlString_)
+        guard let url = URL(string: urlString_),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              url.host != nil else {
+            retryWithoutLargeThumbnail(.invalidURL)
+            return
+        }
+        let req = URLRequest(url: url,
                              cachePolicy: .returnCacheDataElseLoad,
                              timeoutInterval: CACHE_SEC);
         let conf =  URLSessionConfiguration.default;
@@ -43,20 +78,40 @@ class AsyncImageView: UIImageView {
         
         session.dataTask(with: req, completionHandler:
             { (data, resp, err) in
-                if((err) == nil){ //Success
-                    let _image = UIImage(data:data!)
-                    if _image != nil {
-                        //最初にサムネ比率にカット
-                        let __image = _image!.TrimUIImage(width: _image!.size.width, height: _image!.size.width * self.resizeY / self.resizeX )
-                        //次にリサイズ
-                        let resizeImage = __image?.ResizeUIImage(width: self.frame.size.width, height: self.frame.size.height, contentMode: contentMode)
-                        //最後にまたトリミング(Viewサイズにカット)
-                        self.image = resizeImage?.TrimUIImage(width: self.frame.size.width, height: self.frame.size.height)
-                    }
-                    
-                }else{ //Error
-                    //print("AsyncImageView:Error \(err?.localizedDescription)");
+                if let err {
+                    completion?(.failure(.network(err)))
+                    return
                 }
+                guard let httpResponse = resp as? HTTPURLResponse else {
+                    retryWithoutLargeThumbnail(.invalidHTTPResponse)
+                    return
+                }
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    retryWithoutLargeThumbnail(.httpStatus(httpResponse.statusCode))
+                    return
+                }
+                guard let data, let image = UIImage(data: data) else {
+                    retryWithoutLargeThumbnail(.invalidImageData)
+                    return
+                }
+
+                //最初にサムネ比率にカット
+                let trimmedImage = image.TrimUIImage(
+                    width: image.size.width,
+                    height: image.size.width * self.resizeY / self.resizeX
+                )
+                //次にリサイズ
+                let resizedImage = trimmedImage?.ResizeUIImage(
+                    width: self.frame.size.width,
+                    height: self.frame.size.height,
+                    contentMode: contentMode
+                )
+                //最後にまたトリミング(Viewサイズにカット)
+                self.image = resizedImage?.TrimUIImage(
+                    width: self.frame.size.width,
+                    height: self.frame.size.height
+                )
+                completion?(.success(()))
         }).resume();
     }
 
