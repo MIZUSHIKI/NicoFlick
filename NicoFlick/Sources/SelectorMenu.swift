@@ -231,6 +231,16 @@ class SelectorMenu: UIViewController {
                     noteData += "\n@NicoFlick=2"
                 }
             }
+            // Capture only the saved answer; requests and difficulty preferences are not inherited.
+            let aiMusicID = selectedMusic.sqlID
+            let aiBaseLevelID = level.sqlID
+            let aiAnswerData: Data?
+            if let musicID = aiMusicID, let levelID = aiBaseLevelID {
+                aiAnswerData = ExternalAIChartViewController.savedAnswerData(
+                    sourceID: "\(musicID):\(levelID)")
+            } else {
+                aiAnswerData = nil
+            }
             // ゲームデータの仮登録
             ServerDataHandler().postLevelInsert(
                 nicoURL: selectedMusic.movieURL,
@@ -247,6 +257,12 @@ class SelectorMenu: UIViewController {
                     }
                     if retStr.pregMatche(pattern: "<!--EchoHtmlMes_OK-->"){
                         DispatchQueue.main.async {//UI処理はメインスレッドの必要あり
+                            if let answer = aiAnswerData, let musicID = aiMusicID,
+                               let newLevelID = ServerDataHandler.insertedLevelID(from: retStr),
+                               newLevelID != aiBaseLevelID {
+                                ExternalAIChartViewController.saveCopiedAnswer(
+                                    answer, sourceID: "\(musicID):\(newLevelID)")
+                            }
                             let alert = UIAlertController(title:"NicoFlick データベース", message: "『ゲームデータの仮登録』を行いました。\nミュージックセレクト画面の ◁Edit からゲームデータの作成/本登録をしてください。", preferredStyle: UIAlertControllerStyle.alert)
                             
                             alert.addAction(UIAlertAction(title: "OK", style: .cancel, handler: { (alertAction) in

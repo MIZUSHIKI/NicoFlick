@@ -284,14 +284,7 @@ class EditorGame: UIViewController, UITextFieldDelegate {
     }
 
     private func restoreEditorMovieLayout() {
-        guard let playerView = editorViewController.moviePlayerViewController?.view else {
-            return
-        }
-
-        editorViewController.movieView.addSubview(playerView)
-        editorViewController.movieView.sendSubview(toBack: playerView)
-        playerView.frame.origin = .zero
-        playerView.frame.size = editorViewController.movieView.frame.size
+        editorViewController.restoreMovieLayout()
     }
     
     override func viewDidDisappear(_ animated: Bool) {

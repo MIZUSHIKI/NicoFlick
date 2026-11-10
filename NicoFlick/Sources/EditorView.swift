@@ -28,6 +28,83 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     
     @IBOutlet var setTimetagButton: UIButton!
     @IBOutlet var minusTimetagButton: UIButton!
+    private lazy var minusLongPressGesture: UILongPressGestureRecognizer = {
+        let gesture = UILongPressGestureRecognizer(target: self, action: #selector(confirmClearFlickNotes(_:)))
+        gesture.minimumPressDuration = 2.0
+        return gesture
+    }()
+    private let aiAssistButton = UIButton(type: .system)
+    static let aiAssistVisibleKey = "Editor.showAIAssist"
+    var showsAIAssist: Bool {
+        get { UserDefaults.standard.object(forKey: Self.aiAssistVisibleKey) as? Bool ?? true }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Self.aiAssistVisibleKey)
+            updateAIAssistVisibility()
+        }
+    }
+
+    func updateAIAssistVisibility() {
+        guard isViewLoaded else { return }
+        aiAssistButton.isHidden = !showsAIAssist || !notesSwitch.isOn
+    }
+
+    private func updateNoteEditingButtonsVisibility() {
+        minusLongPressGesture.isEnabled = notesSwitch.isOn
+        setText_CursorPosTimetagLabel()
+        // 動画の読み込み前は停止中として、初期スイッチ状態も表示に反映する。
+        let playing = moviePlayerViewController?.player?.isPlaying ?? false
+        let editingVisible = notesSwitch.isOn || playing
+        setTimetagButton.isHidden = !editingVisible
+        minusTimetagButton.isHidden = !editingVisible
+        UndoButton.isHidden = !editingVisible
+        RedoButton.isHidden = !editingVisible
+        rewindButton.isHidden = !playing
+        forwardButton.isHidden = !playing
+    }
+
+    private func configureAIAssistButton() {
+        var configuration = UIButton.Configuration.tinted()
+        configuration.title = "AI補助"
+        configuration.baseForegroundColor = UIColor(red: 0.0, green: 0.42, blue: 0.55, alpha: 1.0)
+        configuration.background.backgroundColor = UIColor.systemCyan.withAlphaComponent(0.3)
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
+        aiAssistButton.configuration = configuration
+        aiAssistButton.accessibilityLabel = "AIでノーツ作成を補助"
+        aiAssistButton.accessibilityIdentifier = "editor.externalAI"
+        aiAssistButton.addTarget(self, action: #selector(openExternalAI), for: .touchUpInside)
+        aiAssistButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(aiAssistButton)
+        NSLayoutConstraint.activate([
+            aiAssistButton.bottomAnchor.constraint(equalTo: minusTimetagButton.topAnchor, constant: -52),
+            aiAssistButton.centerXAnchor.constraint(equalTo: minusTimetagButton.centerXAnchor),
+            aiAssistButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            aiAssistButton.leadingAnchor.constraint(greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 8),
+            aiAssistButton.trailingAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8)
+        ])
+        updateAIAssistVisibility()
+    }
+
+    @objc private func openExternalAI() {
+        guard notesSwitch.isOn else { return }
+        view.endEditing(true)
+        playerStop()
+        autoSave()
+        let sourceID = "\(selectMusic.sqlID ?? 0):\(selectLevel.sqlID ?? 0)"
+        let panel = ExternalAIChartViewController(
+            sourceID: sourceID,
+            snapshot: { [self] in mySpoon.externalAISnapshot(sourceID: sourceID) },
+            evaluate: { [self] in mySpoon.externalAILevel(for: $0) },
+            apply: { [self] selected, level in
+                mySpoon.applyExternalAISelection(selected, level: level)
+                notesSwitch.isOn = true
+                notesSwitch(notesSwitch)
+                UndoButton.isHidden = false
+                RedoButton.isHidden = false
+                setText_CursorPosTimetagLabel()
+                autoSave()
+            })
+        present(UINavigationController(rootViewController: panel), animated: true)
+    }
     @IBOutlet var rewindButton: UIButton!
     @IBOutlet var forwardButton: UIButton!
     
@@ -90,6 +167,9 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        configureAIAssistButton()
+        minusTimetagButton.addGestureRecognizer(minusLongPressGesture)
+        minusLongPressGesture.isEnabled = notesSwitch.isOn
         // Do any additional setup after loading the view, typically from a nib.
         
         // textFieldShouldReturnで閉じるように
@@ -170,6 +250,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
             
             mySpoon = Spoons(timetagText: maeSpoonString)
             notesSwitch.isOn = mySpoon.spoons.contains { $0.note }
+            updateNoteEditingButtonsVisibility()
             //ラベル等の画面表示
             self.CreateScrollViewContents()
         }else{
@@ -237,6 +318,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                         DispatchQueue.main.async {
                             self.activityIndicator.stopAnimating()
                             self.notesSwitch.isOn = self.mySpoon.spoons.contains { $0.note }
+                            self.updateNoteEditingButtonsVisibility()
                             self.CreateScrollViewContents()
                         }
                     }else {
@@ -273,6 +355,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
                             DispatchQueue.main.async {
                                 self.activityIndicator.stopAnimating()
                                 self.notesSwitch.isOn = self.mySpoon.spoons.contains { $0.note }
+                                self.updateNoteEditingButtonsVisibility()
                                 self.CreateScrollViewContents()
                             }
                         }
@@ -290,6 +373,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         }
     }
     func CreateScrollViewContents() {
+        updateAIAssistVisibility()
         // print("start")
         // print(Date())
         let scale = scrollView.zoomScale
@@ -471,8 +555,28 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     deinit {
         removePeriodicTimeObserver()
     }
+    // キーボードや画面遷移による動画ビューのサイズ変更を、編集用の表示領域に戻す。
+    func restoreMovieLayout() {
+        guard let movieView,
+              let playerView = moviePlayerViewController?.view,
+              playerView.superview === movieView else { return }
+
+        UIView.performWithoutAnimation {
+            view.layoutIfNeeded()
+            movieView.sendSubview(toBack: playerView)
+            playerView.frame = movieView.bounds
+            playerView.layoutIfNeeded()
+        }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        restoreMovieLayout()
+    }
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        updateAIAssistVisibility()
         self.configureObserver() //キーボード処理
         if periodicTimeObserver == nil, let player = moviePlayerViewController?.player {
             addPeriodicTimeObserver(to: player)
@@ -867,7 +971,28 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         }
     }
     
+    @objc private func confirmClearFlickNotes(_ sender: UILongPressGestureRecognizer) {
+        guard sender.state == .began, notesSwitch.isOn, presentedViewController == nil else { return }
+        let alert = UIAlertController(
+            title: "すべてのフリックノーツ振り分けを削除しますか？",
+            message: nil,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel))
+        alert.addAction(UIAlertAction(title: "OK", style: .destructive) { [weak self] _ in
+            guard let self = self else { return }
+            self.mySpoon.clearFlickNotes()
+            self.setText_CursorPosTimetagLabel()
+            self.autoSave()
+        })
+        present(alert, animated: true)
+    }
+
     @IBAction func minusTimetagButton_TouchDown(_ sender: UIButton) {
+        removePreviousTimetagOrNote()
+    }
+
+    private func removePreviousTimetagOrNote() {
         // print("minus")
         if notesSwitch.isOn == false {
             // print("timetag")
@@ -949,28 +1074,8 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     }
     
     @IBAction func notesSwitch(_ sender: UISwitch) {
-        if moviePlayerViewController == nil {
-            return
-        }
-        guard let playing = moviePlayerViewController?.player?.isPlaying else {
-            return
-        }
-        if playing {
-            setTimetagButton.isHidden = false
-            minusTimetagButton.isHidden = false
-            UndoButton.isHidden = false
-            RedoButton.isHidden = false
-            rewindButton.isHidden = false
-            forwardButton.isHidden = false
-        }else {
-            setTimetagButton.isHidden = true && !notesSwitch.isOn
-            minusTimetagButton.isHidden = true && !notesSwitch.isOn
-            UndoButton.isHidden = true && !notesSwitch.isOn
-            RedoButton.isHidden = true && !notesSwitch.isOn
-            rewindButton.isHidden = true
-            forwardButton.isHidden = true
-        }
-        self.setText_CursorPosTimetagLabel()
+        updateAIAssistVisibility()
+        updateNoteEditingButtonsVisibility()
     }
     
     @IBAction func UndoButton(_ sender: Any) {
@@ -995,6 +1100,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         }
         mySpoon.setCursor(index: retIndex, scroll: true, scrollView: scrollView, animated: true)
         self.setText_CursorPosTimetagLabel()
+        if changedID == .NoteBatch { autoSave() }
         
     }
     @IBAction func RedoButton(_ sender: Any) {
@@ -1012,6 +1118,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
         }
         // REDO実行！
         let retIndex = mySpoon.rirekiRedo()
+        if changedID == .NoteBatch { autoSave() }
         
         if changedID == .Word {
             self.CreateScrollViewContents()
@@ -1186,6 +1293,7 @@ class EditorView: UIViewController, UITextViewDelegate, UIScrollViewDelegate {
     
     func setText_CursorPosTimetagLabel() {
         if mySpoon.spoons.count <= mySpoon.cursorIndex {
+            setText_setTimetagButton()
             return
         }
         if mySpoon.spoons[mySpoon.cursorIndex].miriSec != -1 {

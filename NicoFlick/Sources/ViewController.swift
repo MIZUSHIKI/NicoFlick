@@ -395,5 +395,11 @@ class ViewController: UIViewController {
             UserData.sharedInstance.MusicsJson = ""
             UserData.sharedInstance.LevelsJson = ""
         }
+        if previousVersion < 2100 {
+            // calcLvを全体更新するため再ロード
+            MusicDataLists.sharedInstance.reset()
+            UserData.sharedInstance.MusicsJson = ""
+            UserData.sharedInstance.LevelsJson = ""
+        }
     }
 }

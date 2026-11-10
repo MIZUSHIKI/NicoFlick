@@ -14,11 +14,44 @@ class EditorSettings: UIViewController {
     @IBOutlet weak var timetagRateFactor: UITextField!
     @IBOutlet weak var playingNoteSelectionOffsetMs: UITextField!
     
+    private let aiAssistSwitch = UISwitch()
+    private let aiAssistRow = UIStackView()
+    private let betaSectionTitle = UILabel()
+
     //遷移時受け取り
     var editorViewController:EditorView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        for notificationName in [NSNotification.Name.UIKeyboardDidShow,
+                                 .UIKeyboardDidChangeFrame, .UIKeyboardDidHide] {
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(restoreMovieAfterKeyboardChange),
+                name: notificationName, object: nil
+            )
+        }
+        betaSectionTitle.text = "β機能"
+        betaSectionTitle.font = .preferredFont(forTextStyle: .headline)
+        betaSectionTitle.adjustsFontForContentSizeCategory = true
+        betaSectionTitle.textAlignment = .center
+        betaSectionTitle.numberOfLines = 0
+        betaSectionTitle.accessibilityTraits = UIAccessibilityTraitHeader
+        view.addSubview(betaSectionTitle)
+        let aiAssistLabel = UILabel()
+        aiAssistLabel.text = "AI補助ボタンを表示"
+        aiAssistLabel.font = .preferredFont(forTextStyle: .body)
+        aiAssistLabel.adjustsFontForContentSizeCategory = true
+        aiAssistLabel.numberOfLines = 0
+        aiAssistSwitch.isOn = editorViewController.showsAIAssist
+        aiAssistSwitch.accessibilityLabel = "AI補助ボタンを表示"
+        aiAssistSwitch.accessibilityIdentifier = "editorSettings.showAIAssist"
+        aiAssistSwitch.addTarget(self, action: #selector(aiAssistVisibilityChanged), for: .valueChanged)
+        aiAssistRow.axis = .horizontal
+        aiAssistRow.alignment = .center
+        aiAssistRow.spacing = 12
+        aiAssistRow.addArrangedSubview(aiAssistLabel)
+        aiAssistRow.addArrangedSubview(aiAssistSwitch)
+        view.addSubview(aiAssistRow)
         
         timetagOffsetMs.text = String(editorViewController.timetagOffsetMs)
         timetagRateFactor.text = String(editorViewController.timetagRateFactor)
@@ -42,11 +75,48 @@ class EditorSettings: UIViewController {
         )
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        let fieldFrame = playingNoteSelectionOffsetMs.convert(playingNoteSelectionOffsetMs.bounds, to: view)
+        let width = max(0, view.bounds.width - view.safeAreaInsets.left - view.safeAreaInsets.right - 32)
+        let size = aiAssistRow.systemLayoutSizeFitting(
+            CGSize(width: width, height: UILayoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel)
+        let titleHeight = betaSectionTitle.sizeThatFits(
+            CGSize(width: width, height: CGFloat.greatestFiniteMagnitude)).height
+        betaSectionTitle.frame = CGRect(x: view.safeAreaInsets.left + 16, y: fieldFrame.maxY + 48,
+                                        width: width, height: titleHeight)
+        aiAssistRow.frame = CGRect(x: view.safeAreaInsets.left + 16, y: betaSectionTitle.frame.maxY + 20,
+                                  width: width, height: max(44, size.height))
+    }
+
+    @objc private func aiAssistVisibilityChanged() {
+        editorViewController.showsAIAssist = aiAssistSwitch.isOn
+    }
+
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
     
+    @objc private func restoreMovieAfterKeyboardChange() {
+        guard isViewLoaded, view.window != nil, presentedViewController == nil else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.editorViewController.restoreMovieLayout()
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        editorViewController.restoreMovieLayout()
+        transitionCoordinator?.animate(alongsideTransition: nil) { [weak self] _ in
+            self?.editorViewController.restoreMovieLayout()
+        }
+    }
+
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        // メニューが下がり始める前に、キーボードを閉じて動画サイズを即時補正する。
+        view.endEditing(true)
+        editorViewController.restoreMovieLayout()
         // 遷移前に代入
         let offsetMs = Int(timetagOffsetMs.text ?? "") ?? -115
         let rateFactor = Double(timetagRateFactor.text ?? "") ?? 0.07

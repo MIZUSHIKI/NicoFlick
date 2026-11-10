@@ -368,11 +368,11 @@ class Spoons {
         for spoon in self.spoons {
             // timetag
             if spoon.miriSec != -1 {
-                if spoon.note {
-                    text += String.secondsToDotTimetag(seconds: Double(spoon.miriSec + offset)/1000)
-                }else {
-                    text += String.secondsToTimetag(seconds: Double(spoon.miriSec + offset)/1000)
-                }
+                let exportMilliseconds = max(0, spoon.miriSec + offset)
+                text += String.secondsToTimetag(
+                    seconds: Double(exportMilliseconds) / 1000,
+                    dot: spoon.note
+                )
             }
             // word
             text += spoon.word
@@ -634,13 +634,24 @@ class Spoons {
         return hoshi
     }
     
-    /// ノーツ間隔・入力内容・密集の頻度から、譜面の参考難易度（星1〜20）を求める。
+    /// ノーツ間隔・入力内容・密集の頻度から、譜面の参考難易度を実数で求める（上限なし）。
+    ///
+    /// 計算仕様バージョン: ver.2.0
+    /// - ver.1.0: 四捨五入し、上限20の整数を返す。
+    /// - ver.2.0:
+    ///   ・星8〜20に相当する難易度の計算式を調整。
+    ///   ・丸め前の実数を上限なしで返す形式に変更。
+    ///   ・整数化・上限20への制限は呼び出し側で行う。
+    ///   ・星1〜7を旧式で求める仕様は維持。
+    ///
+    /// 同期先: リポジトリ直下の LevelStarReference.php。
+    /// 旧式の分岐を含む係数・集計・丸めを変更する際はPHP版も同時に更新し、同じ譜面で結果を比較すること。
     ///
     /// 要点:
     /// - 星1〜7は旧式を返し、星8以上をこの密度評価で細分化する。
     /// - 通常の忙しさ50%、難所35%、繰り返し現れる2秒密集15%で基礎点を作る。
     /// - タップ文字と反復入力は少し易しく扱う。
-    /// - 星8〜13は直線、星14〜20は段差のない平方根曲線で高難度ほど厳しくする。
+    /// - 星8を起点に星14まで細かな直線、それ以降は平方根曲線で評価する。
     ///
     /// 詳細:
     /// 1. FULLがfalseなら、旧式と同じ条件でゲーム対象ノーツだけを抽出する。
@@ -653,13 +664,14 @@ class Spoons {
     /// 5. 曲全体を500ms刻みで走査し、直前2秒間の密度の90パーセンタイルを求める。
     ///    最大値ではないため、一度だけの密集より繰り返す密集を高く評価する。
     /// 6. difficulty = P75×0.50 + P90×0.35 + 2秒窓P90×0.15。
-    ///    linearStar = 1 + difficulty×1.75 とし、13を超えた部分を平方根型に圧縮する。
-    ///    この曲線では直線評価25が星20となり、最後に星8〜20へ丸める。
-    func getLevelStarReferencevalueV2(FULL: Bool = false) -> Int {
+    ///    丸め前8までは1 + difficulty×1.75、その先は傾き3.5で星14まで評価する（1Lvあたりの基礎点増加は元の50%）。
+    ///    星14超は固定係数0.58の平方根曲線で圧縮し、下限8の実数を返す。
+    ///    整数化と上限20への制限は呼び出し側で行う。
+    func getLevelStarReferencevalueV2(FULL: Bool = false) -> Double {
         // 星1〜7は旧式の値をそのまま返し、不要なV2計算を省略する。
         let currentStar = getLevelStarReferencevalue(FULL: FULL)
         if currentStar <= 7 {
-            return currentStar
+            return Double(currentStar)
         }
 
         // 実譜面との比較で調整する値は、ここに集約する。
@@ -792,23 +804,78 @@ class Spoons {
             + percentile(of: sortedStrains, at: 0.90) * 0.35
             + percentile(of: sortedBurstRates, at: 0.90) * 0.15
 
-        // 以前の3.2倍では約4.4入力/秒で星15に飽和していたため、傾きを緩める。
-        let linearStar = 1.0 + difficulty * 1.75
+        // Lv8（基礎点4）から等しい刻みで評価。middleSlopeを大きくすると1Lvあたりの必要密度が小さくなる。
+        let preservedBoundaryStar = 8.0
+        let preservedBoundaryDifficulty = (preservedBoundaryStar - 1.0) / 1.75
+        let middleSlope = 3.5
+        let linearStar = difficulty < preservedBoundaryDifficulty
+            ? 1.0 + difficulty * 1.75
+            : preservedBoundaryStar + (difficulty - preservedBoundaryDifficulty) * middleSlope
 
-        // 星13までは直線評価をそのまま使い、それ以降は緩やかな平方根型に圧縮する。
-        // 13の境界では値と傾きがともに連続するため、難易度の段差は生じない。
-        // 曲線係数は、直線評価の星25が曲線評価の星20になるように決めている。
-        let curveStartStar = 13.0
+        // 星14までは直線、その先は値と傾きが連続する平方根曲線。
+        // 調整目安: difficulty = 4 → 8、約4.286 → 9、5.714 → 14、12.329 → 20.10（丸め前）。
+        // 高難度側は係数0.58を維持。係数は固定値とし、実行時の逆算はしない。
+        // highDifficultyCurveを大きくすると高難度側の評価値が下がり、同じ星に必要な密度が増す。
+        // middleSlope・curveStartStarを変えた場合も、上記基礎点を比較の目安にする。
+        let curveStartStar = 14.0
+        let highDifficultyCurve = 0.58
         let excessOverCurveStart = max(0.0, linearStar - curveStartStar)
-        let highDifficultyCurve = 95.0 / 588.0
         let curvedStar = linearStar <= curveStartStar
             ? linearStar
             : curveStartStar + excessOverCurveStart
                 / sqrt(1.0 + highDifficultyCurve * excessOverCurveStart)
-        let estimatedStar = Int(round(curvedStar))
-        return min(20, max(8, estimatedStar))
+        return max(8.0, curvedStar)
     }
     
+    /// タイムタグとレベルを保ったまま、振り分けだけを一括削除する。
+    func clearFlickNotes() {
+        guard spoons.contains(where: { $0.note }) else { return }
+        let previous = spoons.map { $0.copy() }
+        for spoon in spoons {
+            spoon.note = false
+        }
+        _setRireki(index: max(0, cursorIndex), changedID: .NoteBatch,
+                   maeSpoons: previous, newSpoons: spoons)
+        rirekiSpoonSets.last?.oldLevel = atTag["Level"]
+        rirekiSpoonSets.last?.newLevel = atTag["Level"]
+    }
+
+    /// Apply one generated chart as a single undoable edit, including its displayed level.
+    func applyExternalAISelection(_ selected: Set<Int>, level: Int) {
+        guard !spoons.isEmpty, (1...20).contains(level) else { return }
+        let previous = spoons.map { $0.copy() }
+        let oldLevel = atTag["Level"]
+        for (index, spoon) in spoons.enumerated() {
+            spoon.note = selected.contains(index) && spoon.isCheckableWord && spoon.miriSec >= 0
+        }
+        _setRireki(index: max(0, cursorIndex), changedID: .NoteBatch,
+                   maeSpoons: previous, newSpoons: spoons)
+        rirekiSpoonSets.last?.oldLevel = oldLevel
+        // レベルUIへの自動設定値だけを上限10にし、難易度の計算値は変更しない。
+        let displayedLevel = String(min(level, 10))
+        rirekiSpoonSets.last?.newLevel = displayedLevel
+        atTag["Level"] = displayedLevel
+    }
+
+    func externalAISnapshot(sourceID: String) -> ExternalAIChartExchange.Snapshot {
+        ExternalAIChartExchange.Snapshot(
+            sourceID: sourceID,
+            nodes: spoons.map {
+                ExternalAIChartExchange.Node(word: $0.word, timeMs: $0.miriSec,
+                                            selectable: $0.isCheckableWord, note: $0.note)
+            },
+            level: atTag["Level"], offset: atTag["Offset"])
+    }
+
+    func externalAILevel(for selected: Set<Int>) -> Int {
+        let preview = Spoons()
+        preview.spoons = spoons.map { $0.copy() }
+        for (index, spoon) in preview.spoons.enumerated() {
+            spoon.note = selected.contains(index)
+        }
+        return Int(min(20.0, preview.getLevelStarReferencevalueV2(FULL: false).rounded()))
+    }
+
     //履歴
     func setRireki(index:Int, changedID:RirekiSpoonSet.changed, maeSpoon:Spoon, newSpoon:Spoon?) {
         let mae:[Spoon] = [maeSpoon]
@@ -875,6 +942,11 @@ class Spoons {
         switch rirekiSpoon.changedID {
         case .MiriSec:
             spoons[rirekiSpoon.index].setMirisec(mirisec: rirekiSpoon.mae[0].miriSec)
+        case .NoteBatch:
+            for (spoon, saved) in zip(spoons, rirekiSpoon.mae) {
+                spoon.note = saved.note
+            }
+            atTag["Level"] = rirekiSpoon.oldLevel
         case .Note:
             spoons[rirekiSpoon.index].note = rirekiSpoon.mae[0].note
         case .Word:
@@ -938,6 +1010,11 @@ class Spoons {
         switch rirekiSpoon.changedID {
         case .MiriSec:
             spoons[rirekiSpoon.index].setMirisec(mirisec: rirekiSpoon.new[0].miriSec)
+        case .NoteBatch:
+            for (spoon, saved) in zip(spoons, rirekiSpoon.new) {
+                spoon.note = saved.note
+            }
+            atTag["Level"] = rirekiSpoon.newLevel
         case .Note:
             spoons[rirekiSpoon.index].note = rirekiSpoon.new[0].note
         case .Word:
@@ -995,9 +1072,12 @@ class RirekiSpoonSet {
         case Word
         case MiriSec
         case Note
+        case NoteBatch
     }
     var index = -1
     var changedID = changed.None
+    var oldLevel: String?
+    var newLevel: String?
     var mae:[RirekiSpoon] = []
     var new:[RirekiSpoon] = []
     

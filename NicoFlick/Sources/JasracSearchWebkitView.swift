@@ -42,6 +42,10 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
             wkWebView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         
+        let helpButton = UIBarButtonItem(title: "？", style: .plain, target: self, action: #selector(showUsageNotice))
+        helpButton.accessibilityLabel = "作品の使用に関する注意"
+        naviBar.topItem?.rightBarButtonItem = helpButton
+
         createWebControlParts()
         if titleText != "" {
             DispatchQueue.main.async {
@@ -149,6 +153,17 @@ class JasracSearchWebkitView: UIViewController, WKUIDelegate, WKNavigationDelega
         ])
     }
     
+    @objc private func showUsageNotice() {
+        let message = """
+        「複合>配信」「ゲーム>ビデオ」などの項目が❌ではなく⭕️になっている作品は使わないでください。
+        
+        ⭕️はJASRACが権利を管理しているという意味です。
+        """
+        let alert = UIAlertController(title: "作品の使用に関する注意", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "閉じる", style: .cancel))
+        present(alert, animated: true)
+    }
+
     @objc private func goBack() {
         wkWebView.goBack()
     }

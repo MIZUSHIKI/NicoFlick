@@ -72,6 +72,8 @@ class ServerDataHandler {
 
     //サーバデータダウンロード 処理
     func DownloadMusicDataAndUserNameData(callback: @escaping (Error?) -> Void ) -> Void {
+        // 通常ロードで保存される前に、編集中データの救出が必要かを保持する。
+        let needsMyEditRecovery = UserData.sharedInstance.LevelsJson == ""
         
         //最初に保存データを持ってくる
 
@@ -103,32 +105,36 @@ class ServerDataHandler {
                     //callback(error)
                     //return
                 }
-                //データベース接続 3：次にplayCount,likeCountデータロード。
-                ServerDataHandler().Download_level_PlayLikeCountData { (error) in
-                    if let error = error {
-                        // print(error)
-                        //callback(error)
-                        //return
-                    }
-                    //データベース接続 4：次にfavoriteCountデータロード。
-                    ServerDataHandler().Download_music_FavoriteCountData { (error) in
+                // データベース接続2.1: 「ロードデータ削除」後であれば、自分の「編集中」データ救出
+                self.downloadMyEditingLevelsIfNeeded(needsRecovery: needsMyEditRecovery) { _ in
+                    // 救出に失敗した場合も後続ロードを続ける。再取得はロードデータ削除で行う。
+                    //データベース接続 3：次にplayCount,likeCountデータロード。
+                    ServerDataHandler().Download_level_PlayLikeCountData { (error) in
                         if let error = error {
                             // print(error)
                             //callback(error)
                             //return
                         }
-                        //データベース接続 5：もしUserNameを登録していてまだIDを取得していない場合（Ver.1.4未満ケア）
-                        ServerDataHandler().getUserNameSqlID(userID: UserData.sharedInstance.UserID) {
-                            //データベース接続 おまけ：プレイ回数をデータベースに送信する(送信済みでないもの)。リザルトまで行かずに溜まったものがあれば出す。
-                            // playCount,like,dislike,musicFavorite の送信(成功したらカウントデータを初期化)
-                            self.postUserCountData()
-                            
-                            // Selectorへ
-                            // print("ServerData Download")
-                            callback(nil)
-                        }// 5.UserNameIDデータ取得
-                    }// 4.favoriteCountデータ取得
-                }// 3.playCount,likeCountデータロード
+                        //データベース接続 4：次にfavoriteCountデータロード。
+                        ServerDataHandler().Download_music_FavoriteCountData { (error) in
+                            if let error = error {
+                                // print(error)
+                                //callback(error)
+                                //return
+                            }
+                            //データベース接続 5：もしUserNameを登録していてまだIDを取得していない場合（Ver.1.4未満ケア）
+                            ServerDataHandler().getUserNameSqlID(userID: UserData.sharedInstance.UserID) {
+                                //データベース接続 おまけ：プレイ回数をデータベースに送信する(送信済みでないもの)。リザルトまで行かずに溜まったものがあれば出す。
+                                // playCount,like,dislike,musicFavorite の送信(成功したらカウントデータを初期化)
+                                self.postUserCountData()
+                                
+                                // Selectorへ
+                                // print("ServerData Download")
+                                callback(nil)
+                            }// 5.UserNameIDデータ取得
+                        }// 4.favoriteCountデータ取得
+                    }// 3.playCount,likeCountデータロード
+                }// 2.1.編集中データ救出
             }// 2.levelデータロード
         }// 1.musicデータロード
     }
@@ -310,6 +316,42 @@ class ServerDataHandler {
         }
         task.resume()
     }
+    private func downloadMyEditingLevelsIfNeeded(needsRecovery: Bool, callback: @escaping (Error?) -> Void) {
+        guard needsRecovery else {
+            callback(nil)
+            return
+        }
+
+        // 更新日時による絞り込みをせず、自分の編集中データを取得する。
+        guard let url = URL(string: AppDelegate.PHPURL + "?req=level-noTimetag-onlyMyEdit&userID=\(UserData.sharedInstance.UserID.prefix(8))") else {
+            callback(URLError(.badURL))
+            return
+        }
+        let session = URLSession(configuration: URLSessionConfiguration.default)
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
+        let task = session.dataTask(with: request) { data, response, error in
+            if let error = error {
+                callback(error)
+                return
+            }
+            if let responseError = self.validateHTTPResponse(response, data: data) {
+                callback(responseError)
+                return
+            }
+            guard let data = data else {
+                callback(ServerResponseError.noData)
+                return
+            }
+            do {
+                try self.LoadLevelData(data: data)
+                callback(nil)
+            } catch {
+                callback(error)
+            }
+        }
+        task.resume()
+    }
+
     func DownloadLevelData_FirstData(serverURL:String, callback: @escaping (Error?) -> Void ) -> Void {
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:serverURL+"levelJson")!
@@ -1176,12 +1218,25 @@ class ServerDataHandler {
         }
         task.resume()
     }
+    /// Use the ID returned by this insertion, never an inferred latest chart ID.
+    static func insertedLevelID(from response: String) -> Int? {
+        guard response.contains("<!--EchoHtmlMes_OK-->"),
+              let regex = try? NSRegularExpression(pattern: "<!--InsertedLevelID=([0-9]+)-->") else {
+            return nil
+        }
+        let matches = regex.matches(in: response, range: NSRange(response.startIndex..., in: response))
+        guard matches.count == 1,
+              let range = Range(matches[0].range(at: 1), in: response),
+              let id = Int(response[range]), id > 0 else { return nil }
+        return id
+    }
+
     func postLevelInsert(nicoURL:String, level:Int, creator:String, description:String, speed:Int, notes:String, userPASS:String, userID:String, callback: @escaping (String,Error?) -> Void ) -> Void {
         // ゲームデータの投稿
         let session = URLSession(configuration: URLSessionConfiguration.default)
         let url = URL(string:AppDelegate.PHPURL)!
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData, timeoutInterval: 21.0)
-        let body = "req=levelz-insert&movieURL=\(nicoURL)&level=\(level)&creator=\(creator.urlEncoded)&description=\(description.urlEncoded)&speed=\(speed)&notes=\(notes.urlEncoded)&userPASS=\(userPASS)&userID=\(userID)"
+        let body = "req=levelm-insert&movieURL=\(nicoURL)&level=\(level)&creator=\(creator.urlEncoded)&description=\(description.urlEncoded)&speed=\(speed)&notes=\(notes.urlEncoded)&userPASS=\(userPASS)&userID=\(userID)"
         req.httpMethod = "POST"
         req.httpBody = body.data(using: String.Encoding.utf8)
         let task = session.dataTask(with: req){(data,response,error) in

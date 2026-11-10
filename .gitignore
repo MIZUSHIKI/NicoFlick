@@ -1,1 +1,9 @@
 .DS_Store
+
+# Local server reference, prototypes, tests, and development notes.
+# These directories are not required to build the iOS app.
+/Server/
+/Tests/
+/Backend/
+/Experiments/
+/Docs/

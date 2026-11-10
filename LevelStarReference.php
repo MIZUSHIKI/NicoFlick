@@ -1,14 +1,25 @@
 <?php
 
 /**
- * NicoFlickDB形式のノーツ文字列から参考難易度（星1〜20）を返す。
+ * NicoFlickDB形式のノーツ文字列から参考難易度を実数で返す（上限なし）。
+ *
+ * 計算仕様バージョン: ver.2.0
+ * - ver.1.0: 四捨五入し、上限20の整数を返す。
+ * - ver.2.0:
+ *   ・星8〜20に相当する難易度の計算式を調整。
+ *   ・丸め前の実数を上限なしで返す形式に変更。
+ *   ・整数化・上限20への制限は呼び出し側で行う。
+ *   ・星1〜7を旧式で求める仕様は維持。
+ *
  * PHP 7.0以上、mbstring必須。
+ * 同期先: NicoFlick/Sources/Classes/SpoonClass.swift の getLevelStarReferencevalueV2()。
+ * 難易度の係数・集計・丸めを変更する際は、Swift版も同時に更新すること。
  *
  * 【要点】
  * - 星1〜7は旧式を返し、星8以上を密度評価で細分化する。
  * - 通常の忙しさ50%、難所35%、繰り返し現れる2秒密集15%で基礎点を作る。
  * - タップ文字と反復入力は少し易しく扱う。
- * - 星8〜13は直線、星14〜20は段差のない平方根曲線で高難度ほど厳しくする。
+ * - 星8を起点に星14まで細かな直線、それ以降は平方根曲線で評価する。
  *
  * 【詳細】
  * 1. FULLがfalseなら、旧式と同じ条件でゲーム対象ノーツだけを抽出する。
@@ -21,14 +32,15 @@
  * 5. 曲全体を500ms刻みで走査し、直前2秒間の密度の90パーセンタイルを求める。
  *    最大値ではないため、一度だけの密集より繰り返す密集を高く評価する。
  * 6. difficulty = P75×0.50 + P90×0.35 + 2秒窓P90×0.15。
- *    linearStar = 1 + difficulty×1.75 とし、13を超えた部分を平方根型に圧縮する。
- *    この曲線では直線評価25が星20となり、最後に星8〜20へ丸める。
+ *    丸め前8までは1 + difficulty×1.75、その先は傾き3.5で星14まで評価する。
+ *    星14超は固定係数0.58の平方根曲線で圧縮し、下限8の実数を返す。
+ *    整数化と上限20への制限は呼び出し側で行う。
  *
  * @param string $notesString Spoons.export(mode: .NicoFlickDB) の出力
  * @param bool   $full        FULL譜面として全タイムタグを評価する場合はtrue
- * @return int 参考難易度（星1〜20）
+ * @return float 参考難易度（星1〜7は旧式の整数値を実数化、V2は下限8・上限なし）
  */
-function getLevelStarReferenceValueFromText($notesString, $full = false)
+function getLevelStarReferenceValueFromText($notesString, $full = false): float
 {
     $notesString = str_replace("\r\n", "\n", (string) $notesString);
     $full = (bool) $full;
@@ -152,11 +164,11 @@ function getLevelStarReferenceValueFromText($notesString, $full = false)
     // ==================== 旧式：平均ノーツ間隔による計算 END ======================
 
     if ($currentStar <= 7) {
-        return $currentStar;
+        return (float) $currentStar;
     }
 
     // ==================== 新式：入力内容と密度による計算 START ====================
-    // 星8〜20を評価する。
+    // 星8以上を評価する。
     $tapWeight = 0.82;
     $sameCharacterWeight = 0.78;
     $repeatedPhraseWeight = 0.90;
@@ -181,7 +193,7 @@ function getLevelStarReferenceValueFromText($notesString, $full = false)
         }
     }
     if (count($targetSpoons) < 2) {
-        return 1;
+        return 1.0;
     }
 
     $tapCharacters = 'あかさたなはまやらわがざだばぱアカサタナハマヤラワガザダバパ';
@@ -233,7 +245,7 @@ function getLevelStarReferenceValueFromText($notesString, $full = false)
         $strains[] = $actionsPerSecond * $transitionWeight;
     }
     if (count($strains) === 0) {
-        return 1;
+        return 1.0;
     }
 
     sort($strains, SORT_NUMERIC);
@@ -282,16 +294,22 @@ function getLevelStarReferenceValueFromText($notesString, $full = false)
         + $percentile($strains, 0.90) * 0.35
         + $percentile($burstRates, 0.90) * 0.15;
 
-    $linearStar = 1.0 + $difficulty * 1.75;
-    $curveStartStar = 13.0;
+    // Lv8（基礎点4）から等しい刻みで評価。Swift版と同じ係数・演算順を保つ。
+    $preservedBoundaryStar = 8.0;
+    $preservedBoundaryDifficulty = ($preservedBoundaryStar - 1.0) / 1.75;
+    $middleSlope = 3.5;
+    $linearStar = $difficulty < $preservedBoundaryDifficulty
+        ? 1.0 + $difficulty * 1.75
+        : $preservedBoundaryStar + ($difficulty - $preservedBoundaryDifficulty) * $middleSlope;
+
+    // 調整目安: 基礎点4 → 8、約4.286 → 9、5.714 → 14、12.329 → 20.10（丸め前）。
+    $curveStartStar = 14.0;
+    $highDifficultyCurve = 0.58;
     $excess = max(0.0, $linearStar - $curveStartStar);
-    // 直線評価25が曲線評価20になる係数。
-    $highDifficultyCurve = 95.0 / 588.0;
     $curvedStar = $linearStar <= $curveStartStar
         ? $linearStar
         : $curveStartStar + $excess / sqrt(1.0 + $highDifficultyCurve * $excess);
 
-    $estimatedStar = min(20, max(8, (int) round($curvedStar)));
     // ==================== 新式：入力内容と密度による計算 END ======================
-    return $estimatedStar;
+    return max(8.0, $curvedStar);
 }

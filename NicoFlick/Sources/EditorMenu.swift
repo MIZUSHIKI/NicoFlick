@@ -8,9 +8,15 @@
 
 import UIKit
 
-class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
+class EditorMenu: UIViewController {
     
-    @IBOutlet var levelPicker: UIPickerView!
+    @IBOutlet private var levelSelectionContainer: UIView!
+    private let levelSelectionButton = UIButton(type: .system)
+    private var selectedLevelRow = 10
+
+    private var selectedLevel: Int {
+        selectedLevelRow == 10 ? 100 : selectedLevelRow + 1
+    }
     @IBOutlet var creatorTextField: UITextField!
     @IBOutlet var descriptionTextfield: UITextField!
     @IBOutlet var speedTextField: UITextField!
@@ -38,14 +44,18 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Delegate設定
-        levelPicker.delegate = self
-        levelPicker.dataSource = self
-        //Level
-        var level = 100 - 1
-        if let lv = editorViewController.mySpoon.atTag["Level"] {
-            level = Int(lv)! - 1
+        for notificationName in [NSNotification.Name.UIKeyboardDidShow,
+                                 .UIKeyboardDidChangeFrame, .UIKeyboardDidHide] {
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(restoreMovieAfterKeyboardChange),
+                name: notificationName, object: nil
+            )
         }
+        if let value = editorViewController.mySpoon.atTag["Level"],
+           let level = Int(value), (1...10).contains(level) {
+            selectedLevelRow = level - 1
+        }
+        configureLevelSelection()
         var creator = editorViewController.selectLevel.creator!
         if let ca = editorViewController.mySpoon.atTag["Creator"] {
             creator = ca
@@ -58,8 +68,6 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
         if let sp = editorViewController.mySpoon.atTag["Speed"] {
             speed = sp
         }
-        if level >= 10 { level = 10 }
-        levelPicker.selectRow(level, inComponent: 0, animated: false)
         creatorTextField.text = creator
         descriptionTextfield.text =  description
         speedTextField.text = speed
@@ -72,60 +80,63 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
         self.view.addSubview(activityIndicator)
     }
     
-    var first_attack = true
-    override func viewDidLayoutSubviews() {
-        if !first_attack {
-            return
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func configureLevelSelection() {
+        // Storyboardの元の表示領域内で、選択行と同じ高さに収める。
+        levelSelectionButton.frame = CGRect(
+            x: 0,
+            y: (levelSelectionContainer.bounds.height - 30) / 2,
+            width: levelSelectionContainer.bounds.width,
+            height: 30
+        )
+        levelSelectionButton.autoresizingMask = [.flexibleWidth, .flexibleTopMargin, .flexibleBottomMargin]
+        levelSelectionButton.backgroundColor = .white
+        levelSelectionButton.layer.cornerRadius = 4
+        levelSelectionButton.layer.borderWidth = 1
+        levelSelectionButton.layer.borderColor = UIColor.lightGray.cgColor
+        levelSelectionButton.titleLabel?.font = .systemFont(ofSize: 16)
+        levelSelectionButton.addTarget(self, action: #selector(showLevelSelection), for: .touchUpInside)
+        levelSelectionButton.accessibilityLabel = "難易度"
+        levelSelectionButton.accessibilityHint = "難易度の選択肢を表示します"
+        levelSelectionContainer.addSubview(levelSelectionButton)
+        updateLevelSelection()
+    }
+
+    private func updateLevelSelection() {
+        let title = selectedLevel == 100 ? "FULL" : "Lv. \(selectedLevel)"
+        levelSelectionButton.setTitle("\(title)  ▾", for: .normal)
+        levelSelectionButton.accessibilityValue = title
+    }
+
+    @objc private func showLevelSelection() {
+        view.endEditing(true)
+        let alert = UIAlertController(title: "難易度を選択", message: nil, preferredStyle: .actionSheet)
+        for (row, title) in dataList.enumerated() {
+            let selectionMark = row == selectedLevelRow ? "✓ " : ""
+            alert.addAction(UIAlertAction(title: selectionMark + title, style: .default) { [weak self] _ in
+                self?.selectedLevelRow = row
+                self?.updateLevelSelection()
+            })
         }
-        first_attack = false
-        //iOS16以降?
-        if let oyaView = levelPicker.superview {
-            // print("kitayo")
-            levelPicker.frame = oyaView.bounds
-        }
-        
+        alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel))
+        alert.popoverPresentationController?.sourceView = levelSelectionButton
+        alert.popoverPresentationController?.sourceRect = levelSelectionButton.bounds
+        present(alert, animated: true)
     }
-    
-    // UIPickerViewの列の数
-    func numberOfComponents(in pickerView: UIPickerView) -> Int {
-        return 1
-    }
-    
-    // UIPickerViewの行数、リストの数
-    func pickerView(_ pickerView: UIPickerView,
-                    numberOfRowsInComponent component: Int) -> Int {
-        return dataList.count
-    }
-    
-    // UIPickerViewの最初の表示
-    func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
-        
-        var pickerLabel = view as? UILabel;
-        
-        if (pickerLabel == nil)
-        {
-            pickerLabel = UILabel()
-            
-            pickerLabel?.font = UIFont.systemFont(ofSize: 16)
-            pickerLabel?.textAlignment = .center
-            pickerLabel?.text = dataList[row]
-        }
-        
-        return pickerLabel!;
-    }
-    
-    // UIPickerViewのRowが選択された時の挙動
-    func pickerView(_ pickerView: UIPickerView,
-                    didSelectRow row: Int,
-                    inComponent component: Int) {
-        
-        //label.text = dataList[row]
-        
-    }
+
     @IBAction func postButton(_ sender: Any) {
-        // print("post")
-        let alert = UIAlertController(title:"NicoFlick データベース", message: "データベースに送信します。", preferredStyle: UIAlertControllerStyle.alert)
-        alert.addAction(UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: {
+        view.endEditing(true)
+        let needsLevelReview = selectedLevel == 100
+            && editorViewController.mySpoon.spoons.contains { $0.note }
+        let levelTitle = selectedLevel == 100 ? "FULL" : "Lv. \(selectedLevel)"
+        let message = needsLevelReview
+            ? "ノーツが割り振られていますが、難易度はFULLです。\nFULLとして投稿しますか？"
+            : "難易度：\(levelTitle)\nデータベースに送信します。"
+        let alert = UIAlertController(title: "NicoFlick データベース", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: needsLevelReview ? "FULLで投稿" : "投稿する", style: UIAlertActionStyle.default, handler: {
             (action: UIAlertAction!) in
             //print("はいをタップした時の処理")
             
@@ -134,12 +145,12 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
             
             let notesString = self.editorViewController.mySpoon.export(mode: .NicoFlickDB)
             //ゲームデータを更新する。
-            var level = self.levelPicker.selectedRow(inComponent: 0) + 1
-            if level >= 11 { level = 100 }
+            let level = self.selectedLevel
             var speed = 0
             if let sp = self.speedTextField.text {
                 speed = Int(sp)!
             }
+            let aiSourceID = "\(self.editorViewController.selectMusic.sqlID ?? 0):\(self.editorViewController.selectLevel.sqlID ?? 0)"
             ServerDataHandler().postLevelUpdate(
                 sqlID: self.editorViewController.selectLevel.sqlID,
                 nicoURL: self.editorViewController.selectMusic.movieURL,
@@ -164,6 +175,9 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
                     if retStr.pregMatche(pattern: "<!--EchoHtmlMes_OK-->"){
                         //送信成功したらuserDataを消す。
                         // print("DataPost OK")
+                        DispatchQueue.main.async {
+                            ExternalAIChartViewController.removeSavedData(sourceID: aiSourceID)
+                        }
                         
                         //取得データの更新
                         ServerDataHandler().DownloadMusicDataAndUserNameData { (error) in
@@ -284,29 +298,49 @@ class EditorMenu: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource
     }
     
     @IBAction func showStarDialogButton(_ sender: UIButton) {
-        let star = editorViewController.mySpoon.getLevelStarReferencevalue()
-        let alert = UIAlertController(title:"難易度計算（参考）", message: "レベル\(star)\n\(dataList[star-1].pregReplace(pattern: "^\\(\\d+\\)", with: ""))", preferredStyle: UIAlertControllerStyle.alert)
-        alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel, handler: nil))
+        let myspoon = editorViewController.mySpoon
+        let star = myspoon.getLevelStarReferencevalue(FULL: !myspoon.spoons.contains { $0.note })
+        let star_v2 = Int(min(20.0, myspoon.getLevelStarReferencevalueV2(FULL: !myspoon.spoons.contains { $0.note }).rounded()))
+        let alert = UIAlertController(title:"難易度計算（参考）", message: "レベル\(star)\n\(dataList[star-1].pregReplace(pattern: "^\\(\\d+\\)", with: ""))\n\n---\n新しい難易度計算 = レベル\(star_v2)", preferredStyle: UIAlertControllerStyle.alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         self.present(alert, animated: true, completion: nil)
     }
     
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        //print("prepare")
-        //print(segue.identifier as String!)
+    private func saveEditorMetadata() {
         // 遷移前に保存
-        var level = levelPicker.selectedRow(inComponent: 0) + 1
-        if level >= 11 { level = 100 }
+        let level = selectedLevel
         editorViewController.mySpoon.atTag["Level"] = "\(level)"
         editorViewController.mySpoon.atTag["Creator"] = creatorTextField.text
         editorViewController.mySpoon.atTag["Description"] = descriptionTextfield.text
         var speed = editorViewController.selectLevel.speed!
-        if let sp = speedTextField.text {
-            speed = Int(sp)!
+        if let sp = speedTextField.text, let value = Int(sp) {
+            speed = value
         }
         if speed < 50 || 500 < speed { speed = 150 }
         editorViewController.mySpoon.atTag["Speed"] = "\(speed)"
         
+    }
+
+    @objc private func restoreMovieAfterKeyboardChange() {
+        guard isViewLoaded, view.window != nil, presentedViewController == nil else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.editorViewController.restoreMovieLayout()
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        editorViewController.restoreMovieLayout()
+        transitionCoordinator?.animate(alongsideTransition: nil) { [weak self] _ in
+            self?.editorViewController.restoreMovieLayout()
+        }
+    }
+
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        // メニューが下がり始める前に、キーボードを閉じて動画サイズを即時補正する。
+        view.endEditing(true)
+        editorViewController.restoreMovieLayout()
+        saveEditorMetadata()
         // 設定
         if segue.identifier == "toEditorSettings" {
             // print("toEditorSettings")

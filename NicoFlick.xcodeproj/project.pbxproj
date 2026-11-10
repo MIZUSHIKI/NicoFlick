@@ -123,6 +123,8 @@
 		10EBF28D1F81172B00FAAAA5 /* IndicatorClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EBF28C1F81172B00FAAAA5 /* IndicatorClass.swift */; };
 		10ED448B1EEB8AD60072FB8B /* MusicDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10ED448A1EEB8AD60072FB8B /* MusicDataClass.swift */; };
 		10ED45141EEBECAF0072FB8B /* iCarousel.m in Sources */ = {isa = PBXBuildFile; fileRef = 10ED45121EEBECAF0072FB8B /* iCarousel.m */; };
+		10FB3F57309ECE0600BEAA1E /* ExternalAIChartViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10FB3F56309ECE0600BEAA1E /* ExternalAIChartViewController.swift */; };
+		10FB3F59309ECE1900BEAA1E /* ExternalAIChartExchange.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10FB3F58309ECE1800BEAA1E /* ExternalAIChartExchange.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -246,6 +248,8 @@
 		10ED45111EEBECAF0072FB8B /* iCarousel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = iCarousel.h; path = Sources/Classes/iCarousel.h; sourceTree = "<group>"; };
 		10ED45121EEBECAF0072FB8B /* iCarousel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = iCarousel.m; path = Sources/Classes/iCarousel.m; sourceTree = "<group>"; };
 		10ED45161EEBECE70072FB8B /* NicoFlick-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "NicoFlick-Bridging-Header.h"; path = "Sources/Classes/NicoFlick-Bridging-Header.h"; sourceTree = "<group>"; };
+		10FB3F56309ECE0600BEAA1E /* ExternalAIChartViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExternalAIChartViewController.swift; path = Sources/ExternalAIChartViewController.swift; sourceTree = "<group>"; };
+		10FB3F58309ECE1800BEAA1E /* ExternalAIChartExchange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExternalAIChartExchange.swift; path = Sources/Classes/ExternalAIChartExchange.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -400,6 +404,7 @@
 				1052F41A21F3F82300D3A795 /* EditorGame.swift */,
 				103C1F1330774493007F125D /* EditorSettings.swift */,
 				103C1F1430774493007F125D /* JapaneseKeyboardSetupViewController.swift */,
+				10FB3F56309ECE0600BEAA1E /* ExternalAIChartViewController.swift */,
 				10E6C5E92104E2A5004457F8 /* LaunchScreen.storyboard */,
 				10710D842102C09B00468C6B /* Settings.bundle */,
 				10B49C901EB4B4EF000C79D3 /* Assets.xcassets */,
@@ -438,6 +443,7 @@
 				106A6B0230698B12008D2AE8 /* NoAnimationSegue.swift */,
 				1033E7BA308358320009F12F /* JSONSafety.swift */,
 				1033E7BB308358320009F12F /* PersistentStore.swift */,
+				10FB3F58309ECE1800BEAA1E /* ExternalAIChartExchange.swift */,
 			);
 			name = Classes;
 			sourceTree = "<group>";
@@ -604,6 +610,7 @@
 				105B833F1EEFDA3000FC2244 /* ResultView.swift in Sources */,
 				10B49C8C1EB4B4EF000C79D3 /* ViewController.swift in Sources */,
 				10B49CC51EB614AC000C79D3 /* MovieAccessClass.swift in Sources */,
+				10FB3F57309ECE0600BEAA1E /* ExternalAIChartViewController.swift in Sources */,
 				1052F41B21F3F82300D3A795 /* EditorGame.swift in Sources */,
 				107BCC0921CFC11500F39290 /* SpoonClass.swift in Sources */,
 				10710D892104477600468C6B /* AppDelegate.swift in Sources */,
@@ -613,6 +620,7 @@
 				10ED448B1EEB8AD60072FB8B /* MusicDataClass.swift in Sources */,
 				1070F52720C94E77008A5735 /* CachedMoviesClass.swift in Sources */,
 				10EBF2881F79675E00FAAAA5 /* SelectorMenuTableForTag.swift in Sources */,
+				10FB3F59309ECE1900BEAA1E /* ExternalAIChartExchange.swift in Sources */,
 				10B49CC71EB9FD6E000C79D3 /* StringExt.swift in Sources */,
 				1033E7BC308358320009F12F /* JSONSafety.swift in Sources */,
 				1033E7BD308358320009F12F /* PersistentStore.swift in Sources */,
@@ -779,7 +787,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2.0.2.0;
+				CURRENT_PROJECT_VERSION = 2.1.1.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
@@ -791,7 +799,7 @@
 					"@loader_path/Frameworks",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.2;
+				MARKETING_VERSION = 2.1;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -810,7 +818,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2.0.2.0;
+				CURRENT_PROJECT_VERSION = 2.1.1.0;
 				DEVELOPMENT_TEAM = TD2CNVUXD8;
 				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
@@ -822,7 +830,7 @@
 					"@loader_path/Frameworks",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.2;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = i.MIZUSHIKI.NicoFlick;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
